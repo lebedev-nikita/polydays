@@ -13,6 +13,8 @@ just dev
 
 Open <http://localhost:8081> and choose **Открыть пространство разработки**. This explicit local mode uses an isolated development account; it is unavailable when the server runs in production or binds beyond loopback.
 
+If the local Polydays service is already running, `just dev` reuses its backend and starts only the Expo frontend. Sign in with Google in that case. Stopping development leaves the existing service running.
+
 For Google sign-in, configure the private root `.env`, run `just build`, then `bun run server` and open <http://localhost:3000>. See [local server and Google setup](docs/deployment.md). T3's **Setup worktree** action copies the root `.env` with private permissions before installing dependencies; an existing worktree `.env` is preserved.
 
 In the web app, press **Q** outside a text field to add a task. Tasks with an exact deadline are rescheduled by editing their date and time; **Убрать дедлайн** explicitly switches them to the backlog or an untimed polyday.

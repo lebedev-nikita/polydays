@@ -39,13 +39,17 @@ export async function createAuth(db: BoxDB, config: AuthConfig) {
       },
     },
   };
-  const exists =
-    await db.query`SELECT name FROM sqlite_master WHERE type=${"table"} AND name=${"user"}`.get();
-  if (!exists) {
-    const adapter = betterAuthAdapter(db)(options);
-    const schema = await adapter.createSchema?.(options);
-    if (!schema) throw new Error("Адаптер BoxDB не смог создать схему авторизации.");
-    await db.exec(schema.code);
+  {
+    await using tx = await db.begin({ mode: "immediate" });
+    const exists =
+      await tx.query`SELECT name FROM sqlite_master WHERE type=${"table"} AND name=${"user"}`.get();
+    if (!exists) {
+      const adapter = betterAuthAdapter(db)(options);
+      const schema = await adapter.createSchema?.(options);
+      if (!schema) throw new Error("Адаптер BoxDB не смог создать схему авторизации.");
+      await tx.exec(schema.code);
+    }
+    await tx.commit();
   }
   return betterAuth(options);
 }
