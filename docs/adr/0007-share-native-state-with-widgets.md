@@ -1,0 +1,3 @@
+# Share durable native state with interactive widgets
+
+Android widgets must complete tasks offline while the React application is closed, so a native transactional repository serves the application bridge, widget callbacks and background workers under one schema and migration authority. Commit each completion and its pending operation before acknowledging it, then retry synchronisation with server deduplication; an in-memory JavaScript event listener or a separate widget-only checkbox state would not preserve the task change reliably. Keep domain rules in the shared TypeScript core and native adapters narrow; future macOS uses the equivalent shared-container boundary with WidgetKit.

@@ -1,0 +1,9 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp" android:background="@drawable/polydays_widget_background">
+  <LinearLayout android:id="@+id/polyday_header" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingBottom="8dp">
+    <TextView android:id="@+id/polyday_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Polydays" android:textColor="#252421" android:textSize="18sp" android:textStyle="bold" />
+    <TextView android:id="@+id/polyday_subtitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#66645f" android:textSize="12sp" android:paddingTop="3dp" />
+  </LinearLayout>
+  <ListView android:id="@+id/polyday_list" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:divider="#E9E7E2" android:dividerHeight="1dp" />
+  <TextView android:id="@+id/polyday_empty" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center" android:text="Нет незавершённых задач" android:textColor="#66645f" android:textSize="14sp" />
+  <TextView android:id="@+id/polyday_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#66645f" android:textSize="11sp" android:paddingTop="8dp" />
+</LinearLayout>

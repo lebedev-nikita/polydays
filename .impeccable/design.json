@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-22T20:25:27.389Z",
+  "title": "Design System: Polydays",
+  "extensions": {
+    "colorMeta": {
+      "canvas": {
+        "role": "neutral",
+        "displayName": "White"
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Warm sidebar"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Dark ink"
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted ink"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Fine line"
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Tomato"
+      },
+      "selected": {
+        "role": "primary",
+        "displayName": "Pale tomato"
+      },
+      "priority-1": {
+        "role": "semantic",
+        "displayName": "P1 red"
+      },
+      "priority-2": {
+        "role": "semantic",
+        "displayName": "P2 orange"
+      },
+      "priority-3": {
+        "role": "semantic",
+        "displayName": "P3 blue"
+      },
+      "priority-4": {
+        "role": "neutral",
+        "displayName": "P4 / placeholder neutral"
+      },
+      "widget-priority-2": {
+        "role": "semantic",
+        "displayName": "Widget P2 orange"
+      },
+      "widget-priority-3": {
+        "role": "semantic",
+        "displayName": "Widget P3 blue"
+      },
+      "error-surface": {
+        "role": "semantic",
+        "displayName": "Error surface"
+      },
+      "warning-surface": {
+        "role": "semantic",
+        "displayName": "Warning surface"
+      },
+      "warning-ink": {
+        "role": "semantic",
+        "displayName": "Warning ink"
+      },
+      "success": {
+        "role": "semantic",
+        "displayName": "Saved success"
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Bold screen and polyday headings."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Semibold composer title input and supporting titles."
+      },
+      "body": {
+        "displayName": "Task body",
+        "purpose": "Task titles; fields share the font size without an authored line height."
+      },
+      "body-small": {
+        "displayName": "Supporting body",
+        "purpose": "Subtitles and explanatory text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Semibold field labels; regular-weight size also used for metadata and choices."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Primary and secondary button labels."
+      },
+      "nav-mobile": {
+        "displayName": "Mobile navigation",
+        "purpose": "Single-line compact destination captions; selected state is semibold."
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating-add",
+        "value": "0px 4px 10px rgba(0, 0, 0, 0.35)",
+        "purpose": "Installed NativeWind large shadow used by the floating add action; native preset elevation is 8. Source values, not measured platform appearance."
+      },
+      {
+        "name": "composer",
+        "value": "0px 6px 19px rgba(0, 0, 0, 0.35)",
+        "purpose": "Installed NativeWind extra-large shadow used by the modal composer; native preset elevation is 13. Backdrop is black at 30% opacity."
+      }
+    ],
+    "motion": [
+      {
+        "name": "composer-entry",
+        "value": "fade",
+        "purpose": "React Native Modal animationType. Platform supplies timing; no custom duration or easing is authored."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "desktop",
+        "value": "850px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Tomato action; pressed opacity 80%, disabled opacity 40%, with the shared web focus outline. Hover preserves the default source appearance.",
+      "html": "<button class=\"ds-button-primary\" type=\"button\">Добавить задачу</button>",
+      "css": ".ds-button-primary{display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;min-height:3rem;border:0;border-radius:0.375rem;padding:0.625rem 1rem;background:#b9382e;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;cursor:pointer}.ds-button-primary:hover{background:#b9382e}.ds-button-primary:focus-visible{outline:2px solid #b9382e;outline-offset:3px}.ds-button-primary:active{opacity:0.8}.ds-button-primary:disabled{opacity:0.4;cursor:default}"
+    },
+    {
+      "name": "Secondary button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Bordered white action; pressed warm fill and disabled opacity 40%. Hover preserves the default source appearance.",
+      "html": "<button class=\"ds-button-secondary\" type=\"button\">Закрыть</button>",
+      "css": ".ds-button-secondary{display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;min-height:3rem;border:1px solid #e9e7e2;border-radius:0.375rem;padding:0.625rem 1rem;background:#ffffff;color:#252421;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;cursor:pointer}.ds-button-secondary:hover{background:#ffffff}.ds-button-secondary:focus-visible{outline:2px solid #b9382e;outline-offset:3px}.ds-button-secondary:active{background:#faf9f6}.ds-button-secondary:disabled{opacity:0.4;cursor:default}"
+    },
+    {
+      "name": "Labelled field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Shared field with small semibold label, neutral placeholder, tomato caret and web focus outline. No separate hover or focus border color is authored.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Дата дедлайна · ГГГГ-ММ-ДД</span><input class=\"ds-field-input\" type=\"text\" placeholder=\"2026-10-23\" aria-label=\"Дата дедлайна · ГГГГ-ММ-ДД\"/></label>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:0.375rem;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif}.ds-field-label{font-size:0.75rem;line-height:1rem;font-weight:600;color:#66645f}.ds-field-input{box-sizing:border-box;min-height:3rem;border:1px solid #e9e7e2;border-radius:0.375rem;background:#ffffff;padding:0.5rem 0.75rem;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;font-size:15px;color:#252421;caret-color:#b9382e}.ds-field-input::placeholder{color:#77736d;opacity:1}.ds-field-input:hover{border-color:#e9e7e2}.ds-field-input:focus-visible{outline:2px solid #b9382e;outline-offset:3px}"
+    },
+    {
+      "name": "Desktop destination",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Desktop link with Lucide Inbox vector. Selected pale-tomato state is shown; inactive icons are muted, and pressing an inactive link uses selected fill.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link\" href=\"#backlog\" aria-current=\"page\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polyline points=\"22 12 16 12 14 15 10 15 8 12 2 12\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/></svg><span>Бэклог</span></a></nav>",
+      "css": ".ds-nav{background:#faf9f6;padding:0.75rem;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif}.ds-nav-link{display:flex;align-items:center;gap:0.75rem;min-height:3rem;padding:0 0.75rem;border-radius:0.375rem;text-decoration:none;color:#252421;font-size:14px}.ds-nav-link svg{color:#66645f}.ds-nav-link:hover{background:transparent}.ds-nav-link[aria-current=\"page\"],.ds-nav-link:active{background:#f9e9e4}.ds-nav-link[aria-current=\"page\"]{color:#b9382e;font-weight:600}.ds-nav-link[aria-current=\"page\"] svg{color:#b9382e}.ds-nav-link:focus-visible{outline:2px solid #b9382e;outline-offset:3px}"
+    },
+    {
+      "name": "Interval choice",
+      "kind": "chip",
+      "refersTo": "choice",
+      "description": "Wrapping interval choice; selected fill, border and semibold label match the built current-polyday selector. No hover recolor is authored.",
+      "html": "<div class=\"ds-choice-list\"><a class=\"ds-choice\" href=\"#polyday\" aria-current=\"page\">Полидень · 09:00</a></div>",
+      "css": ".ds-choice-list{display:flex;flex-wrap:wrap;gap:0.5rem}.ds-choice{display:flex;align-items:center;min-height:3rem;border:1px solid #e9e7e2;border-radius:0.375rem;padding:0 0.75rem;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;font-size:0.75rem;line-height:1rem;text-decoration:none;color:#66645f}.ds-choice:hover{color:#66645f}.ds-choice[aria-current=\"page\"]{background:#f9e9e4;border-color:#b9382e;color:#b9382e;font-weight:600}.ds-choice:focus-visible{outline:2px solid #b9382e;outline-offset:3px}"
+    },
+    {
+      "name": "Settings panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Flat, finely bordered settings container; this passive panel has no hover, focus or press state.",
+      "html": "<section class=\"ds-panel\"><h3 class=\"ds-panel-title\">Аккаунт</h3><p class=\"ds-panel-copy\">Сохранено на устройстве</p></section>",
+      "css": ".ds-panel{display:flex;flex-direction:column;gap:1.25rem;border:1px solid #e9e7e2;border-radius:0.5rem;background:#ffffff;padding:1.25rem;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif}.ds-panel-title{margin:0;color:#252421;font-size:1rem;line-height:1.5rem;font-weight:600}.ds-panel-copy{margin:0;color:#66645f;font-size:0.875rem;line-height:1.25rem}"
+    },
+    {
+      "name": "Task row",
+      "kind": "custom",
+      "refersTo": "task-row",
+      "description": "Separate completion and title targets, priority circle, compact task typography and wrapping metadata. Preview shows unfinished P1; completion fills the circle and strikes/mutes the title in the app. No hover recolor is authored.",
+      "html": "<div class=\"ds-task-row\"><button type=\"button\" class=\"ds-task-check\" role=\"checkbox\" aria-checked=\"false\" aria-label=\"Завершить: Название задачи\"><span class=\"ds-task-circle\"><svg class=\"ds-task-checkmark\" width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"white\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg></span></button><a class=\"ds-task-text\" href=\"#task\"><span class=\"ds-task-title\">Название задачи</span><span class=\"ds-task-meta\"><span>Просрочено · 2026-10-22, Вечер</span><span>19:00</span></span></a></div>",
+      "css": ".ds-task-row{box-sizing:border-box;display:flex;align-items:flex-start;gap:0.5rem;min-height:70px;border-bottom:1px solid #e9e7e2;padding:0.5rem 0;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif}.ds-task-check{display:flex;align-items:center;justify-content:center;flex-shrink:0;height:3rem;width:3rem;border:0;padding:0;background:transparent;cursor:pointer}.ds-task-circle{display:flex;align-items:center;justify-content:center;height:19px;width:19px;box-sizing:border-box;border:1.7px solid #c73529;border-radius:9999px}.ds-task-text{box-sizing:border-box;display:flex;flex:1;flex-direction:column;justify-content:center;min-height:3rem;padding:0.5rem 0;text-decoration:none;color:#252421}.ds-task-title{font-size:15px;line-height:22px}.ds-task-meta{display:flex;flex-wrap:wrap;column-gap:0.75rem;row-gap:0.25rem;margin-top:0.25rem;font-size:0.75rem;line-height:1rem;color:#b9382e}.ds-task-check:hover{background:transparent}.ds-task-text:hover{color:#252421}.ds-task-check:focus-visible{outline:2px solid #b9382e;outline-offset:3px}.ds-task-text:focus-visible{outline:2px solid #b9382e;outline-offset:3px}.ds-task-checkmark{display:none}.ds-task-check[aria-checked=\"true\"] .ds-task-circle{background:#c73529}.ds-task-check[aria-checked=\"true\"] .ds-task-checkmark{display:block}.ds-task-check[aria-checked=\"true\"]+.ds-task-text .ds-task-title{color:#66645f;text-decoration:line-through}"
+    },
+    {
+      "name": "Composer container",
+      "kind": "custom",
+      "refersTo": "composer",
+      "description": "Web translation of the scrollable shared modal: black 30% backdrop, NativeWind extra-large shadow and fluid maximum width. Preview is static; platform fade timing is not simulated.",
+      "html": "<div class=\"ds-composer-backdrop\"><section class=\"ds-composer\" role=\"dialog\" aria-label=\"Новая задача\"><header class=\"ds-composer-header\"><span>Новая задача</span><button class=\"ds-composer-close\" type=\"button\" aria-label=\"Закрыть\"><svg width=\"21\" height=\"21\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></button></header><div class=\"ds-composer-body\"><input class=\"ds-composer-title\" placeholder=\"Что нужно сделать?\" aria-label=\"Название задачи\"/></div><footer class=\"ds-composer-footer\"><button class=\"ds-button-secondary\" type=\"button\">Закрыть</button><button class=\"ds-button-primary\" type=\"button\" disabled>Добавить задачу</button></footer></section></div>",
+      "css": ".ds-composer-backdrop{display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);padding:2rem 1rem;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif}.ds-composer{display:flex;flex-direction:column;max-height:90%;width:100%;max-width:560px;border-radius:0.75rem;background:#ffffff;box-shadow:0px 6px 19px rgba(0,0,0,0.35)}.ds-composer-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e9e7e2;padding:0.75rem 1.25rem;color:#252421;font-size:1rem;line-height:1.5rem;font-weight:600}.ds-composer-close{display:flex;align-items:center;justify-content:center;width:3rem;height:3rem;padding:0;border:0;background:transparent;color:#66645f;cursor:pointer}.ds-composer-close:hover{background:transparent}.ds-composer-close:focus-visible{outline:2px solid #b9382e;outline-offset:3px}.ds-composer-body{display:flex;flex-direction:column;gap:18px;padding:22px;overflow:auto;min-height:0}.ds-composer-title{min-height:3rem;padding:0;border:0;background:#ffffff;color:#252421;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;font-size:1.25rem;line-height:1.75rem;font-weight:600;caret-color:#b9382e}.ds-composer-title::placeholder{color:#77736d;opacity:1}.ds-composer-title:hover{background:#ffffff}.ds-composer-title:focus-visible{outline:2px solid #b9382e;outline-offset:3px}.ds-composer-footer{display:flex;justify-content:flex-end;gap:0.75rem;border-top:1px solid #e9e7e2;padding:1rem 1.25rem}.ds-button-primary{display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;min-height:3rem;border:0;border-radius:0.375rem;padding:0.625rem 1rem;background:#b9382e;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;cursor:pointer}.ds-button-primary:hover{background:#b9382e}.ds-button-primary:focus-visible{outline:2px solid #b9382e;outline-offset:3px}.ds-button-primary:active{opacity:0.8}.ds-button-primary:disabled{opacity:0.4;cursor:default}.ds-button-secondary{display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;min-height:3rem;border:1px solid #e9e7e2;border-radius:0.375rem;padding:0.625rem 1rem;background:#ffffff;color:#252421;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;cursor:pointer}.ds-button-secondary:hover{background:#ffffff}.ds-button-secondary:focus-visible{outline:2px solid #b9382e;outline-offset:3px}.ds-button-secondary:active{background:#faf9f6}.ds-button-secondary:disabled{opacity:0.4;cursor:default}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Familiar Todoist task lists organised around personal wake intervals.",
+    "overview": "Polydays uses the user's pinned Todoist canon: compact task rows, warm white content, pale warm navigation, restrained tomato accents and system sans typography. Familiar navigation and separate completion circles keep repeated capture and completion direct.\n\nThe shared React Native and React Native for Web interface stays light, including in system dark mode. Android widgets carry the same flat task-list language through native resources. This records the built system; the direction contract is [Task lists](apps/client/.impeccable/surfaces/apps-client-src-app.md), with domain language in [CONTEXT.md](CONTEXT.md) and product authority in [docs/product.md](docs/product.md).",
+    "keyCharacteristics": [
+      "Compact, priority-first task lists with separate completion and details targets.",
+      "Flat white surfaces, warm navigation and fine separators.",
+      "Tomato selection and action cues; P1–P4 remain distinct.",
+      "Responsive navigation, wrapping interval choices and contextual quick entry."
+    ],
+    "rules": [
+      {
+        "name": "The Restrained Accent Rule",
+        "body": "Use tomato for action, selection and overdue cues; keep ordinary content surfaces white or warm neutral.",
+        "section": "colors"
+      },
+      {
+        "name": "The Compact Hierarchy Rule",
+        "body": "Keep task titles visually primary and metadata subordinate; preserve the short mobile captions as text scales.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Task Surface Rule",
+        "body": "Keep task rows and ordinary panels free of decorative lift; reserve the existing shadow treatments for the floating add action and modal composer.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do preserve the pinned Todoist density, familiar destinations and separate completion circles.",
+      "Do keep P1–P4 visually distinct and task order priority-first.",
+      "Do let interval and metadata rows wrap, and retain compact mobile captions.",
+      "Do retain original polyday context for overdue work and widget freshness beside sync state.",
+      "Do keep the interface light when the system switches to dark mode."
+    ],
+    "donts": [
+      "Don't replace flat task lists with decorative cards, gradients or additional display typography.",
+      "Don't infer Android physical sizes from web CSS or shared utility names.",
+      "Don't add hover colors, motion curves or tonal palette ramps absent from the built source.",
+      "Don't expose a direct polyday move for an existing deadline before explicit deadline removal.",
+      "Don't let quick-entry shortcuts capture typing, modified keys or inactive screens.",
+      ""
+    ]
+  }
+}

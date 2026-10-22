@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    background: #fff;
+  }
+  body {
+    overflow: hidden;
+  }
+  :focus-visible {
+    outline: 2px solid #b9382e;
+    outline-offset: 3px;
+  }
+  ::selection {
+    background: #f9e9e4;
+    color: #252421;
+  }
+  input,
+  textarea {
+    caret-color: #b9382e;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #c6c2b9 transparent;
+  }
+}

@@ -1,0 +1,50 @@
+format: boxdb-schema
+version: 1
+pragmas:
+  application_id: 1112496196
+tables:
+  polydays_changes:
+    columns:
+      seq: INTEGER PRIMARY KEY AUTOINCREMENT
+      user_id: TEXT
+      entity_id: TEXT
+      body: JSON
+  polydays_documents:
+    columns:
+      user_id: TEXT
+      id: TEXT
+      kind: ENUM('calendar', 'task', 'series')
+      body: JSON
+      revision: INTEGER
+    constraints:
+      - primary_key: [user_id, id]
+  polydays_operations:
+    columns:
+      user_id: TEXT
+      id: TEXT
+      result: JSON
+    constraints:
+      - primary_key: [user_id, id]
+  polydays_schedule_slots:
+    columns:
+      user_id: TEXT
+      version_id: TEXT
+      slot_id: TEXT
+      effective_date: DATE
+      name: TEXT
+      starts_at: TIME
+      ends_at: TIME
+      time_zone: TEXT
+    constraints:
+      - primary_key: [user_id, version_id, slot_id]
+indexes:
+  polydays_changes_user_seq:
+    type: regular
+    table: polydays_changes
+    expressions:
+      - user_id
+      - seq
+migrations:
+  - version: "20261022000000"
+    name: initial
+    checksum: 0115d4b7abeb0cf78b53fa8c0d392b00ba9ee524bea2c7a1eac879ec1b396e69

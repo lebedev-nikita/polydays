@@ -1,0 +1,35 @@
+{
+  "name": "polydays",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "bun scripts/+dev.ts",
+    "web": "bun --cwd apps/client start --web --port 8081",
+    "server": "node --env-file-if-exists=.env --experimental-strip-types apps/server/src/+server.ts",
+    "check": "vp check",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p apps/client/tsconfig.json",
+    "test": "vp test run",
+    "build": "bun --cwd apps/client export --platform web",
+    "android": "bun --cwd apps/client android",
+    "prepare:web": "bun scripts/+prepare-web.ts",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@effect/vitest": "4.0.0-rc.118",
+    "@playwright/test": "^1.64.1",
+    "@types/bun": "^1.4.3",
+    "@types/node": "^26.0.0",
+    "@types/react": "~19.3.0",
+    "effect": "4.0.0-rc.118",
+    "fallow": "^3.35.0",
+    "sharp": "^0.35.5",
+    "tailwindcss": "3.4.19",
+    "typescript": "^7.0.2",
+    "vite-plus": "^1.3.0"
+  },
+  "packageManager": "bun@1.4.3"
+}

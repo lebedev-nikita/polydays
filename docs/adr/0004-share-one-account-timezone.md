@@ -1,0 +1,3 @@
+# Share one active schedule timezone across devices
+
+One active timezone governs the user's schedule on every device, keeping the current polyday consistent when devices are in different locations. Settings offer a fixed zone or following local time with explicit confirmation of detected changes, accepting a confirmation step instead of independently recalculating the schedule in each device's zone; setup defaults to a fixed zone taken from the device. Confirmed changes immediately recalculate current and future polydays, preserve ended historical intervals and retain future deadlines' local dates and clock times rather than their old absolute instants; nonexistent local times move to the first valid time after the gap, and ambiguous times use the first occurrence.

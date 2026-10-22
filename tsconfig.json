@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "lib": ["ESNext", "DOM"],
+    "types": ["node", "bun"],
+    "customConditions": ["react-native"]
+  },
+  "include": ["packages/**/*.ts", "apps/server/**/*.ts", "scripts/**/*.ts", "vite.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

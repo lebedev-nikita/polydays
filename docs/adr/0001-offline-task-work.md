@@ -1,0 +1,3 @@
+# Support task work without a server connection
+
+After initial sign-in and synchronisation, users must be able to view their entire history, edit tasks and schedules, create recurring series and plan future work offline, then synchronise changes after reconnecting. This requires durable local state and pending changes rather than a server-only task list, accepting the additional complexity of synchronisation and conflicts to keep planning available without connectivity. The storage technology and protocol remain open; [ADR 0003](0003-preserve-conflicting-device-edits.md) defines the task-conflict policy.

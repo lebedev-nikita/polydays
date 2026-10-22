@@ -1,0 +1,26 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'app.polydays.storage'
+version = '0.1.0'
+
+android {
+  namespace "app.polydays.storage"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+    testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+  }
+}
+
+dependencies {
+  implementation 'androidx.work:work-runtime-ktx:2.12.0'
+  implementation 'androidx.credentials:credentials:1.6.0'
+  implementation 'androidx.credentials:credentials-play-services-auth:1.6.0'
+  // 1.2.x uses Kotlin 2.4 metadata; Expo 58's compiler is Kotlin 2.2.
+  implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
+  androidTestImplementation 'androidx.test:runner:1.6.2'
+  androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+}

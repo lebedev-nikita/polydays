@@ -1,0 +1,10 @@
+{
+  "name": "@polydays/sync",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@polydays/core": "workspace:*",
+    "effect": "4.0.0-rc.118"
+  }
+}
