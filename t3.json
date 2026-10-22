@@ -1,0 +1,27 @@
+{
+  "$schema": "https://t3.codes/schema/t3.json",
+  "iconPath": "assets/icon.svg",
+  "scripts": [
+    {
+      "name": "Setup worktree",
+      "command": "node --experimental-strip-types scripts/+setup-worktree.ts && bun install --frozen-lockfile",
+      "icon": "configure",
+      "runOnWorktreeCreate": true,
+      "async": false
+    },
+    {
+      "name": "Local server",
+      "command": "bun run server",
+      "icon": "play",
+      "previewUrl": "http://localhost:3000",
+      "autoOpenPreview": true
+    },
+    {
+      "name": "Development",
+      "command": "just dev",
+      "icon": "debug",
+      "previewUrl": "http://localhost:8081",
+      "autoOpenPreview": true
+    }
+  ]
+}

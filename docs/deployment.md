@@ -39,3 +39,28 @@ bunx --package @boxdb/cli@0.5.0 boxdb check /path/to/restored.db --full
 ```
 
 The application merges device operations through its API. Database file replication is a backup mechanism and does not replace that protocol.
+
+## Local MacBook service
+
+The local web application can use real Google sign-in over `http://localhost:3000`. Its exact redirect URI is `http://localhost:3000/api/auth/callback/google`. Keep `HOST=127.0.0.1`; Google permits HTTP loopback callbacks for local development. `WEB_ORIGIN=http://localhost:8081` additionally permits the separate Expo development frontend.
+
+On the configured MacBook, `~/Library/LaunchAgents/app.polydays.server.plist` runs the production Node process at login and restarts it after an unexpected exit. It loads the root `.env`; development authentication is disabled. Logs are in `.data/logs/`. After editing `.env`, restart it with:
+
+```sh
+launchctl kickstart -k "gui/$(id -u)/app.polydays.server"
+curl --fail http://localhost:3000/api/health
+```
+
+Stop the service before starting a separate foreground server on the same port:
+
+```sh
+launchctl bootout "gui/$(id -u)/app.polydays.server"
+```
+
+To restore the login service, run `launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/app.polydays.server.plist"`. Rebuild the web export with `just build` after client changes.
+
+Google Cloud project `polydays-20261023` has a testing audience restricted to the owner, a Polydays name and logo, a web client for ports 3000 and 8081, and an Android client for the current local signing certificate. The native request uses `GOOGLE_CLIENT_ID` as its server audience; `GOOGLE_ANDROID_CLIENT_ID` and `GOOGLE_CLOUD_PROJECT` in `.env` record the matching Cloud resources. Publishing the app for other people, configuring public domains, and registering a different Android distribution certificate are separate deployment steps.
+
+## T3 worktrees
+
+The checked-in `t3.json` uses T3's documented `runOnWorktreeCreate` action. Its synchronous setup runs `scripts/+setup-worktree.ts` before dependency installation. It copies `.env` from `T3CODE_PROJECT_ROOT` (or Git's main checkout), sets mode `0600`, and never overwrites an existing destination. The file remains ignored by Git. The current T3 project also has these actions saved, so new worktrees do not require a manual import. Worktrees share OAuth configuration, but keep their own database files.
