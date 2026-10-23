@@ -17,6 +17,7 @@ After each user UI correction, update this section with concise, reusable conclu
 - Use a compact switch for automatic timezone detection, with the effective timezone visible.
 - Infer the underlying usability issue from annotated screenshots and fix every marked area coherently.
 - Keep browser navigation free of blank frames, including first visits to a page; route loading must preserve the visible interface.
+- Switch primary destinations and polydays instantly, keeping app bars stationary rather than sliding the whole screen.
 - After UI work, explain the changes and show a screenshot of the verified result. Give each delivered screenshot a unique filename so cached previews cannot show an earlier version.
 
 # Learning more about Effect
