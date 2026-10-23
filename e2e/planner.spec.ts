@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 test("durable offline capture, reconnect, second device and completion history", async ({
   page,
@@ -13,7 +13,7 @@ test("durable offline capture, reconnect, second device and completion history",
   await page.getByRole("textbox", { name: "Название задачи" }).press("q");
   await expect(page.getByRole("textbox", { name: "Название задачи" })).toHaveValue("q");
   await page.getByRole("textbox", { name: "Название задачи" }).fill("Отправить план полидня");
-  await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
+  await page.getByRole("textbox", { name: "Название задачи" }).press("Enter");
   await expect(page.getByText("Задача сохранена. Можно добавить следующую.")).toBeVisible();
   await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
   await expect(
@@ -68,57 +68,159 @@ test("durable offline capture, reconnect, second device and completion history",
 test("a deadline is explicitly removed before selecting an untimed polyday or backlog", async ({
   page,
 }) => {
-  await page.goto("/backlog");
-  await page.getByRole("button", { name: "Открыть пространство разработки" }).click();
-  await expect(page.getByRole("link", { name: "Бэклог", exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Текущий полидень", exact: true }).click();
-  await expect(page).toHaveURL(/\/current$/);
-  await expect(
-    page.getByRole("button", { name: "Показать выполненные", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "Бэклог", exact: true }).click();
-  await expect(page).toHaveURL(/\/backlog$/);
-  await expect(
-    page
-      .getByText("Задачи, которым вы ещё не выбрали полидень", { exact: true })
-      .filter({ visible: true }),
-  ).toBeVisible();
-  await page.keyboard.press("Control+q");
-  await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
-  await page.keyboard.press("q");
-  await expect(
-    page.getByRole("textbox", { name: "Дата начала полидня · ГГГГ-ММ-ДД" }),
-  ).not.toBeVisible();
+  await openComposer(page);
   await page.getByRole("textbox", { name: "Название задачи" }).fill("Изменить режим планирования");
-  await page.getByRole("radio", { name: "Дата и время", exact: true }).click();
-  const deadlineDate = page.getByRole("textbox", { name: "Дата дедлайна · ГГГГ-ММ-ДД" });
-  const tomorrow = new Date(`${await deadlineDate.inputValue()}T12:00:00Z`);
-  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-  await deadlineDate.fill(tomorrow.toISOString().slice(0, 10));
-  await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
-  await expect(page.getByText("Задача сохранена. Можно добавить следующую.")).toBeVisible();
+  await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
+  await page.getByRole("button", { name: "Завтра", exact: true }).click();
+  await page.getByRole("button", { name: "Добавить время", exact: true }).click();
+  await page.getByRole("textbox", { name: "Время дедлайна" }).fill("12:00");
+  await done(page);
+  await send(page);
   await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
-  await expect(
-    page.getByText("Синхронизировано", { exact: true }).filter({ visible: true }),
-  ).toBeVisible();
   await page.getByRole("link", { name: "Предстоящие", exact: true }).click();
   const taskLink = page.getByRole("link", {
     name: "Открыть задачу: Изменить режим планирования",
     exact: true,
   });
   await taskLink.click();
-  await expect(page.getByRole("radio", { name: "Полидень", exact: true })).not.toBeVisible();
+  await page.getByRole("button", { name: /^Место задачи ·/ }).click();
+  await expect(page.getByRole("radio", { name: "Бэклог", exact: true })).not.toBeVisible();
+  await page.getByRole("button", { name: "Изменить дедлайн", exact: true }).click();
   await page.getByRole("button", { name: "Убрать дедлайн", exact: true }).click();
-  await page.getByRole("radio", { name: "Полидень", exact: true }).click();
-  await expect(page.getByRole("textbox", { name: "Время дедлайна · ЧЧ:ММ" })).not.toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Время дедлайна" })).not.toBeVisible();
+  await done(page);
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
-  await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
   await taskLink.click();
+  await page.getByRole("button", { name: /^Место задачи ·/ }).click();
   await page.getByRole("radio", { name: "Бэклог", exact: true }).click();
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
-  await page.goto("/backlog");
-  await expect(
-    page.getByRole("link", { name: "Открыть задачу: Изменить режим планирования", exact: true }),
-  ).toBeVisible();
+  await page.getByRole("link", { name: "Бэклог", exact: true }).click();
+  await expect(taskLink).toBeVisible();
 });
+
+test("compact capture supports shortcut menus, transactional dates and narrow screens", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await openComposer(page);
+  const title = page.getByRole("textbox", { name: "Название задачи" });
+  await expect(title).toBeFocused();
+  await expect(page.getByRole("textbox", { name: "Описание · необязательно" })).toBeVisible();
+  await expect(page.getByRole("radio")).toHaveCount(0);
+  await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
+  await expect(title).toHaveAttribute("aria-invalid", "true");
+  await title.fill("Подготовить подробный план следующего полидня и обсудить его с командой");
+  // Long titles grow, then remain scrollable without hiding their final line.
+  await expect.poll(() => title.evaluate((input) => input.clientHeight)).toBeGreaterThan(48);
+  await title.press("End");
+  await expect
+    .poll(() =>
+      title.evaluate((input) => {
+        input.scrollTop = input.scrollHeight;
+        return input.scrollTop + input.clientHeight >= input.scrollHeight - 2;
+      }),
+    )
+    .toBe(true);
+  await title.fill("Подготовить план !!");
+  await page.getByRole("radio", { name: "P1 · Высокий", exact: true }).click();
+  await expect(title).toHaveValue("Подготовить план");
+  await expect(page.getByRole("radio")).toHaveCount(0);
+  await title.fill("Подготовить план #");
+  await page.getByRole("radio", { name: "Бэклог", exact: true }).click();
+  await expect(title).toHaveValue("Подготовить план");
+  await page
+    .getByRole("textbox", { name: "Описание · необязательно" })
+    .fill("Сверить задачи и время сна.");
+  await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
+  await page.getByRole("button", { name: "Завтра", exact: true }).click();
+  await page.getByRole("button", { name: "Добавить время", exact: true }).click();
+  await page.getByRole("textbox", { name: "Время дедлайна" }).fill("21:30");
+  await page.keyboard.press("Escape");
+  await expect(title).toHaveValue("Подготовить план");
+  await expect(
+    page.getByRole("button", { name: "Когда выполнить · Дата", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
+  await page.getByRole("button", { name: "Предыдущий месяц", exact: true }).click();
+  await page.getByRole("button", { name: /^15 / }).click();
+  await page.getByRole("button", { name: "Добавить время", exact: true }).click();
+  const time = page.getByRole("textbox", { name: "Время дедлайна" });
+  await time.fill("25:70");
+  await done(page);
+  await expect(time).toHaveAttribute("aria-invalid", "true");
+  await time.fill("100");
+  await time.press("Tab");
+  await expect(time).toHaveValue("01:00");
+  await done(page);
+  await expect(page.getByRole("button", { name: /^Когда выполнить ·.*01:00/ })).toBeVisible();
+  await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+  await expect(page.getByText("Закрыть и удалить черновик?")).toBeVisible();
+  await page.getByRole("button", { name: "Продолжить", exact: true }).click();
+  await send(page);
+  await expect(title).toBeFocused();
+});
+
+test("recurrence editing preserves the series deadline independently of an occurrence", async ({
+  page,
+}) => {
+  await openComposer(page);
+  await page.getByRole("textbox", { name: "Название задачи" }).fill("Проверить план перед сном");
+  await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
+  await page.getByRole("button", { name: "Завтра", exact: true }).click();
+  await page.getByRole("button", { name: "Повтор", exact: true }).click();
+  await page.getByRole("radio", { name: "В точное время", exact: true }).click();
+  const time = page.getByRole("textbox", { name: "Время дедлайна" });
+  await time.fill("21:15");
+  await expect(page.getByRole("button", { name: /^Начало серии:/ })).toContainText("Завтра");
+  await chooseDate(page, "Окончание серии · необязательно", "Сегодня");
+  await done(page);
+  await expect(page.getByText("Окончание серии должно быть не раньше начала.")).toBeVisible();
+  await chooseDate(page, "Окончание серии · необязательно", "Завтра");
+  await done(page);
+  await send(page);
+  await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+  await page.getByRole("link", { name: "Предстоящие", exact: true }).click();
+  const task = page.getByRole("link", {
+    name: "Открыть задачу: Проверить план перед сном",
+    exact: true,
+  });
+  await task.click();
+  await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
+  await time.fill("22:30");
+  await done(page);
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await task.click();
+  await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
+  await expect(time).toHaveValue("22:30");
+  await done(page);
+  await page.getByRole("button", { name: "Изменить всю серию", exact: true }).click();
+  await page.getByRole("button", { name: /^Повторение ·/ }).click();
+  await expect(time).toHaveValue("21:15");
+  await expect(page.getByText(/Изменения применятся к будущим повторениям/)).toBeVisible();
+  await done(page);
+  await page.getByRole("button", { name: /^Приоритет ·/ }).click();
+  await page.getByRole("radio", { name: "P1 · Высокий", exact: true }).click();
+  await page.getByRole("button", { name: "Вернуться к повторению", exact: true }).click();
+  await expect(page.getByText("Перейти без сохранения изменений?")).toBeVisible();
+  await page.getByRole("button", { name: "Продолжить", exact: true }).click();
+  await page.getByRole("button", { name: "Сохранить серию", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
+});
+
+async function openComposer(page: Page) {
+  await page.goto("/backlog");
+  await page.getByRole("button", { name: "Открыть пространство разработки" }).click();
+  await page.getByRole("button", { name: "Добавить задачу", exact: true }).first().click();
+}
+async function done(page: Page) {
+  await page.getByRole("button", { name: "Готово", exact: true }).click();
+}
+async function send(page: Page) {
+  await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
+  await expect(page.getByText("Задача сохранена. Можно добавить следующую.")).toBeVisible();
+}
+async function chooseDate(page: Page, label: string, shortcut: "Сегодня" | "Завтра") {
+  await page.getByRole("button", { name: new RegExp(`^${label}:`) }).click();
+  await page.getByRole("button", { name: shortcut, exact: true }).click();
+}

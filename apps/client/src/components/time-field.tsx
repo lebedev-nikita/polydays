@@ -9,6 +9,7 @@ export function TimeField({
   onChange,
   submitted,
   nextDay = false,
+  hideLabel = false,
 }: {
   label: string;
   accessibilityLabel: string;
@@ -16,6 +17,7 @@ export function TimeField({
   onChange: (value: string) => void;
   submitted: boolean;
   nextDay?: boolean;
+  hideLabel?: boolean;
 }) {
   const errorId = useId();
   const { fontScale } = useWindowDimensions();
@@ -23,14 +25,16 @@ export function TimeField({
   const invalid = (touched || submitted) && normalizeTimeInput(value) === null;
   return (
     <View className="gap-1.5" style={{ width: 96 * fontScale }}>
-      <View className="flex-row items-center justify-between gap-1">
-        <Text className="text-xs font-semibold text-muted">{label}</Text>
-        {nextDay && (
-          <Text accessibilityLabel="Конец следующего дня" className="text-[11px] text-muted">
-            +1 день
-          </Text>
-        )}
-      </View>
+      {(!hideLabel || nextDay) && (
+        <View className="flex-row items-center justify-between gap-1">
+          <Text className="text-xs font-semibold text-muted">{label}</Text>
+          {nextDay && (
+            <Text accessibilityLabel="Конец следующего дня" className="text-[11px] text-muted">
+              +1 день
+            </Text>
+          )}
+        </View>
+      )}
       <TextInput
         accessibilityLabel={accessibilityLabel}
         accessibilityHint={`${nextDay ? "Конец следующего дня. " : ""}Время в 24-часовом формате. Например, 730 или 07:30.`}

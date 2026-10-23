@@ -1,15 +1,7 @@
 import { useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Link, router, useLocalSearchParams } from "expo-router";
-import {
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
-  ArrowDown,
-  ArrowUp,
-  Trash2,
-  Repeat2,
-} from "lucide-react-native";
+import { ChevronLeft, ChevronRight, LogOut, ArrowDown, ArrowUp, Trash2 } from "lucide-react-native";
 import {
   activeVersion,
   addDays,
@@ -465,26 +457,13 @@ export function TaskScreen() {
               <Trash2 size={18} color={colors.muted} />
             </Pressable>
           </View>
-          {task.seriesId && (
-            <View className="mb-5 flex-row items-center gap-3">
-              <Repeat2 size={16} color={colors.muted} />
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setEditingSeries(!editingSeries)}
-                className="min-h-12 justify-center"
-              >
-                <Text className="text-sm text-accent">
-                  {editingSeries ? "Вернуться к повторению" : "Изменить всю серию"}
-                </Text>
-              </Pressable>
-            </View>
-          )}
           <View className="overflow-hidden rounded-lg border border-line">
             <TaskForm
               key={`${task.id}:${editingSeries}`}
               task={task}
               editSeries={editingSeries}
               scheduling={task.scheduling}
+              onSwitchSeries={task.seriesId ? () => setEditingSeries(!editingSeries) : undefined}
               onClose={() => router.back()}
             />
           </View>
