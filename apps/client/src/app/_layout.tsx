@@ -10,9 +10,13 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <SafeAreaView style={{ flex: 1, backgroundColor: "white" }} edges={["top", "bottom"]}>
         <StoreProvider>
-          <Stack
-            screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "white" } }}
-          />
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "white" } }}>
+            <Stack.Screen name="backlog" options={{ animation: "none" }} />
+            <Stack.Screen name="current" options={{ animation: "none" }} />
+            <Stack.Screen name="upcoming" options={{ animation: "none" }} />
+            <Stack.Screen name="history" options={{ animation: "none" }} />
+            <Stack.Screen name="day/[date]/[slotId]" options={{ animation: "none" }} />
+          </Stack>
         </StoreProvider>
       </SafeAreaView>
     </SafeAreaProvider>
