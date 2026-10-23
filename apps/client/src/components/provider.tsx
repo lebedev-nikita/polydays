@@ -11,6 +11,8 @@ import { appStore } from "../data/store";
 import { systemNow, type Calendar, type Series, type Task } from "@polydays/core";
 import { documents } from "@polydays/sync";
 import { prepareOffline } from "../data/offline";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "../data/query";
 
 const StoreContext = createContext(appStore);
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -33,7 +35,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (Platform.OS === "web") globalThis.removeEventListener("online", online);
     };
   }, []);
-  return <StoreContext.Provider value={appStore}>{children}</StoreContext.Provider>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <StoreContext.Provider value={appStore}>{children}</StoreContext.Provider>
+    </QueryClientProvider>
+  );
 }
 export function useApp() {
   const store = useContext(StoreContext);

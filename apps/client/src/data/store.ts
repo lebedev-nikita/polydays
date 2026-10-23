@@ -19,20 +19,14 @@ import {
   type LocalState,
 } from "@polydays/sync";
 import { createTRPCClient, httpLink } from "@trpc/client";
-import { Schema } from "effect";
 import * as Crypto from "expo-crypto";
 import type { AppRouter } from "../../../server/src/api";
 import type { Account } from "./contract";
 import { apiURL, authClient, authCookie, signInGoogle } from "./auth";
 import { persist, runtime } from "./runtime";
 import { apiFetch } from "./transport";
-
-const Session = Schema.Struct({
-  user: Schema.NullOr(
-    Schema.Struct({ id: Schema.String, name: Schema.String, email: Schema.String }),
-  ),
-});
-const ServerConfig = Schema.Struct({ google: Schema.Boolean, devAuth: Schema.Boolean });
+import { clearRequestCache, executeMutation, queryClient } from "./query";
+import { serverConfigQuery, sessionQuery } from "./requests";
 export type Snapshot = {
   readonly loaded: boolean;
   readonly account: Account | null;
@@ -90,11 +84,8 @@ export class AppStore {
         this.publish({ account, local: stored?.state ?? emptyState(account.id), loaded: true });
       }
       try {
-        const response = await apiFetch(`${apiURL}/api/config`);
-        if (response.ok) {
-          const config = Schema.decodeUnknownSync(ServerConfig)(await response.json());
-          this.publish({ google: config.google, devAvailable: config.devAuth });
-        }
+        const config = await queryClient.fetchQuery(serverConfigQuery(apiURL));
+        this.publish({ google: config.google, devAvailable: config.devAuth });
         if (!account) await this.refreshSession(false);
       } catch {
         /* Saved data remains available while the server is unreachable. */
@@ -106,12 +97,9 @@ export class AppStore {
     }
   }
   async refreshSession(dev: boolean) {
-    const response = await apiFetch(`${apiURL}/api/session`, {
-      credentials: "include",
-      headers: dev ? { "x-polydays-dev": "1" } : await this.headers(),
-    });
-    if (!response.ok) throw new Error("Не удалось проверить вход.");
-    const session = Schema.decodeUnknownSync(Session)(await response.json());
+    const session = await queryClient.fetchQuery(
+      sessionQuery(apiURL, this.snapshot.account?.id ?? null, dev, () => this.headers()),
+    );
     if (!session.user) return;
     const account: Account = { ...session.user, dev };
     await runtime.runPromise(persist((adapter) => adapter.setProfile(account)));
@@ -123,6 +111,7 @@ export class AppStore {
   }
   async login(dev = false) {
     if (!dev) await signInGoogle();
+    await clearRequestCache();
     await this.refreshSession(dev);
   }
   async update(transform: (state: LocalState) => LocalState) {
@@ -196,11 +185,13 @@ export class AppStore {
       for (let page = 0; page < 100; page++) {
         const stored = await runtime.runPromise(persist((adapter) => adapter.load(account.id)));
         const local = stored?.state ?? emptyState(account.id);
-        const result = decodeSyncResponse(
-          await this.client.sync.mutate({
-            cursor: local.cursor,
-            operations: local.pending.slice(0, 100),
-          }),
+        const result = await executeMutation(["sync", apiURL, account.id], async () =>
+          decodeSyncResponse(
+            await this.client.sync.mutate({
+              cursor: local.cursor,
+              operations: local.pending.slice(0, 100),
+            }),
+          ),
         );
         if (this.snapshot.account?.id !== account.id) return;
         await this.update((state) => acceptResponse(state, result));
@@ -228,6 +219,7 @@ export class AppStore {
     if (!account) return;
     const profile = await runtime.runPromise(persist((adapter) => adapter.profile()));
     if (profile?.id !== account.id) {
+      await clearRequestCache();
       this.publish({ account: null, local: null, status: "local", error: null });
       return;
     }
@@ -250,9 +242,12 @@ export class AppStore {
     }
     const account = this.snapshot.account;
     if (!account?.dev) {
-      const result = await authClient.signOut();
-      if (result.error && !discard)
-        throw new Error("Не удалось завершить серверную сессию. Проверьте соединение.");
+      try {
+        await authClient.signOut();
+      } catch {
+        if (!discard)
+          throw new Error("Не удалось завершить серверную сессию. Проверьте соединение.");
+      }
     }
     await runtime.runPromise(
       persist(async (adapter) => {
@@ -261,6 +256,7 @@ export class AppStore {
         await adapter.setProfile(null);
       }),
     );
+    await clearRequestCache();
     this.publish({ account: null, local: null, status: "local", error: null });
   }
 }
