@@ -224,3 +224,74 @@ async function chooseDate(page: Page, label: string, shortcut: "Сегодня" 
   await page.getByRole("button", { name: new RegExp(`^${label}:`) }).click();
   await page.getByRole("button", { name: shortcut, exact: true }).click();
 }
+
+test.describe("first-visit navigation", () => {
+  test.use({ serviceWorkers: "block" });
+
+  for (const width of [1440, 390]) {
+    test(`keeps the app visible throughout new routes at ${width}px`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto("/current");
+      await page.getByRole("button", { name: "Открыть пространство разработки" }).click();
+      await expect(page.getByRole("link", { name: "Бэклог", exact: true })).toBeVisible();
+      // Make a cold route load long enough to expose even a brief empty fallback.
+      await page.route(
+        /\/_expo\/static\/js\/web\/(backlog|upcoming|history|settings)-.*\.js$/,
+        async (route) => {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+          await route.continue();
+        },
+      );
+
+      for (const [name, heading] of [
+        ["Бэклог", "Бэклог"],
+        ["Предстоящие", "Предстоящие"],
+        ["История", "История полидней"],
+        ["Настройки", "Расписание полидней"],
+      ]) {
+        await page.evaluate(() => {
+          const frames: boolean[] = [];
+          const sample = () => {
+            frames.push(
+              [...document.querySelectorAll('a[href="/current"]')].some((link) =>
+                [...link.getClientRects()].some((rect) => rect.width > 0 && rect.height > 0),
+              ),
+            );
+            frame = requestAnimationFrame(sample);
+          };
+          let frame = requestAnimationFrame(sample);
+          Object.assign(window, {
+            stopNavigationFrames: () => {
+              cancelAnimationFrame(frame);
+              return frames;
+            },
+          });
+        });
+        await page.getByRole("link", { name, exact: true }).click();
+        await expect(
+          page.getByText(heading, { exact: true }).filter({ visible: true }).last(),
+        ).toBeVisible();
+        const frames = await page.evaluate(async () => {
+          await new Promise(requestAnimationFrame);
+          return (
+            window as unknown as { stopNavigationFrames: () => boolean[] }
+          ).stopNavigationFrames();
+        });
+        expect(frames.length).toBeGreaterThan(0);
+        expect(frames.every(Boolean), `${name}: navigation disappeared during the transition`).toBe(
+          true,
+        );
+      }
+
+      await page.goBack();
+      await expect(page.getByRole("heading", { name: "История полидней" })).toBeVisible();
+      await page.screenshot({ path: testInfo.outputPath(`navigation-${width}-${Date.now()}.png`) });
+      await page.goForward();
+      await expect(
+        page.getByText("Расписание полидней", { exact: true }).filter({ visible: true }),
+      ).toBeVisible();
+    });
+  }
+});
