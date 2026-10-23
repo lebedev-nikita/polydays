@@ -48,7 +48,7 @@ just release-build
 just release
 ```
 
-`just release` runs both builds before publishing a GitHub Release. Assets are staged in `.data/releases/<version>` with checksums and a source manifest; publishing refuses missing platform assets, changed checksums, an uncommitted tree or artifacts from another commit. A draft holds both platforms before the release becomes public.
+`just release` runs both builds before publishing a GitHub Release. Assets are staged in `.data/releases/<version>` with checksums and a source manifest; publishing refuses missing platform assets, changed checksums, an uncommitted tree or artifacts from another commit. A draft holds both platforms before a stable release becomes public. Versions such as `0.2.0-rc.1` create a draft prerelease that remains a draft after asset verification; candidates push their source branch without updating `main`.
 
 Publish the Android APK, macOS DMG and `SHA256SUMS`. The DMG contains the macOS application, so no separate application ZIP is built. Keep `release.json` locally for publishing checks; it is not uploaded to GitHub.
 

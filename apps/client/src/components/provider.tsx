@@ -6,7 +6,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { AppState, Platform } from "react-native";
+import { AppState, Platform, Pressable, Text, View } from "react-native";
 import { appStore } from "../data/store";
 import { systemNow, type Calendar, type Series, type Task } from "@polydays/core";
 import { documents } from "@polydays/sync";
@@ -15,7 +15,16 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "../data/query";
 
 const StoreContext = createContext(appStore);
+type Notice = { text: string; undo?: () => Promise<void> };
+const NoticeContext = createContext<(text: string, undo?: () => Promise<void>) => void>(() => {});
+export const useNotice = () => useContext(NoticeContext);
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const [notice, setNotice] = useState<Notice | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 8000);
+    return () => clearTimeout(timer);
+  }, [notice]);
   useEffect(() => {
     prepareOffline();
     void appStore.start();
@@ -37,7 +46,41 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
   return (
     <QueryClientProvider client={queryClient}>
-      <StoreContext.Provider value={appStore}>{children}</StoreContext.Provider>
+      <StoreContext.Provider value={appStore}>
+        <NoticeContext.Provider value={(text, undo) => setNotice({ text, undo })}>
+          {children}
+          {notice && (
+            <View className="absolute bottom-24 left-5 right-5 flex-row items-center gap-4 rounded-lg bg-ink px-4 py-2 shadow-lg md:bottom-6 md:left-auto md:right-6 md:max-w-[440px]">
+              <Text accessibilityLiveRegion="polite" className="flex-1 text-sm text-white">
+                {notice.text}
+              </Text>
+              {notice.undo && (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    const undo = notice.undo;
+                    setNotice(null);
+                    void undo?.().catch(() =>
+                      setNotice({ text: "Не удалось отменить. Повторите действие." }),
+                    );
+                  }}
+                  className="min-h-9 justify-center px-2"
+                >
+                  <Text className="text-sm font-semibold text-white underline">Отменить</Text>
+                </Pressable>
+              )}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Скрыть уведомление"
+                onPress={() => setNotice(null)}
+                className="min-h-9 justify-center px-2"
+              >
+                <Text className="text-xs text-white">Закрыть</Text>
+              </Pressable>
+            </View>
+          )}
+        </NoticeContext.Provider>
+      </StoreContext.Provider>
     </QueryClientProvider>
   );
 }
