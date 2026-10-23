@@ -209,6 +209,10 @@ Schedule rows group the name, start, end and delete action with spacing; a separ
 
 Timezone and effective-date settings use compact choices. The timezone shows a city and its current UTC offset, expands to a searchable list, and has a separate automatic-detection switch. Dates use localized text with today/tomorrow context and expand to a Monday-first calendar; previous dates are disabled. These settings sit alongside one another when space permits and wrap into a single column on narrow screens.
 
+### Server selection
+
+The shared sign-in screen includes a labelled server-origin field and a secondary connect/check action. The saved origin takes precedence over the build default and persists on the device. Editing it disables sign-in until the address is applied or restored. Invalid addresses show a field error; an unreachable server leaves the setting editable. The panel scrolls on short screens. Account settings show the active server and direct users to sign out before switching, retaining the existing pending-change confirmation.
+
 ### Browser device authorization
 
 The [device authorization screen](apps/client/src/app/device.tsx) retains the shared `Field`, primary and secondary `Button`, and `ErrorMessage`. A semibold title identifies Mac sign-in; supporting copy asks users to approve only a sign-in they initiated, followed by the labelled code, account email, primary “Разрешить вход” and secondary “Отклонить”. Both actions disable while busy or when the code is empty; the field becomes noneditable while busy. Invalid or expired codes direct the user to restart sign-in on Mac; other request failures ask them to check the code and retry. Unauthenticated visitors see the shared sign-in screen.

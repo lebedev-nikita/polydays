@@ -22,7 +22,9 @@ import { createTRPCClient, httpLink } from "@trpc/client";
 import * as Crypto from "expo-crypto";
 import type { AppRouter } from "../../../server/src/api";
 import type { Account } from "./contract";
-import { apiURL, authClient, authCookie, signInGoogle } from "./auth";
+import { apiURL, authClient, authCookie, configureAuth, signInGoogle } from "./auth";
+import { loadServerURL, saveServerURL } from "./server";
+import { normalizeServerURL } from "./server-url";
 import { persist, runtime } from "./runtime";
 import { apiFetch } from "./transport";
 import { clearRequestCache, executeMutation, queryClient } from "./query";
@@ -35,6 +37,7 @@ export type Snapshot = {
   readonly error: string | null;
   readonly google: boolean;
   readonly devAvailable: boolean;
+  readonly serverURL: string;
 };
 
 export class AppStore {
@@ -46,18 +49,22 @@ export class AppStore {
     error: null,
     google: false,
     devAvailable: false,
+    serverURL: apiURL,
   };
   private listeners = new Set<() => void>();
   private syncing = false;
-  private client = createTRPCClient<AppRouter>({
-    links: [
-      httpLink({
-        url: `${apiURL}/trpc`,
-        headers: () => this.headers(),
-        fetch: (input, init) => apiFetch(input, { ...init, credentials: "include" }),
-      }),
-    ],
-  });
+  private createClient() {
+    return createTRPCClient<AppRouter>({
+      links: [
+        httpLink({
+          url: `${apiURL}/trpc`,
+          headers: () => this.headers(),
+          fetch: (input, init) => apiFetch(input, { ...init, credentials: "include" }),
+        }),
+      ],
+    });
+  }
+  private client = this.createClient();
   subscribe = (callback: () => void) => {
     this.listeners.add(callback);
     return () => {
@@ -78,6 +85,10 @@ export class AppStore {
   }
   async start() {
     try {
+      await loadServerURL();
+      configureAuth();
+      this.client = this.createClient();
+      this.publish({ serverURL: apiURL });
       const account = await runtime.runPromise(persist((adapter) => adapter.profile()));
       if (account) {
         const stored = await runtime.runPromise(persist((adapter) => adapter.load(account.id)));
@@ -89,12 +100,30 @@ export class AppStore {
         if (!account) await this.refreshSession(false);
       } catch {
         /* Saved data remains available while the server is unreachable. */
+        if (!account)
+          this.publish({ error: "Нет связи с сервером. Проверьте адрес и соединение." });
       }
       this.publish({ loaded: true });
       if (this.snapshot.account) await this.sync();
     } catch (error) {
       this.publish({ loaded: true, error: message(error) });
     }
+  }
+  async changeServer(url: string) {
+    if (this.snapshot.account) throw new Error("Выйдите из аккаунта перед сменой сервера.");
+    if (this.syncing || !this.snapshot.loaded)
+      throw new Error("Дождитесь завершения текущего запроса и повторите.");
+    const normalized = normalizeServerURL(url);
+    this.publish({ loaded: false, google: false, devAvailable: false, error: null });
+    try {
+      await runtime.runPromise(persist((adapter) => adapter.setCredentials(apiURL, "")));
+      await saveServerURL(normalized);
+      await clearRequestCache();
+    } catch (cause) {
+      this.publish({ loaded: true, error: message(cause) });
+      throw cause;
+    }
+    await this.start();
   }
   async refreshSession(dev: boolean) {
     const session = await queryClient.fetchQuery(
@@ -110,6 +139,7 @@ export class AppStore {
     await this.sync();
   }
   async login(dev = false) {
+    if (!this.snapshot.loaded) throw new Error("Дождитесь подключения к серверу.");
     if (!dev) await signInGoogle();
     await clearRequestCache();
     await this.refreshSession(dev);
