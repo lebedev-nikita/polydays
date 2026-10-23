@@ -14,3 +14,5 @@ chmod 440 /etc/sudoers.d/polydays
 visudo -cf /etc/sudoers.d/polydays
 systemctl daemon-reload
 systemctl enable polydays.service
+tailscale set --accept-dns=true
+tailscale serve --bg --https=443 http://127.0.0.1:3000
