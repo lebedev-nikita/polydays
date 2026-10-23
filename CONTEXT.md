@@ -21,7 +21,7 @@ A task associated with a polyday either by explicit selection when untimed or by
 _Avoid_: Calendar event
 
 **Untimed task (задача без точного дедлайна)**:
-A task whose polyday can be selected explicitly, or which remains in the backlog until scheduled.
+A task whose polyday can be selected explicitly, or which remains in the inbox until scheduled.
 _Avoid_: Task with an implicit exact deadline
 
 **Deadline task (задача с точным дедлайном)**:
@@ -48,9 +48,9 @@ _Avoid_: Single task with a resetting checkbox
 One repetition of a recurring task series, with its own assigned polyday and completion state.
 _Avoid_: Group of missed repetitions
 
-**Backlog (бэклог)**:
+**Inbox (входящие)**:
 The collection of tasks with neither an explicitly assigned polyday nor an exact deadline.
-_Avoid_: Incoming list, someday list
+_Avoid_: Backlog, someday list
 
 **Polyday history (история полидней)**:
 The record of past polydays and their assigned tasks; a completed task is recorded in its assigned polyday even if completed earlier or later.

@@ -7,7 +7,7 @@ test("durable offline capture, reconnect, second device and completion history",
   await page.goto("/current");
   await page.getByRole("button", { name: "Открыть пространство разработки" }).click();
   await page.getByRole("button", { name: "Начать планирование" }).click();
-  await expect(page.getByRole("link", { name: "Бэклог", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Входящие", exact: true })).toBeVisible();
   await page.keyboard.press("q");
   await expect(page.getByRole("textbox", { name: "Название задачи" })).toBeFocused();
   await page.getByRole("textbox", { name: "Название задачи" }).press("q");
@@ -65,7 +65,7 @@ test("durable offline capture, reconnect, second device and completion history",
   await other.close();
 });
 
-test("a deadline is explicitly removed before selecting an untimed polyday or backlog", async ({
+test("a deadline is explicitly removed before selecting an untimed polyday or inbox", async ({
   page,
 }) => {
   await openComposer(page);
@@ -84,7 +84,7 @@ test("a deadline is explicitly removed before selecting an untimed polyday or ba
   });
   await taskLink.click();
   await page.getByRole("button", { name: /^Место задачи ·/ }).click();
-  await expect(page.getByRole("radio", { name: "Бэклог", exact: true })).not.toBeVisible();
+  await expect(page.getByRole("radio", { name: "Входящие", exact: true })).not.toBeVisible();
   await page.getByRole("button", { name: "Изменить дедлайн", exact: true }).click();
   await page.getByRole("button", { name: "Убрать дедлайн", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Время дедлайна" })).not.toBeVisible();
@@ -92,10 +92,10 @@ test("a deadline is explicitly removed before selecting an untimed polyday or ba
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await taskLink.click();
   await page.getByRole("button", { name: /^Место задачи ·/ }).click();
-  await page.getByRole("radio", { name: "Бэклог", exact: true }).click();
+  await page.getByRole("radio", { name: "Входящие", exact: true }).click();
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
-  await page.getByRole("link", { name: "Бэклог", exact: true }).click();
+  await page.getByRole("link", { name: "Входящие", exact: true }).click();
   await expect(taskLink).toBeVisible();
 });
 
@@ -127,7 +127,7 @@ test("compact capture supports shortcut menus, transactional dates and narrow sc
   await expect(title).toHaveValue("Подготовить план");
   await expect(page.getByRole("radio")).toHaveCount(0);
   await title.fill("Подготовить план #");
-  await page.getByRole("radio", { name: "Бэклог", exact: true }).click();
+  await page.getByRole("radio", { name: "Входящие", exact: true }).click();
   await expect(title).toHaveValue("Подготовить план");
   await page
     .getByRole("textbox", { name: "Описание · необязательно" })
@@ -235,7 +235,7 @@ test.describe("first-visit navigation", () => {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto("/current");
       await page.getByRole("button", { name: "Открыть пространство разработки" }).click();
-      await expect(page.getByRole("link", { name: "Бэклог", exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Входящие", exact: true })).toBeVisible();
       // Make a cold route load long enough to expose even a brief empty fallback.
       await page.route(
         /\/_expo\/static\/js\/web\/(backlog|upcoming|history|settings)-.*\.js$/,
@@ -246,7 +246,7 @@ test.describe("first-visit navigation", () => {
       );
 
       for (const [name, heading] of [
-        ["Бэклог", "Бэклог"],
+        ["Входящие", "Входящие"],
         ["Предстоящие", "Предстоящие"],
         ["История", "История полидней"],
         ["Настройки", "Расписание полидней"],

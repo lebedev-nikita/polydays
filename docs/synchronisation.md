@@ -23,7 +23,7 @@ Merge independent field edits. Preserve incompatible same-field edits and delete
 
 Treat changes to an interval set, timezone policy or recurrence rule as coherent structural operations. Validate their combined result and surface a conflict when automatic merging would overlap intervals, invalidate assignment or overwrite incompatible rules. Unrelated task sync continues. Widget/native code transports these operations and prepared results; it does not independently regenerate recurrence or choose conflict winners.
 
-A task's scheduling choice is also coherent: backlog, an explicitly selected polyday for an untimed task, or an exact deadline date/time from which the core derives placement. Do not merge incompatible edits into a task with both an independent polyday assignment and a deadline. Native widgets complete a stable task identity; rescheduling uses the application's appropriate polyday selector or date/time editor.
+A task's scheduling choice is also coherent: inbox, an explicitly selected polyday for an untimed task, or an exact deadline date/time from which the core derives placement. Do not merge incompatible edits into a task with both an independent polyday assignment and a deadline. Native widgets complete a stable task identity; rescheduling uses the application's appropriate polyday selector or date/time editor.
 
 ## Widget data and background work
 
