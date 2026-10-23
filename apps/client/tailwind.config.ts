@@ -10,12 +10,12 @@ export default {
     extend: {
       colors: {
         canvas: "#ffffff",
-        sidebar: "#faf9f6",
-        ink: "#252421",
-        muted: "#66645f",
-        line: "#e9e7e2",
-        accent: "#b9382e",
-        selected: "#f9e9e4",
+        sidebar: "#faf9f7",
+        ink: "#202020",
+        muted: "#666666",
+        line: "#e8e8e8",
+        accent: "#dc3424",
+        selected: "#ffefe5",
       },
     },
   },

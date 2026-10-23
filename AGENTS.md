@@ -4,6 +4,8 @@ Read [CONTEXT.md](CONTEXT.md) for domain terms and [docs/product.md](docs/produc
 
 Release Android and macOS together, using the same version and commit. Follow [release instructions](docs/deployment.md#application-releases); publish only when both platform artifacts are verified.
 
+Keep every release candidate in GitHub Release draft status, including after uploading and verifying all platform artifacts.
+
 # Learning more about Effect
 
 This repository uses the Effect Typescript library.

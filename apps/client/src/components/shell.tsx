@@ -20,12 +20,16 @@ import {
   Plus,
   Settings,
   Sun,
+  Search,
+  PanelLeftClose,
+  Keyboard,
 } from "lucide-react-native";
 import { colors, ErrorMessage } from "./primitives";
 import { useApp } from "./provider";
 import { LoginScreen } from "./login";
 import { ScheduleEditor } from "./schedule";
 import { TaskComposer } from "./task-editor";
+import { SearchDialog, ShortcutsDialog } from "./search";
 import type { Scheduling } from "@polydays/core";
 
 const destinations = [
@@ -47,7 +51,11 @@ export function AppShell({
   const { width } = useWindowDimensions();
   const desktop = width >= 850;
   const [composer, setComposer] = useState(false);
-  const canQuickAdd = app.loaded && !!app.account && !!app.calendar && !composer;
+  const [search, setSearch] = useState(false);
+  const [shortcuts, setShortcuts] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const canQuickAdd =
+    app.loaded && !!app.account && !!app.calendar && !composer && !search && !shortcuts;
   useFocusEffect(
     useCallback(() => {
       if (Platform.OS !== "web" || !canQuickAdd) return;
@@ -55,18 +63,32 @@ export function AppShell({
         if (
           event.defaultPrevented ||
           event.repeat ||
-          event.ctrlKey ||
-          event.metaKey ||
           event.altKey ||
-          event.key.toLowerCase() !== "q" ||
           (event.target instanceof HTMLElement &&
             event.target.closest(
               'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="dialog"]',
             ))
         )
           return;
-        event.preventDefault();
-        setComposer(true);
+        const key = event.key.toLowerCase();
+        if ((event.metaKey || event.ctrlKey) && key === "k") {
+          event.preventDefault();
+          setSearch(true);
+          return;
+        }
+        if (event.metaKey || event.ctrlKey) return;
+        if (key === "q") {
+          event.preventDefault();
+          setComposer(true);
+        }
+        if (key === "/") {
+          event.preventDefault();
+          setSearch(true);
+        }
+        if (key === "?") {
+          event.preventDefault();
+          setShortcuts(true);
+        }
       };
       document.addEventListener("keydown", quickAdd);
       return () => document.removeEventListener("keydown", quickAdd);
@@ -99,7 +121,7 @@ export function AppShell({
         <Pressable
           accessibilityRole="link"
           accessibilityLabel={title}
-          className={`${desktop ? "min-h-12 flex-row gap-3 px-3" : "min-h-14 min-w-0 flex-1 items-center justify-center gap-1 px-1"} rounded-md ${active ? "bg-selected" : "active:bg-selected"}`}
+          className={`${desktop ? "min-h-[36px] flex-row gap-2 px-3" : "min-h-14 min-w-0 flex-1 items-center justify-center gap-1 px-1"} rounded-md ${active ? "bg-selected" : "active:bg-selected"}`}
           style={desktop ? { alignItems: "center" } : undefined}
         >
           <Icon
@@ -125,32 +147,64 @@ export function AppShell({
   });
   return (
     <View className="flex-1 flex-row bg-white">
-      {desktop && (
-        <View className="w-[244px] border-r border-line bg-sidebar px-3 pb-5 pt-7">
-          <View className="mb-7 flex-row items-center gap-2.5 px-3">
-            <CheckCheck size={24} color={colors.accent} />
-            <Text className="text-lg font-bold text-ink">Polydays</Text>
+      {desktop && !collapsed && (
+        <View className="w-[280px] bg-sidebar px-3 pb-4 pt-4">
+          <View className="mb-4 flex-row items-center gap-2 px-2">
+            <View className="h-7 w-7 items-center justify-center rounded-full bg-accent">
+              <Text className="text-sm font-semibold text-white">
+                {app.account.name.slice(0, 1).toUpperCase()}
+              </Text>
+            </View>
+            <Text numberOfLines={1} className="flex-1 text-sm font-semibold text-ink">
+              {app.account.name}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Свернуть боковую панель"
+              onPress={() => setCollapsed(true)}
+              className="h-8 w-8 items-center justify-center rounded-md hover:bg-[#eeeeee]"
+            >
+              <PanelLeftClose size={19} color={colors.muted} />
+            </Pressable>
           </View>
           <Pressable
             accessibilityRole="button"
             onPress={() => setComposer(true)}
-            className="mb-4 min-h-12 flex-row items-center gap-3 px-3"
+            className="mb-1 min-h-10 flex-row items-center gap-2 px-2"
           >
             <View className="h-6 w-6 items-center justify-center rounded-full bg-accent">
               <Plus size={17} color="white" />
             </View>
             <Text className="text-[14px] font-semibold text-accent">Добавить задачу</Text>
           </Pressable>
-          <View className="gap-1">{navigation}</View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Поиск"
+            onPress={() => setSearch(true)}
+            className="mb-1 min-h-[36px] flex-row items-center gap-2 rounded-md px-3 hover:bg-[#eeeeee]"
+          >
+            <Search size={20} color={colors.muted} strokeWidth={1.7} />
+            <Text className="flex-1 text-sm text-ink">Поиск</Text>
+            <Text className="text-xs text-muted">/</Text>
+          </Pressable>
+          <View>{navigation}</View>
           <Link href="/settings" asChild>
             <Pressable
-              className={`mt-5 min-h-12 flex-row items-center gap-3 rounded-md px-3 ${pathname === "/settings" ? "bg-selected" : ""}`}
+              className={`mt-5 min-h-[36px] flex-row items-center gap-3 rounded-md px-3 ${pathname === "/settings" ? "bg-selected" : ""}`}
             >
               <Settings size={20} color={colors.muted} strokeWidth={1.7} />
               <Text className="text-sm text-ink">Настройки</Text>
             </Pressable>
           </Link>
           <View className="flex-1" />
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setShortcuts(true)}
+            className="min-h-9 flex-row items-center gap-2 px-3"
+          >
+            <Keyboard size={16} color={colors.muted} />
+            <Text className="text-xs text-muted">Горячие клавиши</Text>
+          </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Синхронизировать задачи"
@@ -168,6 +222,23 @@ export function AppShell({
         </View>
       )}
       <View className="min-w-0 flex-1">
+        {desktop && (
+          <View className="h-12 flex-row items-center justify-between px-5">
+            {collapsed ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Открыть боковую панель"
+                onPress={() => setCollapsed(false)}
+                className="h-9 w-9 items-center justify-center rounded-md hover:bg-sidebar"
+              >
+                <PanelLeftClose size={20} color={colors.muted} />
+              </Pressable>
+            ) : (
+              <View />
+            )}
+            <Text className="text-xs text-muted">Polydays</Text>
+          </View>
+        )}
         {!desktop && (
           <View className="min-h-12 flex-row items-center justify-between border-b border-line px-5 pt-2">
             <View className="flex-row items-center gap-2">
@@ -175,6 +246,14 @@ export function AppShell({
               <Text className="text-base font-bold text-ink">Polydays</Text>
             </View>
             <View className="flex-row items-center">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Поиск"
+                onPress={() => setSearch(true)}
+                className="h-12 w-12 items-center justify-center"
+              >
+                <Search size={20} color={colors.muted} />
+              </Pressable>
               <Pressable
                 accessibilityLabel={status}
                 accessibilityRole="button"
@@ -226,7 +305,7 @@ export function AppShell({
           contentContainerStyle={{ alignItems: "center", paddingBottom: desktop ? 70 : 100 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View className={`w-full max-w-[850px] ${desktop ? "px-14 pt-12" : "px-5 pt-7"}`}>
+          <View className={`w-full max-w-[1000px] ${desktop ? "px-14 pt-7" : "px-5 pt-7"}`}>
             {children}
           </View>
         </ScrollView>
@@ -246,6 +325,8 @@ export function AppShell({
           </Pressable>
         )}
       </View>
+      {search && <SearchDialog onClose={() => setSearch(false)} />}
+      {shortcuts && <ShortcutsDialog onClose={() => setShortcuts(false)} />}
       <TaskComposer
         visible={composer}
         onClose={() => setComposer(false)}

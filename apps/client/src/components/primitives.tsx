@@ -9,11 +9,11 @@ import {
 import type { ReactNode } from "react";
 
 export const colors = {
-  ink: "#252421",
-  muted: "#66645f",
-  accent: "#b9382e",
-  line: "#e9e7e2",
-  priorities: ["", "#c73529", "#b96712", "#286db4", "#77736d"],
+  ink: "#202020",
+  muted: "#666666",
+  accent: "#dc3424",
+  line: "#e8e8e8",
+  priorities: ["", "#d1453b", "#c77700", "#246fe0", "#808080"],
 };
 export function Button({
   children,
@@ -34,7 +34,7 @@ export function Button({
       accessibilityLabel={label}
       disabled={disabled}
       onPress={onPress}
-      className={`min-h-12 flex-row items-center justify-center gap-2 rounded-md px-4 py-2.5 ${secondary ? "border border-line bg-white active:bg-sidebar" : "bg-accent active:opacity-80"} ${disabled ? "opacity-40" : ""}`}
+      className={`min-h-11 flex-row items-center justify-center gap-2 rounded-md px-3 py-2 md:min-h-[36px] ${secondary ? "border border-line bg-sidebar hover:bg-[#eeeeee] active:bg-sidebar" : "bg-accent hover:bg-[#b82b21] active:opacity-80"} ${disabled ? "opacity-40" : ""}`}
     >
       <Text className={`text-[14px] font-semibold ${secondary ? "text-ink" : "text-white"}`}>
         {children}
@@ -49,7 +49,7 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
       <TextInput
         {...props}
         accessibilityLabel={label}
-        placeholderTextColor="#77736d"
+        placeholderTextColor="#808080"
         className={`min-h-12 rounded-md border border-line bg-white px-3 py-2 text-[15px] text-ink ${props.multiline ? "min-h-24" : ""}`}
       />
     </View>

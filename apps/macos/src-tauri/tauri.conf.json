@@ -1,9 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Polydays",
-  "version": "0.1.0",
+  "version": "0.2.0-rc.1",
   "identifier": "app.polydays.desktop",
-  "build": { "frontendDist": "../../client/dist" },
+  "build": {
+    "frontendDist": "../../client/dist"
+  },
   "app": {
     "windows": [
       {
@@ -24,7 +26,10 @@
     "active": true,
     "targets": ["app", "dmg"],
     "icon": ["icons/icon.icns", "icons/icon.png"],
-    "macOS": { "minimumSystemVersion": "12.0", "signingIdentity": "-" },
+    "macOS": {
+      "minimumSystemVersion": "12.0",
+      "signingIdentity": "-"
+    },
     "shortDescription": "Tasks in the rhythm of your days",
     "category": "Productivity"
   }

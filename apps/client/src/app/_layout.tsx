@@ -10,9 +10,16 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <SafeAreaView style={{ flex: 1, backgroundColor: "white" }} edges={["top", "bottom"]}>
         <StoreProvider>
-          <Stack
-            screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "white" } }}
-          />
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "white" } }}>
+            <Stack.Screen
+              name="task/[id]"
+              options={{
+                presentation: "transparentModal",
+                animation: "fade",
+                contentStyle: { backgroundColor: "transparent" },
+              }}
+            />
+          </Stack>
         </StoreProvider>
       </SafeAreaView>
     </SafeAreaProvider>

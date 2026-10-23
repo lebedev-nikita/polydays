@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Modal, Platform, Pressable, Text, View } from "react-native";
 import { Link, router, useLocalSearchParams } from "expo-router";
 import {
   ChevronLeft,
@@ -9,6 +9,8 @@ import {
   ArrowUp,
   Trash2,
   Repeat2,
+  X,
+  Inbox,
 } from "lucide-react-native";
 import {
   activeVersion,
@@ -24,13 +26,14 @@ import {
   type Scheduling,
   type Document,
 } from "@polydays/core";
-import { useApp } from "./provider";
+import { useApp, useNotice } from "./provider";
 import { AppShell } from "./shell";
 import { TaskList } from "./task-list";
 import { Button, ErrorMessage, colors } from "./primitives";
 import { ScheduleEditor } from "./schedule";
 import { TaskForm } from "./task-editor";
 import { message } from "../data/store";
+import { undoTask } from "../data/undo";
 import * as Crypto from "expo-crypto";
 import { enqueue } from "@polydays/sync";
 import { pinWidget } from "../data/widget";
@@ -239,6 +242,33 @@ export function TimelineScreen({ history = false }: { history?: boolean }) {
       <Text className="mb-5 text-sm text-muted">
         {prettyDate(from)} — {prettyDate(until)}
       </Text>
+      <View className="mb-6 flex-row border-b border-line pb-3">
+        {Array.from({ length: 7 }, (_, index) => {
+          const date = addDays(from, index);
+          const current = date === today;
+          return (
+            <Link key={date} href={{ pathname: path, params: { from: date } }} asChild>
+              <Pressable
+                accessibilityLabel={`Показать неделю с ${prettyDate(date)}`}
+                className="min-h-14 flex-1 items-center justify-center gap-1 rounded-md hover:bg-sidebar"
+              >
+                <Text className={`text-xs ${current ? "font-semibold text-accent" : "text-muted"}`}>
+                  {new Intl.DateTimeFormat("ru", { weekday: "short", timeZone: "UTC" }).format(
+                    new Date(`${date}T12:00:00Z`),
+                  )}
+                </Text>
+                <View
+                  className={`h-7 w-7 items-center justify-center rounded-full ${current ? "bg-accent" : ""}`}
+                >
+                  <Text className={`text-sm ${current ? "font-semibold text-white" : "text-ink"}`}>
+                    {Number(date.slice(-2))}
+                  </Text>
+                </View>
+              </Pressable>
+            </Link>
+          );
+        })}
+      </View>
       {!days.length && (
         <Text className="py-10 text-sm text-muted">
           На этой неделе пока нет {history ? "завершённых" : "предстоящих"} полидней.
@@ -270,17 +300,12 @@ export function TimelineScreen({ history = false }: { history?: boolean }) {
                 <ChevronRight size={18} color={colors.muted} />
               </Pressable>
             </Link>
-            {rows.length ? (
-              <TaskList
-                rows={rows}
-                scheduling={{ kind: "polyday", date: day.date, slotId: day.slotId }}
-                includeCompleted={history}
-              />
-            ) : (
-              <Text className="py-3 text-sm text-muted">
-                {history ? "Нет выполненных задач" : "Задачи ещё не запланированы"}
-              </Text>
-            )}
+            <TaskList
+              rows={rows}
+              scheduling={{ kind: "polyday", date: day.date, slotId: day.slotId }}
+              includeCompleted={history}
+              compactEmpty
+            />
           </View>
         );
       })}
@@ -359,9 +384,26 @@ export function SettingsScreen() {
 
 export function TaskScreen() {
   const app = useApp();
+  const notify = useNotice();
+  const dismissRef = useRef<(() => void) | null>(null);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [editingSeries, setEditingSeries] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const close = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/current");
+  }, []);
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const dismiss = (event: KeyboardEvent) => {
+      // The form's capture handler dismisses its parameter panel first.
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      (dismissRef.current ?? close)();
+    };
+    document.addEventListener("keydown", dismiss);
+    return () => document.removeEventListener("keydown", dismiss);
+  }, [close]);
   const date = app.calendar
     ? dateAt(app.now, activeVersion(app.calendar, app.now).timeZone)
     : "2026-01-01";
@@ -408,89 +450,129 @@ export function TaskScreen() {
         { kind: "task", data: { ...task, deleted: true } },
         { kind: "task", data: task },
       );
-      router.back();
+      notify("Задача удалена", () => undoTask(app.store, task, "deletion"));
+      close();
     } catch (cause) {
       setError(message(cause));
     }
   };
+  if (!app.loaded || !app.account || !app.calendar)
+    return (
+      <AppShell>
+        <View />
+      </AppShell>
+    );
   return (
-    <AppShell>
-      <ErrorMessage>{error}</ErrorMessage>
-      {!task ? (
-        <Title
-          title="Задача не найдена"
-          subtitle="Она могла быть удалена или ещё не загружена на это устройство."
+    <Modal
+      transparent
+      animationType="fade"
+      onRequestClose={Platform.OS === "web" ? undefined : close}
+    >
+      <View className="flex-1 items-center justify-start bg-black/30 px-4 pb-8 pt-[8%]">
+        <Pressable
+          accessibilityLabel="Закрыть задачу"
+          onPress={close}
+          className="absolute inset-0"
         />
-      ) : (
-        <>
-          <View className="mb-5 flex-row flex-wrap items-center gap-3">
-            <Button
-              secondary
-              onPress={() => {
-                void app.store
-                  .complete(task, !task.completed)
-                  .catch((cause) => setError(message(cause)));
-              }}
-            >
-              {task.completed ? "Вернуть в работу" : "Завершить задачу"}
-            </Button>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Поднять задачу внутри приоритета"
-              onPress={() => {
-                void reorder(-1);
-              }}
-              className="h-12 w-12 items-center justify-center"
-            >
-              <ArrowUp size={18} color={colors.muted} />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Опустить задачу внутри приоритета"
-              onPress={() => {
-                void reorder(1);
-              }}
-              className="h-12 w-12 items-center justify-center"
-            >
-              <ArrowDown size={18} color={colors.muted} />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Удалить задачу"
-              onPress={() => {
-                void remove();
-              }}
-              className="h-12 w-12 items-center justify-center"
-            >
-              <Trash2 size={18} color={colors.muted} />
-            </Pressable>
-          </View>
-          {task.seriesId && (
-            <View className="mb-5 flex-row items-center gap-3">
-              <Repeat2 size={16} color={colors.muted} />
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setEditingSeries(!editingSeries)}
-                className="min-h-12 justify-center"
-              >
-                <Text className="text-sm text-accent">
-                  {editingSeries ? "Вернуться к повторению" : "Изменить всю серию"}
-                </Text>
-              </Pressable>
+        <View
+          accessibilityViewIsModal
+          className="max-h-[90%] w-full max-w-[800px] overflow-hidden rounded-xl bg-white shadow-xl"
+        >
+          <View className="flex-row items-center justify-between border-b border-line px-4 py-2">
+            <View className="flex-row items-center gap-2">
+              <Inbox size={16} color={colors.muted} />
+              <Text className="text-xs text-muted">
+                {task?.scheduling.kind === "backlog" ? "Бэклог" : "Задача полидня"}
+              </Text>
             </View>
-          )}
-          <View className="overflow-hidden rounded-lg border border-line">
-            <TaskForm
-              key={`${task.id}:${editingSeries}`}
-              task={task}
-              editSeries={editingSeries}
-              scheduling={task.scheduling}
-              onClose={() => router.back()}
-            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Закрыть задачу"
+              onPress={close}
+              className="h-9 w-9 items-center justify-center rounded-md hover:bg-sidebar"
+            >
+              <X size={19} color={colors.muted} />
+            </Pressable>
           </View>
-        </>
-      )}
-    </AppShell>
+          <ErrorMessage>{error}</ErrorMessage>
+          {!task ? (
+            <Title
+              title="Задача не найдена"
+              subtitle="Она могла быть удалена или ещё не загружена на это устройство."
+            />
+          ) : (
+            <>
+              <View className="flex-row flex-wrap items-center gap-2 px-4 pt-3">
+                <Button
+                  secondary
+                  onPress={() => {
+                    void app.store
+                      .complete(task, !task.completed)
+                      .catch((cause) => setError(message(cause)));
+                  }}
+                >
+                  {task.completed ? "Вернуть в работу" : "Завершить задачу"}
+                </Button>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Поднять задачу внутри приоритета"
+                  onPress={() => {
+                    void reorder(-1);
+                  }}
+                  className="h-12 w-12 items-center justify-center"
+                >
+                  <ArrowUp size={18} color={colors.muted} />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Опустить задачу внутри приоритета"
+                  onPress={() => {
+                    void reorder(1);
+                  }}
+                  className="h-12 w-12 items-center justify-center"
+                >
+                  <ArrowDown size={18} color={colors.muted} />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Удалить задачу"
+                  onPress={() => {
+                    void remove();
+                  }}
+                  className="h-12 w-12 items-center justify-center"
+                >
+                  <Trash2 size={18} color={colors.muted} />
+                </Pressable>
+              </View>
+              {task.seriesId && (
+                <View className="flex-row items-center gap-3 px-4">
+                  <Repeat2 size={16} color={colors.muted} />
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setEditingSeries(!editingSeries)}
+                    className="min-h-12 justify-center"
+                  >
+                    <Text className="text-sm text-accent">
+                      {editingSeries ? "Вернуться к повторению" : "Изменить всю серию"}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+              <View style={{ flexShrink: 1, minHeight: 0 }}>
+                <TaskForm
+                  key={`${task.id}:${editingSeries}`}
+                  task={task}
+                  editSeries={editingSeries}
+                  dismissRef={dismissRef}
+                  scheduling={task.scheduling}
+                  onClose={close}
+                />
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
   );
 }
 

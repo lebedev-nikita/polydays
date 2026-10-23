@@ -90,6 +90,7 @@ test("a deadline is explicitly removed before selecting an untimed polyday or ba
     page.getByRole("textbox", { name: "Дата начала полидня · ГГГГ-ММ-ДД" }),
   ).not.toBeVisible();
   await page.getByRole("textbox", { name: "Название задачи" }).fill("Изменить режим планирования");
+  await page.getByRole("button", { name: "Когда выполнить", exact: true }).click();
   await page.getByRole("radio", { name: "Дата и время", exact: true }).click();
   const deadlineDate = page.getByRole("textbox", { name: "Дата дедлайна · ГГГГ-ММ-ДД" });
   const tomorrow = new Date(`${await deadlineDate.inputValue()}T12:00:00Z`);
@@ -108,12 +109,14 @@ test("a deadline is explicitly removed before selecting an untimed polyday or ba
   });
   await taskLink.click();
   await expect(page.getByRole("radio", { name: "Полидень", exact: true })).not.toBeVisible();
+  await page.getByRole("button", { name: "Когда выполнить", exact: true }).click();
   await page.getByRole("button", { name: "Убрать дедлайн", exact: true }).click();
   await page.getByRole("radio", { name: "Полидень", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Время дедлайна · ЧЧ:ММ" })).not.toBeVisible();
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
   await taskLink.click();
+  await page.getByRole("button", { name: "Когда выполнить", exact: true }).click();
   await page.getByRole("radio", { name: "Бэклог", exact: true }).click();
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
