@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { CheckCheck } from "lucide-react-native";
 import { useApp } from "./provider";
 import { Button, ErrorMessage, colors } from "./primitives";
 import { message } from "../data/store";
+import { ServerSettings } from "./server-settings";
 
 export function LoginScreen() {
-  const { store, google, devAvailable } = useApp();
+  const { store, google, devAvailable, error: serverError } = useApp();
   const [busy, setBusy] = useState(false);
+  const [serverDirty, setServerDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const login = async (dev: boolean) => {
     setBusy(true);
@@ -21,7 +23,16 @@ export function LoginScreen() {
     }
   };
   return (
-    <View className="flex-1 items-center justify-center bg-sidebar px-6">
+    <ScrollView
+      className="flex-1 bg-sidebar"
+      contentContainerStyle={{
+        flexGrow: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+      keyboardShouldPersistTaps="handled"
+    >
       <View className="w-full max-w-[410px] gap-6 rounded-xl border border-line bg-white p-8">
         <View className="flex-row items-center gap-3">
           <CheckCheck size={30} color={colors.accent} />
@@ -34,16 +45,16 @@ export function LoginScreen() {
             устройства.
           </Text>
         </View>
-        <ErrorMessage>{error}</ErrorMessage>
+        <ErrorMessage>{error || serverError}</ErrorMessage>
         <Button
-          disabled={busy || !google}
+          disabled={busy || !google || serverDirty}
           onPress={() => {
             void login(false);
           }}
         >
           Продолжить с Google
         </Button>
-        {!google && (
+        {!google && !serverError && (
           <Text className="text-xs leading-5 text-muted">
             Вход через Google пока не настроен на этом сервере.
           </Text>
@@ -51,7 +62,7 @@ export function LoginScreen() {
         {devAvailable && (
           <Pressable
             accessibilityRole="button"
-            disabled={busy}
+            disabled={busy || serverDirty}
             onPress={() => {
               void login(true);
             }}
@@ -60,7 +71,8 @@ export function LoginScreen() {
             <Text className="text-sm text-muted">Открыть пространство разработки</Text>
           </Pressable>
         )}
+        <ServerSettings disabled={busy} onDirtyChange={setServerDirty} />
       </View>
-    </View>
+    </ScrollView>
   );
 }

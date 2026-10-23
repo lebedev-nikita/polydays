@@ -1,20 +1,19 @@
 import { createAuthClient } from "better-auth/react";
-import { Platform } from "react-native";
 import { desktopSignIn, desktopSignOut, isDesktop } from "./desktop.web";
 import { executeMutation } from "./query";
 import { apiFetch } from "./transport";
+import { apiURL } from "./server";
+export { apiURL } from "./server";
 
-export const apiURL =
-  process.env.EXPO_PUBLIC_API_URL ||
-  (Platform.OS === "web"
-    ? __DEV__
-      ? "http://localhost:3000"
-      : globalThis.location.origin
-    : "http://10.0.2.2:3000");
-const webClient = createAuthClient({
-  baseURL: apiURL,
-  fetchOptions: { customFetchImpl: apiFetch },
-});
+const createClient = () =>
+  createAuthClient({
+    baseURL: apiURL,
+    fetchOptions: { customFetchImpl: apiFetch },
+  });
+let webClient = createClient();
+export function configureAuth() {
+  webClient = createClient();
+}
 export const authClient = {
   signOut: () =>
     executeMutation(["sign-out", apiURL], async () => {

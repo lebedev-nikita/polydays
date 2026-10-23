@@ -6,13 +6,28 @@ import * as Crypto from "expo-crypto";
 import { executeMutation, queryClient } from "./query";
 import { googleConfigQuery } from "./requests";
 import { apiFetch } from "./transport";
+import { apiURL, defaultApiURL } from "./server";
+export { apiURL } from "./server";
 
-export const apiURL = process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:3000";
-const nativeClient = createAuthClient({
-  baseURL: apiURL,
-  fetchOptions: { customFetchImpl: apiFetch },
-  plugins: [expoClient({ scheme: "polydays", storagePrefix: "polydays", storage: SecureStore })],
-});
+const createClient = () =>
+  createAuthClient({
+    baseURL: apiURL,
+    fetchOptions: { customFetchImpl: apiFetch },
+    plugins: [
+      expoClient({
+        scheme: "polydays",
+        storagePrefix:
+          apiURL === defaultApiURL
+            ? "polydays"
+            : `polydays-${apiURL.replace(/[^a-zA-Z0-9.-]/g, (char) => `_${char.charCodeAt(0).toString(16)}_`)}`,
+        storage: SecureStore,
+      }),
+    ],
+  });
+let nativeClient = createClient();
+export function configureAuth() {
+  nativeClient = createClient();
+}
 export const authClient = {
   signOut: () =>
     executeMutation(["sign-out", apiURL], async () => {

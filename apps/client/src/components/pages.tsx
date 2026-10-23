@@ -324,6 +324,15 @@ export function SettingsScreen() {
       <View className="mt-10 gap-4 border-t border-line pt-7">
         <Text className="text-base font-semibold text-ink">Аккаунт</Text>
         <Text className="text-sm text-muted">{app.account?.email}</Text>
+        <View className="gap-1.5">
+          <Text className="text-xs font-semibold text-muted">Сервер</Text>
+          <Text selectable className="text-sm text-ink">
+            {app.serverURL}
+          </Text>
+          <Text className="text-xs leading-5 text-muted">
+            Чтобы сменить сервер, выйдите из аккаунта.
+          </Text>
+        </View>
         <ErrorMessage>{error}</ErrorMessage>
         <Pressable
           accessibilityRole="button"

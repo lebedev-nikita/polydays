@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::time::Duration;
 
-const API: &str = env!("POLYDAYS_API_URL");
 const SERVICE: &str = "app.polydays.desktop";
 const CLIENT_ID: &str = "polydays-macos";
 
@@ -20,8 +19,23 @@ fn client() -> Result<Client, String> {
         .map_err(|_| "Не удалось создать соединение.".into())
 }
 
-fn token() -> Result<Option<String>, String> {
-    match generic_password(PasswordOptions::new_generic_password(SERVICE, API)) {
+fn server_url(input: &str) -> Result<String, String> {
+    let url = reqwest::Url::parse(input).map_err(|_| "Неверный адрес сервера.")?;
+    if !matches!(url.scheme(), "https" | "http")
+        || url.host_str().is_none()
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.path() != "/"
+        || url.query().is_some()
+        || url.fragment().is_some()
+    {
+        return Err("Укажите HTTP(S) адрес сервера без пути, параметров и пароля.".into());
+    }
+    Ok(url.origin().ascii_serialization())
+}
+
+fn token(api: &str) -> Result<Option<String>, String> {
+    match generic_password(PasswordOptions::new_generic_password(SERVICE, api)) {
         Ok(bytes) => String::from_utf8(bytes)
             .map(Some)
             .map_err(|_| "Повторите вход в аккаунт.".into()),
@@ -47,6 +61,7 @@ fn allowed_path(path: &str) -> bool {
 
 #[tauri::command]
 async fn api_request(
+    api_url: String,
     path: String,
     method: String,
     body: Option<String>,
@@ -54,11 +69,12 @@ async fn api_request(
     if !allowed_path(&path) || !matches!(method.as_str(), "GET" | "POST") {
         return Err("Недопустимый запрос.".into());
     }
+    let api = server_url(&api_url)?;
     let mut request = client()?.request(
         Method::from_bytes(method.as_bytes()).map_err(|_| "Недопустимый метод.")?,
-        format!("{API}{path}"),
+        format!("{api}{path}"),
     );
-    if let Some(token) = token()? {
+    if let Some(token) = token(&api)? {
         request = request.bearer_auth(token);
     }
     if let Some(body) = body {
@@ -97,14 +113,15 @@ struct DeviceCode {
 }
 
 #[tauri::command]
-async fn sign_in() -> Result<(), String> {
+async fn sign_in(api_url: String) -> Result<(), String> {
+    let api = server_url(&api_url)?;
     let client = client()?;
     let response = client
-        .post(format!("{API}/api/auth/device/code"))
+        .post(format!("{api}/api/auth/device/code"))
         .json(&json!({"client_id": CLIENT_ID}))
         .send()
         .await
-        .map_err(|_| "Сервер недоступен. Проверьте Tailscale.")?;
+        .map_err(|_| "Сервер недоступен. Проверьте адрес и соединение.")?;
     let code: DeviceCode = response
         .error_for_status()
         .map_err(|_| "Не удалось начать вход.")?
@@ -113,7 +130,7 @@ async fn sign_in() -> Result<(), String> {
         .map_err(|_| "Не удалось прочитать код входа.")?;
     let verification = reqwest::Url::parse(&code.verification_uri_complete)
         .map_err(|_| "Неверный адрес входа.")?;
-    let base = reqwest::Url::parse(API).map_err(|_| "Неверный адрес сервера.")?;
+    let base = reqwest::Url::parse(&api).map_err(|_| "Неверный адрес сервера.")?;
     if verification.origin() != base.origin() || verification.path() != "/device" {
         return Err("Неверный адрес входа.".into());
     }
@@ -122,7 +139,7 @@ async fn sign_in() -> Result<(), String> {
     let mut interval = code.interval.max(5);
     while tokio::time::Instant::now() < deadline {
         tokio::time::sleep(Duration::from_secs(interval)).await;
-        let response = client.post(format!("{API}/api/auth/device/token")).json(&json!({"client_id": CLIENT_ID,"device_code": code.device_code,"grant_type": "urn:ietf:params:oauth:grant-type:device_code"})).send().await.map_err(|_| "Соединение прервано. Повторите вход.")?;
+        let response = client.post(format!("{api}/api/auth/device/token")).json(&json!({"client_id": CLIENT_ID,"device_code": code.device_code,"grant_type": "urn:ietf:params:oauth:grant-type:device_code"})).send().await.map_err(|_| "Соединение прервано. Повторите вход.")?;
         let successful = response.status().is_success();
         let result: Value = response
             .json()
@@ -133,7 +150,7 @@ async fn sign_in() -> Result<(), String> {
                 .as_str()
                 .filter(|s| !s.is_empty())
                 .ok_or("Сервер не вернул сессию.")?;
-            set_generic_password(SERVICE, API, token.as_bytes())
+            set_generic_password(SERVICE, &api, token.as_bytes())
                 .map_err(|_| "Не удалось сохранить сессию в Связке ключей.")?;
             return Ok(());
         }
@@ -148,10 +165,11 @@ async fn sign_in() -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn sign_out() -> Result<(), String> {
-    if let Some(token) = token()? {
+async fn sign_out(api_url: String) -> Result<(), String> {
+    let api = server_url(&api_url)?;
+    if let Some(token) = token(&api)? {
         client()?
-            .post(format!("{API}/api/auth/sign-out"))
+            .post(format!("{api}/api/auth/sign-out"))
             .bearer_auth(token)
             .json(&json!({}))
             .send()
@@ -160,7 +178,7 @@ async fn sign_out() -> Result<(), String> {
             .error_for_status()
             .map_err(|_| "Не удалось завершить сессию.")?;
     }
-    match delete_generic_password(SERVICE, API) {
+    match delete_generic_password(SERVICE, &api) {
         Ok(()) => Ok(()),
         Err(error) if error.code() == -25300 => Ok(()),
         Err(_) => Err("Не удалось удалить локальную сессию.".into()),
@@ -176,7 +194,28 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::allowed_path;
+    use super::{allowed_path, server_url};
+    #[test]
+    fn validates_server_origins() {
+        assert_eq!(
+            server_url("https://EXAMPLE.com:443/").unwrap(),
+            "https://example.com"
+        );
+        assert_eq!(
+            server_url("http://127.0.0.1:3400").unwrap(),
+            "http://127.0.0.1:3400"
+        );
+        for url in [
+            "file:///tmp/a",
+            "https://user:secret@example.com",
+            "https://example.com/api",
+            "https://example.com?token=abc",
+            "https://example.com/#fragment",
+            "//example.com",
+        ] {
+            assert!(server_url(url).is_err(), "{url}");
+        }
+    }
     #[test]
     fn restricts_native_transport_to_application_endpoints() {
         assert!(allowed_path("/trpc/sync?batch=1"));

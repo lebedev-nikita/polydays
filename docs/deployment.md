@@ -20,7 +20,9 @@ Create a **Web application** OAuth client. Add the web origin as an authorised J
 
 For Android, create an **Android** OAuth client in the same project for package `app.polydays.mobile`, registering the SHA-1 certificate fingerprint of each signing key you use. The native Credential Manager request uses the web client's ID as its server audience. Register development and release signing certificates separately. See [Google's Credential Manager integration](https://developer.android.com/identity/sign-in/credential-manager-siwg) and [Better Auth's Google provider](https://www.better-auth.com/docs/authentication/google).
 
-Rebuild Android with `EXPO_PUBLIC_API_URL` set to your public HTTPS server. Validate sign-in on the actual development and signed release builds. The server exchanges the native ID token through Better Auth; Google login is never embedded inside a WebView.
+On the Android or macOS sign-in screen, enter your public HTTPS server origin in **Сервер**, then choose **Подключиться** before signing in. The address is saved on that device. To change servers, first sign out; synchronise pending changes or explicitly confirm their removal. The current address is also shown in account settings. Use an origin such as `https://polydays.example.com`, without an API path, query or credentials. Web clients also offer this setting; a separate server origin must permit the web client's origin and browser session cookies.
+
+`EXPO_PUBLIC_API_URL` supplies the default address for a build; a saved address takes precedence. Validate sign-in on the actual development and signed release builds. The server exchanges the native ID token through Better Auth; Google login is never embedded inside a WebView.
 
 ## Android distribution
 
@@ -79,7 +81,7 @@ tailscale serve --bg --https=443 http://127.0.0.1:3000
 tailscale serve --bg --https=8443 http://127.0.0.1:8081
 ```
 
-Run `just dev` for the Expo frontend, then open <https://macbook.gibbon-parrotfish.ts.net:8443>. Using the same hostname as the API allows the browser session to work across ports. The port-8443 frontend is available only while Expo is running. The root client commands explicitly load `.env`; rebuild Android and the web export after changing `EXPO_PUBLIC_API_URL`.
+Run `just dev` for the Expo frontend, then open <https://macbook.gibbon-parrotfish.ts.net:8443>. Using the same hostname as the API allows the browser session to work across ports. The port-8443 frontend is available only while Expo is running. The root client commands explicitly load `.env`; rebuild to change the bundled default `EXPO_PUBLIC_API_URL`, or select another server on the sign-in screen without rebuilding.
 
 The Google web client permits both HTTPS origins and the exact redirect `https://macbook.gibbon-parrotfish.ts.net/api/auth/callback/google`. Its existing localhost entries remain available for an independently configured loopback environment.
 

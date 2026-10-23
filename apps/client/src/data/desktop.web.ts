@@ -1,5 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { Schema } from "effect";
+import { apiURL } from "./server";
 
 export const isDesktop = isTauri;
 const NativeResponse = Schema.Struct({
@@ -12,6 +13,7 @@ export const desktopFetch: typeof fetch = async (input, init) => {
   const url = new URL(request.url);
   const response = Schema.decodeUnknownSync(NativeResponse)(
     await invoke("api_request", {
+      apiUrl: apiURL,
       path: url.pathname + url.search,
       method: request.method,
       body: request.method === "GET" ? null : await request.text(),
@@ -22,10 +24,10 @@ export const desktopFetch: typeof fetch = async (input, init) => {
     headers: { "Content-Type": response.contentType },
   });
 };
-export const desktopSignIn = () => invoke<void>("sign_in");
+export const desktopSignIn = () => invoke<void>("sign_in", { apiUrl: apiURL });
 export const desktopSignOut = async () => {
   try {
-    await invoke("sign_out");
+    await invoke("sign_out", { apiUrl: apiURL });
     return { error: null };
   } catch (cause) {
     return { error: { message: String(cause) } };
