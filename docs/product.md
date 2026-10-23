@@ -4,7 +4,7 @@
 
 Todoist is the user's current application and the reference for Polydays' visual language, task-list interactions, quick entry, priorities, editing, navigation and widgets. Use its familiar conventions to resolve ordinary product and UX choices within the agreed scope. Apply the explicit Polydays requirements below when polyday scheduling, history, recurrence or other agreed behaviour differs from Todoist. This reference guides the design; it does not add all Todoist features or authorise changes to the user's Todoist data.
 
-[Todoist reference research](research/todoist-reference.md) records verified behaviour and the Polydays mapping. Use backlog, current polyday, upcoming polydays and history as the primary destinations. Reuse compact task rows with a separate completion control, title-to-details interaction, contextual quick entry and familiar in-app keyboard controls. Additional projects, labels, subtasks, boards, a full natural-language parser and external Todoist integration are outside the agreed first-version scope.
+[Todoist reference research](research/todoist-reference.md) records verified behaviour and the Polydays mapping. Use inbox, current polyday, upcoming polydays and history as the primary destinations. Reuse compact task rows with a separate completion control, title-to-details interaction, contextual quick entry and familiar in-app keyboard controls. Additional projects, labels, subtasks, boards, a full natural-language parser and external Todoist integration are outside the agreed first-version scope.
 
 Display priorities with the familiar P1–P4 convention: high/red, medium/orange, low/blue and none/neutral, defaulting to none. Current and overdue work obey the agreed priority-first order, with manual order within each priority, visible overdue state and the original polyday label; the same task appears only once in a given list. Preserve the agreed independent recurring occurrences, assigned-polyday history and exact deadline semantics even where Todoist behaves differently.
 
@@ -26,17 +26,17 @@ Display priorities with the familiar P1–P4 convention: high/red, medium/orange
 
 ## Tasks and recurrence
 
-- A task has one scheduling mode: unscheduled in the backlog, explicitly assigned to a polyday without an exact deadline, or scheduled by an exact deadline date and time. A deadline task's polyday is derived from that deadline; it has no independent polyday assignment.
+- A task has one scheduling mode: unscheduled in the inbox, explicitly assigned to a polyday without an exact deadline, or scheduled by an exact deadline date and time. A deadline task's polyday is derived from that deadline; it has no independent polyday assignment.
 - An optional exact time is a **deadline**, not a planned start. An unfinished task becomes overdue after the deadline passes; early completion is allowed. Without an exact deadline, an unfinished task becomes overdue when its assigned polyday ends.
 - Overdue tasks retain their assigned polyday and are also visible, highlighted, in the current polyday. This is one task shown in multiple contexts, not automatic reassignment or copying.
-- Only untimed tasks can be moved directly to a selected polyday. For deadline tasks, open the date/time editor instead; do not drag them into another polyday or infer a deadline date from a destination interval. Editing the exact deadline recalculates both polyday placement and overdue status. Switching away from a deadline explicitly selects a polyday or the backlog.
+- Only untimed tasks can be moved directly to a selected polyday. For deadline tasks, open the date/time editor instead; do not drag them into another polyday or infer a deadline date from a destination interval. Editing the exact deadline recalculates both polyday placement and overdue status. Switching away from a deadline explicitly selects a polyday or the inbox.
 - Recurring tasks are required in version one: every polyday; daily in a selected polyday; selected weekdays in a selected polyday; daily at an exact time; selected weekdays at an exact time.
 - Polyday-based recurrence uses the start date of the polyday for weekdays. Exact-time recurrence uses the calendar date of the deadline; a Monday 01:00 deadline may therefore appear in the polyday that started on Sunday. Series have a start date and an optional end date.
 - Show every missed occurrence individually, without grouping or collapsing the series.
 - Editing a recurring task changes the series and future occurrences; past occurrences keep their parameters and may be corrected separately. Completing a task completes one occurrence only.
-- Task fields are a title, optional description, completion state, scheduling choice and priority. Scheduling is either backlog, a selected polyday or an exact deadline, as defined above. Priorities are none, low, medium and high.
+- Task fields are a title, optional description, completion state, scheduling choice and priority. Scheduling is either inbox, a selected polyday or an exact deadline, as defined above. Priorities are none, low, medium and high.
 - Priority changes task order automatically; users manually reorder tasks within the same priority.
-- Completing a task directly from the backlog assigns it to the current polyday so it appears in that polyday's history.
+- Completing a task directly from the inbox assigns it to the current polyday so it appears in that polyday's history.
 - Notifications are excluded from version one.
 
 ## Offline work and synchronisation

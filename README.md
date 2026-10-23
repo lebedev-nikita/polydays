@@ -17,7 +17,7 @@ If the local Polydays service is already running, `just dev` reuses its backend 
 
 For Google sign-in, configure the private root `.env`, run `just build`, then `bun run server` and open your configured HTTPS URL. The MacBook service is already running at <https://macbook.gibbon-parrotfish.ts.net>. See [local server and Google setup](docs/deployment.md). T3's **Setup worktree** action copies the root `.env` with private permissions before installing dependencies; an existing worktree `.env` is preserved.
 
-In the web app, press **Q** outside a text field to add a task. Tasks with an exact deadline are rescheduled by editing their date and time; **Убрать дедлайн** explicitly switches them to the backlog or an untimed polyday.
+In the web app, press **Q** outside a text field to add a task. Tasks with an exact deadline are rescheduled by editing their date and time; **Убрать дедлайн** explicitly switches them to the inbox or an untimed polyday.
 
 ```sh
 just check       # Formatting, lint and both TypeScript projects

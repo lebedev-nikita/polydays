@@ -102,7 +102,7 @@ export function TaskList({
           <Text className="max-w-[300px] text-center text-sm leading-5 text-muted">
             {includeCompleted
               ? "Сделанное останется в истории этого полидня."
-              : "Добавьте задачу или запланируйте её из бэклога."}
+              : "Добавьте задачу или запланируйте её из входящих."}
           </Text>
         </View>
       )}

@@ -420,7 +420,7 @@ export function TaskForm({
           : "Выберите дату";
   const destinationLabel =
     kind === "backlog"
-      ? "Бэклог"
+      ? "Входящие"
       : kind === "deadline"
         ? placement.split(" · ")[0] || "Дедлайн"
         : (slots.find((slot) => slot.id === slotId)?.name ?? "Полидень");
@@ -743,7 +743,7 @@ export function TaskForm({
                 <View accessibilityRole="radiogroup" accessibilityLabel="Место задачи">
                   <PickerRow
                     icon={Inbox}
-                    label="Бэклог"
+                    label="Входящие"
                     selected={kind === "backlog"}
                     onPress={() => {
                       setKind("backlog");

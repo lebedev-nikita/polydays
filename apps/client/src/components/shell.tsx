@@ -29,7 +29,7 @@ import { TaskComposer } from "./task-editor";
 import type { Scheduling } from "@polydays/core";
 
 const destinations = [
-  { href: "/backlog", title: "Бэклог", Icon: Inbox },
+  { href: "/backlog", title: "Входящие", Icon: Inbox },
   { href: "/current", title: "Текущий полидень", Icon: Sun },
   { href: "/upcoming", title: "Предстоящие", Icon: CalendarDays },
   { href: "/history", title: "История", Icon: History },

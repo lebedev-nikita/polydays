@@ -173,7 +173,7 @@ export function BacklogScreen() {
     : [];
   return (
     <AppShell>
-      <Title title="Бэклог" subtitle="Задачи, которым вы ещё не выбрали полидень" />
+      <Title title="Входящие" subtitle="Задачи, которым вы ещё не выбрали полидень" />
       <TaskList rows={rows} scheduling={{ kind: "backlog" }} />
     </AppShell>
   );
@@ -565,7 +565,7 @@ function ConflictVersion({ label, document }: { label: string; document: Documen
       : null;
     const schedule =
       when.kind === "backlog"
-        ? "Бэклог"
+        ? "Входящие"
         : when.kind === "deadline"
           ? `Дедлайн: ${when.date}, ${when.time}`
           : `${when.date} · ${slot?.name ?? "Полидень"}`;
