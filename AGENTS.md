@@ -12,7 +12,7 @@ After each user UI correction, update this section with concise, reusable conclu
 - Group repeated form rows with spacing. Use separators only between distinct sections.
 - Keep interfaces minimal: show only what is necessary for the current action. Omit optional labels, explanations and repeated values; preserve accessible names when removing visual labels.
 - Keep task titles visually primary. Use a compact composer with borderless title and description, a horizontal property toolbar and one submit action. Open date settings separately and use short menus for priority and destination; reveal secondary controls on demand.
-- Place contextual metadata beside the control it explains; show an overnight end beside the end time.
+- Place contextual metadata beside the control it explains: show an overnight end beside the end time and the calculated polyday duration below the start/end pair. Update duration while editing and hide it for invalid or equal boundaries.
 - Use searchable choices for timezones and a calendar for dates. Display human-readable names and localized dates instead of requiring technical identifiers or format syntax.
 - Use a compact switch for automatic timezone detection, with the effective timezone visible.
 - Infer the underlying usability issue from annotated screenshots and fix every marked area coherently.
