@@ -8,6 +8,7 @@ import {
   changeTimeZone,
   dateAt,
   defaultSlots,
+  slotDurationMinutes,
   systemNow,
   updateCalendar,
   validateCalendar,
@@ -155,6 +156,19 @@ export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
         {slots.map((slot, index) => {
           const start = normalizeTimeInput(slot.start);
           const end = normalizeTimeInput(slot.end);
+          const duration =
+            start !== null && end !== null && start !== end
+              ? slotDurationMinutes({ start, end })
+              : null;
+          const durationText =
+            duration === null
+              ? null
+              : [
+                  duration >= 60 ? `${Math.floor(duration / 60)} ч` : "",
+                  duration % 60 ? `${duration % 60} мин` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ");
           return (
             <View key={slot.id}>
               <View className="flex-row flex-wrap items-start gap-3">
@@ -166,21 +180,33 @@ export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
                   />
                 </View>
                 <View className="max-w-full flex-row flex-wrap items-start gap-3">
-                  <TimeField
-                    label="Начало"
-                    accessibilityLabel={`Начало полидня ${index + 1}`}
-                    value={slot.start}
-                    onChange={(start) => edit(slot.id, { start })}
-                    submitted={submitted}
-                  />
-                  <TimeField
-                    label="Конец"
-                    accessibilityLabel={`Конец полидня ${index + 1}`}
-                    nextDay={start !== null && end !== null && end < start}
-                    value={slot.end}
-                    onChange={(end) => edit(slot.id, { end })}
-                    submitted={submitted}
-                  />
+                  <View className="max-w-full gap-1.5">
+                    <View className="flex-row flex-wrap items-start gap-3">
+                      <TimeField
+                        label="Начало"
+                        accessibilityLabel={`Начало полидня ${index + 1}`}
+                        value={slot.start}
+                        onChange={(start) => edit(slot.id, { start })}
+                        submitted={submitted}
+                      />
+                      <TimeField
+                        label="Конец"
+                        accessibilityLabel={`Конец полидня ${index + 1}`}
+                        nextDay={start !== null && end !== null && end < start}
+                        value={slot.end}
+                        onChange={(end) => edit(slot.id, { end })}
+                        submitted={submitted}
+                      />
+                    </View>
+                    {durationText !== null && (
+                      <Text
+                        className="text-xs text-muted"
+                        style={{ fontVariant: ["tabular-nums"] }}
+                      >
+                        Длительность: {durationText}
+                      </Text>
+                    )}
+                  </View>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Удалить полидень ${slot.name}`}

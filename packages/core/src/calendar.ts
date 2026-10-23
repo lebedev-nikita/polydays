@@ -20,6 +20,8 @@ export const minutes = (time: string): number => {
   const value = Temporal.PlainTime.from(time);
   return value.hour * 60 + value.minute;
 };
+export const slotDurationMinutes = (slot: Pick<Slot, "start" | "end">): number =>
+  (minutes(slot.end) - minutes(slot.start) + 1440) % 1440;
 
 export function localInstant(date: string, time: string, timeZone: string): number {
   const local = Temporal.PlainDate.from(date).toPlainDateTime(Temporal.PlainTime.from(time));
@@ -42,7 +44,7 @@ export function validateSlots(slots: ReadonlyArray<Slot>): void {
     const start = minutes(slot.start);
     const end = minutes(slot.end);
     if (start === end) throw new Error(`У полидня «${slot.name}» начало совпадает с концом.`);
-    const duration = (end - start + 1440) % 1440;
+    const duration = slotDurationMinutes(slot);
     for (let offset = 0; offset < duration; offset++) {
       const minute = (start + offset) % 1440;
       if (occupied[minute])
