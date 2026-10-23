@@ -205,6 +205,10 @@ Web interactive controls use the global tomato focus-visible outline (2px, offse
 
 White, finely bordered fields with small corners, dark text and neutral-priority placeholders. Labels sit above with a 0.375rem gap. Fields have a source minimum height of 3rem, or 6rem for multiline descriptions. Web caret is tomato; focus uses the global outline without an authored border change. Errors appear in the shared pale-red alert container; saved feedback is green.
 
+Schedule rows group the name, start, end and delete action with spacing; a separator divides the schedule from its settings. In narrow containers, the time controls wrap together beneath the name. Each time field is 96 source units wide, scaled with native font size, and uses tabular numerals, a numeric keyboard and selection on focus. Whole hours and compact input such as `730` normalize to `07:30` on blur or save. Invalid times show a field-level message after blur or submit; a compact `+1 день` beside the end label identifies intervals crossing midnight.
+
+Timezone and effective-date settings use compact choices. The timezone shows a city and its current UTC offset, expands to a searchable list, and has a separate automatic-detection switch. Dates use localized text with today/tomorrow context and expand to a Monday-first calendar; previous dates are disabled. These settings sit alongside one another when space permits and wrap into a single column on narrow screens.
+
 ### Browser device authorization
 
 The [device authorization screen](apps/client/src/app/device.tsx) retains the shared `Field`, primary and secondary `Button`, and `ErrorMessage`. A semibold title identifies Mac sign-in; supporting copy asks users to approve only a sign-in they initiated, followed by the labelled code, account email, primary “Разрешить вход” and secondary “Отклонить”. Both actions disable while busy or when the code is empty; the field becomes noneditable while busy. Invalid or expired codes direct the user to restart sign-in on Mac; other request failures ask them to check the code and retry. Unauthenticated visitors see the shared sign-in screen.
