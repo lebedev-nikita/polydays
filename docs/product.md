@@ -61,7 +61,7 @@ Display priorities with the familiar P1–P4 convention: high/red, medium/orange
 
 - React Native with React Native for Web is the confirmed shared-client direction. Expo is a candidate build toolchain, with native development/release builds. Widget integration, local storage and the future macOS host still need compatibility validation.
 - TypeScript, Node.js, BoxDB and tRPC are confirmed. Local client storage is selected separately from server-side BoxDB, behind common storage and synchronisation contracts.
-- BoxDB 0.5.0 provides native `TIME`; the server uses it for schedule boundaries.
+- BoxDB 0.5.1 provides native `TIME`; the server uses it for schedule boundaries.
 - [Client platform research](research/client-platforms.md) records official-source evidence for React Native, RN Web, optional Expo and macOS alternatives. Storage, Google authentication and lifecycle integration need platform adapters; sharing source does not remove these responsibilities.
 
 ## Final review and implementation validation
@@ -70,6 +70,6 @@ Display priorities with the familiar P1–P4 convention: high/red, medium/orange
 - Deadline tasks always use an explicit date and time. A deadline of 23 October at 01:00 belongs to the polyday starting 22 October at 19:00 and ending 23 October at 02:00. To change this placement, edit the deadline; a direct polyday-move action is unavailable.
 - Preserve completed or individually rescheduled occurrences when applying a changed series rule to untouched future occurrences; expose deliberate task corrections separately from automatic series edits.
 - The delegated technical sync design requires its listed platform prototypes before integrations are considered proven. Select build-tool and storage libraries against those checks; Google authentication, widget integration and future native macOS support need platform-specific validation.
-- The server schema uses the verified BoxDB 0.5.0 `TIME` type. Deployment and backup/recovery implementation belong to the implementation phase, once the target environment is known.
+- The server schema uses the verified BoxDB 0.5.1 `TIME` type. Deployment and backup/recovery implementation belong to the implementation phase, once the target environment is known.
 
 The user approved these requirements and authorised implementation.

@@ -1,0 +1,24 @@
+[Unit]
+Description=Polydays server
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=polydays
+Group=polydays
+WorkingDirectory=/opt/polydays/current
+EnvironmentFile=/etc/polydays/server.env
+ExecStart=/usr/local/bin/node --experimental-strip-types apps/server/src/+server.ts
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/polydays
+
+[Install]
+WantedBy=multi-user.target
