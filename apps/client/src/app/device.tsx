@@ -5,33 +5,23 @@ import { useApp } from "../components/provider";
 import { LoginScreen } from "../components/login";
 import { Button, ErrorMessage, Field } from "../components/primitives";
 import { apiURL } from "../data/auth";
-import { apiFetch } from "../data/transport";
+import { deviceAuthorizationMutation } from "../data/requests";
+import { useMutation } from "@tanstack/react-query";
 import { message } from "../data/store";
 
 export default function DeviceAuthorization() {
   const { account, loaded } = useApp();
   const params = useLocalSearchParams<{ user_code?: string }>();
   const [code, setCode] = useState(params.user_code ?? "");
-  const [busy, setBusy] = useState(false);
+  const { mutateAsync, isPending: busy } = useMutation(
+    deviceAuthorizationMutation(apiURL, account?.id ?? null),
+  );
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const submit = async (approve: boolean) => {
-    setBusy(true);
     setError(null);
     try {
-      const verified = await apiFetch(
-        `${apiURL}/api/auth/device?user_code=${encodeURIComponent(code)}`,
-        { credentials: "include" },
-      );
-      if (!verified.ok)
-        throw new Error("Код недействителен или истёк. Начните вход на Mac заново.");
-      const response = await apiFetch(`${apiURL}/api/auth/device/${approve ? "approve" : "deny"}`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userCode: code }),
-      });
-      if (!response.ok) throw new Error("Не удалось подтвердить вход. Проверьте код и повторите.");
+      await mutateAsync({ code, approve });
       setResult(
         approve
           ? "Вход разрешён. Вернитесь в Polydays на Mac."
@@ -39,8 +29,6 @@ export default function DeviceAuthorization() {
       );
     } catch (cause) {
       setError(message(cause));
-    } finally {
-      setBusy(false);
     }
   };
   if (!loaded) return null;
