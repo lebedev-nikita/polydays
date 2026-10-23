@@ -13,14 +13,14 @@
       "name": "Local server",
       "command": "bun run server",
       "icon": "play",
-      "previewUrl": "http://localhost:3000",
+      "previewUrl": "https://macbook.gibbon-parrotfish.ts.net",
       "autoOpenPreview": true
     },
     {
       "name": "Development",
       "command": "just dev",
       "icon": "debug",
-      "previewUrl": "http://localhost:8081",
+      "previewUrl": "https://macbook.gibbon-parrotfish.ts.net:8443",
       "autoOpenPreview": true
     }
   ]

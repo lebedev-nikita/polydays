@@ -21,7 +21,8 @@ build:
 android:
     vp run android
 
-e2e: build
+e2e:
+    EXPO_PUBLIC_API_URL=http://localhost:3400 just build
     vp run test:e2e
 
 native-check:

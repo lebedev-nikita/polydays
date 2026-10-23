@@ -42,13 +42,34 @@ The application merges device operations through its API. Database file replicat
 
 ## Local MacBook service
 
-The local web application can use real Google sign-in over `http://localhost:3000`. Its exact redirect URI is `http://localhost:3000/api/auth/callback/google`. Keep `HOST=127.0.0.1`; Google permits HTTP loopback callbacks for local development. `WEB_ORIGIN=http://localhost:8081` additionally permits the separate Expo development frontend.
+The configured server and exported web app use <https://macbook.gibbon-parrotfish.ts.net>. `gibbon-parrotfish.ts.net` is the tailnet suffix; the MacBook's device name is required. Android and the MacBook must be connected to the same tailnet, and the MacBook must be awake for sign-in and sync. Existing local data remains usable offline when the server is unavailable.
+
+The private root `.env` uses:
+
+```dotenv
+HOST=127.0.0.1
+PORT=3000
+BETTER_AUTH_URL=https://macbook.gibbon-parrotfish.ts.net
+WEB_ORIGIN=https://macbook.gibbon-parrotfish.ts.net:8443
+EXPO_PUBLIC_API_URL=https://macbook.gibbon-parrotfish.ts.net
+```
+
+Tailscale Serve terminates HTTPS and proxies the API/export on port 443 and the Expo frontend on port 8443. These are tailnet-only endpoints; Funnel is not enabled. Both proxies are persistent:
+
+```sh
+tailscale serve --bg --https=443 http://127.0.0.1:3000
+tailscale serve --bg --https=8443 http://127.0.0.1:8081
+```
+
+Run `just dev` for the Expo frontend, then open <https://macbook.gibbon-parrotfish.ts.net:8443>. Using the same hostname as the API allows the browser session to work across ports. The port-8443 frontend is available only while Expo is running. The root client commands explicitly load `.env`; rebuild Android and the web export after changing `EXPO_PUBLIC_API_URL`.
+
+The Google web client permits both HTTPS origins and the exact redirect `https://macbook.gibbon-parrotfish.ts.net/api/auth/callback/google`. Its existing localhost entries remain available for an independently configured loopback environment.
 
 On the configured MacBook, `~/Library/LaunchAgents/app.polydays.server.plist` runs the production Node process at login and restarts it after an unexpected exit. It loads the root `.env`; development authentication is disabled. Logs are in `.data/logs/`. After editing `.env`, restart it with:
 
 ```sh
 launchctl kickstart -k "gui/$(id -u)/app.polydays.server"
-curl --fail http://localhost:3000/api/health
+curl --fail https://macbook.gibbon-parrotfish.ts.net/api/health
 ```
 
 Stop the service before starting a separate foreground server on the same port:
@@ -59,7 +80,7 @@ launchctl bootout "gui/$(id -u)/app.polydays.server"
 
 To restore the login service, run `launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/app.polydays.server.plist"`. Rebuild the web export with `just build` after client changes.
 
-Google Cloud project `polydays-20261023` has a testing audience restricted to the owner, a Polydays name and logo, a web client for ports 3000 and 8081, and an Android client for the current local signing certificate. The native request uses `GOOGLE_CLIENT_ID` as its server audience; `GOOGLE_ANDROID_CLIENT_ID` and `GOOGLE_CLOUD_PROJECT` in `.env` record the matching Cloud resources. Publishing the app for other people, configuring public domains, and registering a different Android distribution certificate are separate deployment steps.
+Google Cloud project `polydays-20261023` has a testing audience restricted to the owner, a Polydays name and logo, the web client described above, and an Android client for the current local signing certificate. The native request uses `GOOGLE_CLIENT_ID` as its server audience; `GOOGLE_ANDROID_CLIENT_ID` and `GOOGLE_CLOUD_PROJECT` in `.env` record the matching Cloud resources. Publishing the app for other people, configuring public domains, and registering a different Android distribution certificate are separate deployment steps.
 
 ## T3 worktrees
 

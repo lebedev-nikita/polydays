@@ -8,13 +8,13 @@
   "type": "module",
   "scripts": {
     "dev": "bun scripts/+dev.ts",
-    "web": "bun --cwd apps/client start --web --port 8081",
+    "web": "bun --cwd apps/client --env-file=../../.env start --web --port 8081",
     "server": "node --env-file-if-exists=.env --experimental-strip-types apps/server/src/+server.ts",
     "check": "vp check",
     "typecheck": "tsc --noEmit && tsc --noEmit -p apps/client/tsconfig.json",
     "test": "vp test run",
-    "build": "bun --cwd apps/client export --platform web",
-    "android": "bun --cwd apps/client android",
+    "build": "bun --cwd apps/client --env-file=../../.env export --platform web",
+    "android": "bun --cwd apps/client --env-file=../../.env android",
     "prepare:web": "bun scripts/+prepare-web.ts",
     "test:e2e": "playwright test"
   },
