@@ -1,0 +1,16 @@
+gradle.beforeProject { project ->
+    project.pluginManager.withPlugin('com.android.application') {
+        project.extensions.getByName('androidComponents').finalizeDsl { android ->
+            def required = ['POLYDAYS_ANDROID_KEYSTORE', 'POLYDAYS_ANDROID_STORE_PASSWORD', 'POLYDAYS_ANDROID_KEY_ALIAS', 'POLYDAYS_ANDROID_KEY_PASSWORD']
+            required.each { name ->
+                if (!System.getenv(name)) throw new GradleException("Missing release signing setting: " + name)
+            }
+            def signing = android.signingConfigs.maybeCreate('distribution')
+            signing.storeFile = new File(System.getenv('POLYDAYS_ANDROID_KEYSTORE'))
+            signing.storePassword = System.getenv('POLYDAYS_ANDROID_STORE_PASSWORD')
+            signing.keyAlias = System.getenv('POLYDAYS_ANDROID_KEY_ALIAS')
+            signing.keyPassword = System.getenv('POLYDAYS_ANDROID_KEY_PASSWORD')
+            android.buildTypes.release.signingConfig = signing
+        }
+    }
+}

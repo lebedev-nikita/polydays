@@ -28,6 +28,24 @@ Development builds use `just android`. Use [EAS Build](https://docs.expo.dev/bui
 
 The custom module is in `apps/client/modules/polydays-storage`; Expo autolinking includes its SQLite repository, Credential Manager integration, WorkManager sender and RemoteViews widget. Generate Android code with Expo prebuild. Do not edit the generated `apps/client/android` directory.
 
+## Application releases
+
+Always publish Android and macOS together from the same commit and version. On the configured Apple Silicon MacBook:
+
+```sh
+just release-build
+# Commit the release changes, then rebuild from that commit.
+just release
+```
+
+`just release` runs both builds before publishing a GitHub Release. Assets are staged in `.data/releases/<version>` with checksums and a source manifest; publishing refuses missing platform assets, changed checksums, an uncommitted tree or artifacts from another commit. A draft holds both platforms before the release becomes public.
+
+Set the version in the root, client and macOS package manifests, Expo `app.json`, and desktop Cargo/Tauri manifests. Increase Android's `versionCode` for each release. Add the release notes at `docs/releases/<version>.md`.
+
+The root `.env` supplies `EXPO_PUBLIC_API_URL` and four private signing settings: `POLYDAYS_ANDROID_KEYSTORE` (absolute path), `POLYDAYS_ANDROID_STORE_PASSWORD`, `POLYDAYS_ANDROID_KEY_ALIAS` and `POLYDAYS_ANDROID_KEY_PASSWORD`. Preserve the keystore in `.data/signing/` and its passwords for updates; copy them securely when changing build machines. The Gradle init script applies the release identity without editing generated Android code. Register that certificate's SHA-1 in the Google Android OAuth client.
+
+macOS requires Rust and Xcode. The Tauri host bundles the same web export and uses a restricted native API transport; Google sign-in opens the system browser for device authorization. Session tokens remain in macOS Keychain. The current macOS artifacts are ad-hoc signed and not notarized because this machine has no Developer ID identity; downloaded copies are subject to Gatekeeper. Configure a Developer ID and Apple notarization before general macOS distribution. macOS widgets are deferred.
+
 ## Offline data and recovery
 
 The first sign-in and initial download need a connection. Subsequent web navigation and reloads work offline after the service worker finishes installing. Browser data remains subject to browser storage retention and explicit site-data removal. Android uses a transactional SQLite repository; queued operations survive process death. Logout clears that account's local cache and asks before discarding pending work.
@@ -80,7 +98,7 @@ launchctl bootout "gui/$(id -u)/app.polydays.server"
 
 To restore the login service, run `launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/app.polydays.server.plist"`. Rebuild the web export with `just build` after client changes.
 
-Google Cloud project `polydays-20261023` has a testing audience restricted to the owner, a Polydays name and logo, the web client described above, and an Android client for the current local signing certificate. The native request uses `GOOGLE_CLIENT_ID` as its server audience; `GOOGLE_ANDROID_CLIENT_ID` and `GOOGLE_CLOUD_PROJECT` in `.env` record the matching Cloud resources. Publishing the app for other people, configuring public domains, and registering a different Android distribution certificate are separate deployment steps.
+Google Cloud project `polydays-20261023` has a testing audience restricted to the owner, a Polydays name and logo, the web client described above, and separate Android clients for the local development and permanent release signing certificates. The native request uses `GOOGLE_CLIENT_ID` as its server audience; `GOOGLE_ANDROID_CLIENT_ID`, `GOOGLE_ANDROID_RELEASE_CLIENT_ID` and `GOOGLE_CLOUD_PROJECT` in `.env` record the matching Cloud resources. Publishing the app for other people and configuring public domains are separate deployment steps.
 
 ## T3 worktrees
 

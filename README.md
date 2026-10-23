@@ -2,7 +2,7 @@
 
 # Polydays
 
-A personal task planner for daily wake intervals. One React Native application runs on Android and the web, including macOS browsers. Tasks, recurring work, completed history and schedule rules remain available offline.
+A personal task planner for daily wake intervals. One React Native application runs on Android, the web and a macOS Tauri host. Tasks, recurring work, completed history and schedule rules remain available offline.
 
 Requires Bun 1.4+, Node.js 22.18+, Vite+ (`vp`) and [Just](https://just.systems/). BoxDB's published native client supports macOS ARM64 and Linux x64 with glibc 2.35+.
 
@@ -33,4 +33,4 @@ Android settings include **Добавить виджет**. Its checkboxes save 
 
 See [deployment and Google setup](docs/deployment.md), [product rules](docs/product.md), [design system](DESIGN.md) and [synchronisation contracts](docs/synchronisation.md). Shared domain code lives in `packages/core`, the offline protocol in `packages/sync`, and platform adapters in `apps/client/src/data` and `apps/client/modules/polydays-storage`. The Node.js server uses BoxDB 0.5.0 and native `TIME` columns.
 
-The native macOS host and WidgetKit extension are a later stage. Google sign-in requires your OAuth configuration; local tests do not substitute for a real provider round trip.
+Every release includes Android and macOS packages. Run `just release` on the configured MacBook to build, verify and publish both together; see [release instructions](docs/deployment.md#application-releases). The macOS WidgetKit extension is a later stage. Google sign-in requires your OAuth configuration; local tests do not substitute for a real provider round trip.

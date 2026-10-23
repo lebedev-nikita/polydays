@@ -126,7 +126,7 @@ components:
 
 Polydays uses the user's pinned Todoist canon: compact task rows, warm white content, pale warm navigation, restrained tomato accents and system sans typography. Familiar navigation and separate completion circles keep repeated capture and completion direct.
 
-The shared React Native and React Native for Web interface stays light, including in system dark mode. Android widgets carry the same flat task-list language through native resources. This records the built system; the direction contract is [Task lists](apps/client/.impeccable/surfaces/apps-client-src-app.md), with domain language in [CONTEXT.md](CONTEXT.md) and product authority in [docs/product.md](docs/product.md).
+The shared React Native and React Native for Web interface stays light, including in system dark mode. The macOS host bundles the shared RN Web client, reusing its components and tokens; macOS widgets remain deferred. Android widgets carry the same flat task-list language through native resources. This records the built system; the direction contract is [Task lists](apps/client/.impeccable/surfaces/apps-client-src-app.md), with domain language in [CONTEXT.md](CONTEXT.md) and product authority in [docs/product.md](docs/product.md).
 
 **Key Characteristics:**
 
@@ -179,6 +179,8 @@ At window width **850 or greater**, the shell uses a left sidebar (244 source un
 
 Interval choices form a wrapping row with 0.5rem gaps; they are not constrained to a single horizontal strip. Priority and recurrence choices also wrap. Main content scrolls with bottom padding (70 source units wide, 100 narrow) to leave room around fixed navigation and the add action. Native content is inside top and bottom safe areas.
 
+The browser device authorization screen uses a `ScrollView` with growing, centred content and outer padding (24 source units). Its full-width white panel has a local maximum width (410 source pixels), a fine border, `rounded.xl` corners, `spacing.8` padding (2rem) and `spacing.6` gaps. Short viewports scroll vertically so the heading and both actions remain reachable. These are source layout values, not measured native dimensions or new system tokens.
+
 The frontmatter retains source `rem` values. On web these resolve against the browser root; NativeWind's installed Metro default inlines rem at 14 and this app supplies no override. Explicit source pixels and React Native dimensions describe style inputs, not measured physical pixels or universal Android dp guarantees. Native font scaling can change text and row height. Widget XML dimensions below are explicitly dp/sp.
 
 ## Elevation & Depth
@@ -202,6 +204,12 @@ Web interactive controls use the global tomato focus-visible outline (2px, offse
 ### Inputs / Fields
 
 White, finely bordered fields with small corners, dark text and neutral-priority placeholders. Labels sit above with a 0.375rem gap. Fields have a source minimum height of 3rem, or 6rem for multiline descriptions. Web caret is tomato; focus uses the global outline without an authored border change. Errors appear in the shared pale-red alert container; saved feedback is green.
+
+### Browser device authorization
+
+The [device authorization screen](apps/client/src/app/device.tsx) retains the shared `Field`, primary and secondary `Button`, and `ErrorMessage`. A semibold title identifies Mac sign-in; supporting copy asks users to approve only a sign-in they initiated, followed by the labelled code, account email, primary “Разрешить вход” and secondary “Отклонить”. Both actions disable while busy or when the code is empty; the field becomes noneditable while busy. Invalid or expired codes direct the user to restart sign-in on Mac; other request failures ask them to check the code and retry. Unauthenticated visitors see the shared sign-in screen.
+
+A polite live `Text` stays mounted beneath the heading, initially empty. Approval or denial updates it with the outcome and next step in regular ink body text, while the form and actions disappear. This persistent announcement and the scrolling layout are part of the built browser interaction.
 
 ### Chips / Choices
 

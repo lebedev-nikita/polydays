@@ -1,4 +1,6 @@
 import { betterAuth } from "better-auth";
+import { bearer } from "better-auth/plugins/bearer";
+import { deviceAuthorization } from "better-auth/plugins/device-authorization";
 import { expo } from "@better-auth/expo";
 import { betterAuthAdapter } from "@boxdb/better-auth-adapter";
 import type { BoxDB } from "@boxdb/client";
@@ -20,7 +22,16 @@ export async function createAuth(db: BoxDB, config: AuthConfig) {
     secret: config.secret,
     database: betterAuthAdapter(db),
     trustedOrigins: [config.webOrigin, "polydays://"],
-    plugins: [expo()],
+    plugins: [
+      expo(),
+      bearer(),
+      deviceAuthorization({
+        verificationUri: `${config.baseURL}/device`,
+        validateClient: (clientId) => clientId === "polydays-macos",
+        expiresIn: "10m",
+        interval: "5s",
+      }),
+    ],
     socialProviders:
       config.googleClientId && config.googleClientSecret
         ? {
@@ -44,8 +55,9 @@ export async function createAuth(db: BoxDB, config: AuthConfig) {
     const exists =
       await tx.query`SELECT name FROM sqlite_master WHERE type=${"table"} AND name=${"user"}`.get();
     if (!exists) {
-      const adapter = betterAuthAdapter(db)(options);
-      const schema = await adapter.createSchema?.(options);
+      const schemaOptions = { ...options, plugins: [expo(), bearer()] };
+      const adapter = betterAuthAdapter(db)(schemaOptions);
+      const schema = await adapter.createSchema?.(schemaOptions);
       if (!schema) throw new Error("Адаптер BoxDB не смог создать схему авторизации.");
       await tx.exec(schema.code);
     }

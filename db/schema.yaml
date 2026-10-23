@@ -3,6 +3,18 @@ version: 1
 pragmas:
   application_id: 1112496196
 tables:
+  deviceCode:
+    columns:
+      id: TEXT PRIMARY KEY
+      deviceCode: TEXT
+      userCode: TEXT
+      userId?: TEXT
+      expiresAt: TEXT
+      status: TEXT
+      lastPolledAt?: TEXT
+      pollingInterval?: INTEGER
+      clientId?: TEXT
+      scope?: TEXT
   polydays_changes:
     columns:
       seq: INTEGER PRIMARY KEY AUTOINCREMENT
@@ -38,6 +50,16 @@ tables:
     constraints:
       - primary_key: [user_id, version_id, slot_id]
 indexes:
+  deviceCode_deviceCode_idx:
+    type: unique
+    table: deviceCode
+    expressions:
+      - '"deviceCode"'
+  deviceCode_userCode_idx:
+    type: unique
+    table: deviceCode
+    expressions:
+      - '"userCode"'
   polydays_changes_user_seq:
     type: regular
     table: polydays_changes
@@ -48,3 +70,6 @@ migrations:
   - version: "20261022000000"
     name: initial
     checksum: 0115d4b7abeb0cf78b53fa8c0d392b00ba9ee524bea2c7a1eac879ec1b396e69
+  - version: "20261023080000"
+    name: device_authorization
+    checksum: a2135b6f897aac5bc0fcd18f04bb2890ed67693e4842cd309ae89e126a8dee40

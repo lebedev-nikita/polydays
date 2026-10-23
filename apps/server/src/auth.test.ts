@@ -27,6 +27,49 @@ it("initialises Better Auth against the real BoxDB adapter", async () => {
   }
 });
 
+it("approves a desktop device in the browser and redeems its code once for a bearer session", async () => {
+  const db = await openDatabase(":memory:");
+  try {
+    const auth = await createAuth(db, config);
+    const context = await auth.$context;
+    const user = await context.internalAdapter.createUser(
+      { name: "Owner", email: config.ownerEmail, emailVerified: true },
+      { method: "oauth" },
+    );
+    const browserSession = await context.internalAdapter.createSession(user.id);
+    const headers = new Headers({ Authorization: `Bearer ${browserSession.token}` });
+    await expect(auth.api.deviceCode({ body: { client_id: "unknown-client" } })).rejects.toThrow();
+    const code = await auth.api.deviceCode({ body: { client_id: "polydays-macos" } });
+    expect(code.verification_uri_complete).toContain("/device?user_code=");
+    await expect(
+      auth.api.deviceApprove({ body: { userCode: code.user_code }, headers: new Headers() }),
+    ).rejects.toThrow();
+    await auth.api.deviceVerify({ query: { user_code: code.user_code }, headers });
+    await auth.api.deviceApprove({ body: { userCode: code.user_code }, headers });
+    const body = {
+      client_id: "polydays-macos",
+      device_code: code.device_code,
+      grant_type: "urn:ietf:params:oauth:grant-type:device_code" as const,
+    };
+    const granted = await auth.api.deviceToken({ body });
+    const session = await auth.api.getSession({
+      headers: new Headers({ Authorization: `Bearer ${granted.access_token}` }),
+    });
+    expect(session?.user.id).toBe(user.id);
+    await expect(auth.api.deviceToken({ body })).rejects.toThrow();
+    await auth.api.signOut({
+      headers: new Headers({ Authorization: `Bearer ${granted.access_token}` }),
+    });
+    expect(
+      await auth.api.getSession({
+        headers: new Headers({ Authorization: `Bearer ${granted.access_token}` }),
+      }),
+    ).toBeNull();
+  } finally {
+    await db.close();
+  }
+});
+
 it("serialises first-time auth schema creation across independent database connections", async () => {
   const directory = await mkdtemp(join(tmpdir(), "polydays-auth-"));
   const clients: Awaited<ReturnType<typeof openDatabase>>[] = [];

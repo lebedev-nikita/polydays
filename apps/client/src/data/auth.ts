@@ -1,5 +1,6 @@
 import { createAuthClient } from "better-auth/react";
 import { Platform } from "react-native";
+import { desktopSignIn, desktopSignOut, isDesktop } from "./desktop.web";
 
 export const apiURL =
   process.env.EXPO_PUBLIC_API_URL ||
@@ -8,12 +9,17 @@ export const apiURL =
       ? "http://localhost:3000"
       : globalThis.location.origin
     : "http://10.0.2.2:3000");
-export const authClient = createAuthClient({ baseURL: apiURL });
+const webClient = createAuthClient({ baseURL: apiURL });
+export const authClient = { signOut: () => (isDesktop() ? desktopSignOut() : webClient.signOut()) };
 export const authCookie = async () => "";
 export async function signInGoogle() {
-  const result = await authClient.signIn.social({
+  if (isDesktop()) return desktopSignIn();
+  const result = await webClient.signIn.social({
     provider: "google",
-    callbackURL: `${globalThis.location.origin}/current`,
+    callbackURL:
+      globalThis.location.pathname === "/device"
+        ? globalThis.location.href
+        : `${globalThis.location.origin}/current`,
   });
   if (result.error) throw new Error(result.error.message || "Не удалось войти через Google.");
 }

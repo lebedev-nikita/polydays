@@ -16,6 +16,8 @@ test-results/
 playwright-report/
 apps/client/android/
 apps/client/ios/
+apps/macos/src-tauri/target/
+apps/macos/src-tauri/gen/
 .impeccable/review/
 .impeccable/mocks/
 .impeccable/build/

@@ -28,3 +28,11 @@ e2e:
 native-check:
     cd apps/client && bunx expo prebuild --platform android --no-install
     cd apps/client/android && ./gradlew :app:assembleDebug :polydays-storage:connectedDebugAndroidTest -PreactNativeArchitectures=arm64-v8a
+
+release-build:
+    vp run release:build
+
+release-publish:
+    vp run release:publish
+
+release: release-build release-publish

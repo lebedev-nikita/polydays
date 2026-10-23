@@ -25,6 +25,7 @@ import type { AppRouter } from "../../../server/src/api";
 import type { Account } from "./contract";
 import { apiURL, authClient, authCookie, signInGoogle } from "./auth";
 import { persist, runtime } from "./runtime";
+import { apiFetch } from "./transport";
 
 const Session = Schema.Struct({
   user: Schema.NullOr(
@@ -59,7 +60,7 @@ export class AppStore {
       httpLink({
         url: `${apiURL}/trpc`,
         headers: () => this.headers(),
-        fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
+        fetch: (input, init) => apiFetch(input, { ...init, credentials: "include" }),
       }),
     ],
   });
@@ -89,7 +90,7 @@ export class AppStore {
         this.publish({ account, local: stored?.state ?? emptyState(account.id), loaded: true });
       }
       try {
-        const response = await fetch(`${apiURL}/api/config`);
+        const response = await apiFetch(`${apiURL}/api/config`);
         if (response.ok) {
           const config = Schema.decodeUnknownSync(ServerConfig)(await response.json());
           this.publish({ google: config.google, devAvailable: config.devAuth });
@@ -105,7 +106,7 @@ export class AppStore {
     }
   }
   async refreshSession(dev: boolean) {
-    const response = await fetch(`${apiURL}/api/session`, {
+    const response = await apiFetch(`${apiURL}/api/session`, {
       credentials: "include",
       headers: dev ? { "x-polydays-dev": "1" } : await this.headers(),
     });

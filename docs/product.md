@@ -50,7 +50,7 @@ Display priorities with the familiar P1–P4 convention: high/red, medium/orange
 
 ## Platforms and access
 
-- Version one includes an installed Android application and a web application; web is sufficient for initial macOS use. An installed macOS application is a later phase.
+- Starting with 0.1.0, every release includes installed Android and macOS applications from the same version and source commit, alongside the web application. The macOS host bundles the shared RN Web client; macOS widgets remain a later phase.
 - Android widgets are required; macOS widgets are required in the future native macOS phase. Show the current polyday, its unfinished tasks and all overdue tasks individually, with priorities and deadlines. A checkbox completes a task, including offline; tapping its title opens it in the app.
 - Web, Android and future macOS must share an application codebase, except for platform-specific code. Platform shells must not become independent implementations of task, schedule or recurrence rules.
 - Google sign-in is required.
