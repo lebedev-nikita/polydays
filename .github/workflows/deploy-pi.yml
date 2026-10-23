@@ -1,0 +1,71 @@
+name: Check and deploy Raspberry Pi
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: polydays-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+      - run: bun run check && bun run typecheck && bun run test
+      - name: Check deployment scripts
+        run: shellcheck deploy/raspberry-pi/*.sh
+      - name: Build browser test application
+        run: bun run build && bun run prepare:web
+        env:
+          EXPO_PUBLIC_API_URL: http://localhost:3400
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:e2e
+      - name: Build production web application
+        run: bun run build && bun run prepare:web
+        env:
+          EXPO_PUBLIC_API_URL: https://pi.gibbon-parrotfish.ts.net
+      - name: Package source and web application
+        run: |
+          stage=$(mktemp -d)
+          git archive "$GITHUB_SHA" | tar -xf - -C "$stage"
+          cp -R apps/client/dist "$stage/apps/client/dist"
+          tar -czf release.tar.gz -C "$stage" .
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: polydays-server-${{ github.sha }}
+          path: release.tar.gz
+          retention-days: 7
+          compression-level: 0
+
+  deploy:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: [self-hosted, Linux, ARM64, polydays-pi]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: polydays-server-${{ github.sha }}
+      - name: Install and activate verified commit
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+        run: /usr/local/libexec/polydays-deploy "$DEPLOY_SHA" < release.tar.gz
+      - name: Verify Tailscale HTTPS
+        run: curl --fail --show-error --retry 5 --retry-delay 2 https://pi.gibbon-parrotfish.ts.net/api/health

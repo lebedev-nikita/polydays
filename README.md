@@ -31,6 +31,6 @@ Android builds require JDK 21, Android SDK 37, Build Tools 37.0.0, NDK 27.1.1229
 
 Android settings include **Добавить виджет**. Its checkboxes save completion offline without a running React application. Background delivery and refresh depend on Android scheduling; the widget displays its represented date and update state.
 
-See [deployment and Google setup](docs/deployment.md), [product rules](docs/product.md), [design system](DESIGN.md) and [synchronisation contracts](docs/synchronisation.md). Shared domain code lives in `packages/core`, the offline protocol in `packages/sync`, and platform adapters in `apps/client/src/data` and `apps/client/modules/polydays-storage`. The Node.js server uses BoxDB 0.5.0 and native `TIME` columns.
+See [deployment and Google setup](docs/deployment.md), [product rules](docs/product.md), [design system](DESIGN.md) and [synchronisation contracts](docs/synchronisation.md). Shared domain code lives in `packages/core`, the offline protocol in `packages/sync`, and platform adapters in `apps/client/src/data` and `apps/client/modules/polydays-storage`. The Node.js server uses BoxDB 0.5.1 and native `TIME` columns.
 
 Every release includes Android and macOS packages. Run `just release` on the configured MacBook to build, verify and publish both together; see [release instructions](docs/deployment.md#application-releases). The macOS WidgetKit extension is a later stage. Google sign-in requires your OAuth configuration; local tests do not substitute for a real provider round trip.

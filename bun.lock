@@ -70,8 +70,8 @@
       "name": "@polydays/server",
       "dependencies": {
         "@better-auth/expo": "1.7.12",
-        "@boxdb/better-auth-adapter": "0.5.0",
-        "@boxdb/client": "0.5.0",
+        "@boxdb/better-auth-adapter": "0.5.1",
+        "@boxdb/client": "0.5.1",
         "@polydays/core": "workspace:*",
         "@polydays/sync": "workspace:*",
         "@trpc/server": "^11.19.0",
@@ -265,9 +265,9 @@
 
     "@blazediff/core": ["@blazediff/core@1.10.0", "", {}, "sha512-AOQff0zgR7cGsZL+4E7hVkmujoPUpm0J9xzWGWZj5wCjd3gmxESXAPfKyuzs93VdpQNFhHlBhfOjrcZ+XTERtQ=="],
 
-    "@boxdb/better-auth-adapter": ["@boxdb/better-auth-adapter@0.5.0", "", { "peerDependencies": { "@boxdb/client": "^0.5.0", "better-auth": "^1.7.7" } }, "sha512-FQJAhW7gdeTgB9zjHVrzTGlmOjevm+MJ9+Wbec36mXDYEwE3yAyiAV4pgfyQdEgk8FzPMnMNSHrOptxJnpAx+A=="],
+    "@boxdb/better-auth-adapter": ["@boxdb/better-auth-adapter@0.5.1", "", { "peerDependencies": { "@boxdb/client": "^0.5.1", "better-auth": "^1.7.7" } }, "sha512-9qsBf8l/OoTCkd5jGnEPZCRH7N4BKDrOcVFEdOl9gJRorlJNg+69aJbyahLzWrBAFAH6dE7mOS8DfOilxgIdzA=="],
 
-    "@boxdb/client": ["@boxdb/client@0.5.0", "", { "os": [ "linux", "darwin", ], "cpu": [ "x64", "arm64", ] }, "sha512-w7MiJNz2irnbTXZmE9wWB/H6yak1rwYKgUrz88NnJFj8lCrsaJJQ8z4ZDXEp7Jpxade3pbrF17C0aOQidQRu9Q=="],
+    "@boxdb/client": ["@boxdb/client@0.5.1", "", { "os": [ "linux", "darwin", ], "cpu": [ "x64", "arm64", ] }, "sha512-QS7gmCmjzCfmLu4ve9UfC1taNGJHzhsuZ1CSFXWs9SPiYyYFtTQFS5Hq2Z3hi6M0P1+egNl33d/SSqWfOrk5aA=="],
 
     "@effect/vitest": ["@effect/vitest@4.0.0-rc.118", "", { "peerDependencies": { "effect": "^4.0.0-rc.118", "vitest": ">=5.0.0 <6.0.0" } }, "sha512-O0CPgtFVhkB+pyFtjP4up2XF4uVWsPgUmlv4hMjq8ARLOPKYix+uu3AUFIUKRHjzzQpx+JPce6KPhD6Flkrfag=="],
 

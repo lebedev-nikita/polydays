@@ -55,10 +55,31 @@ The first sign-in and initial download need a connection. Subsequent web navigat
 Keep the server database, its logical metadata and any SQLite sidecars together. For a simple cold backup, stop the Node process and copy the complete database directory to a separate destination. For continuous backups, BoxDB documents [Litestream replication and restore](https://github.com/lebedev-nikita/boxdb/blob/main/docs/replication.md). Restore into a new location and validate with the matching BoxDB CLI before serving it:
 
 ```sh
-bunx --package @boxdb/cli@0.5.0 boxdb check /path/to/restored.db --full
+bunx --package @boxdb/cli@0.5.1 boxdb check /path/to/restored.db --full
 ```
 
 The application merges device operations through its API. Database file replication is a backup mechanism and does not replace that protocol.
+
+## Raspberry Pi service and CI/CD
+
+The production server and bundled web client run at <https://pi.gibbon-parrotfish.ts.net>, reachable from the tailnet. Tailscale Serve forwards HTTPS on port 443 to `127.0.0.1:3000`; Funnel is disabled. Google OAuth permits this origin, its `:8443` variant, and `https://pi.gibbon-parrotfish.ts.net/api/auth/callback/google`. The production web client uses port 443.
+
+The 64-bit Bookworm host uses Node.js from [.node-version](../.node-version), Bun 1.4.3, and BoxDB 0.5.1 with its bundled Linux ARM64 addon. The `polydays` system account owns application releases under `/opt/polydays/releases` and persistent data under `/var/lib/polydays`. `/opt/polydays/current` points to the active commit. The root-only `/etc/polydays/server.env` supplies Google credentials, owner email, session secret, the database path and the Pi HTTPS origin; development authentication is disabled.
+
+[The workflow](../.github/workflows/deploy-pi.yml) checks formatting and types, runs unit and browser tests on a GitHub-hosted Linux runner, builds the production web client, and uploads a source-and-web artifact. Only successful `main` runs deploy. A repository-specific ARM64 runner named `polydays-pi` downloads that artifact on the Pi; pull requests run checks on GitHub and never enter this deployment job. The runner uses GitHub's outbound connection, so CI needs no SSH key or separate Tailscale credential.
+
+[The deployment script](../deploy/raspberry-pi/deploy.sh) serialises deployments, installs locked production dependencies, verifies the native BoxDB addon, stops the service for a consistent database snapshot, switches the release symlink, and checks readiness. Failed startups restore the previous code and database snapshot. The current and previous releases remain available, while database snapshots accumulate in `/var/lib/polydays/backups`; copy these to separate storage and review retention as data grows. Deployments preserve the database and private environment outside the release directory.
+
+The systemd unit and privileged deployment helper are installed by `sudo bash deploy/raspberry-pi/bootstrap.sh`. This assumes Node.js and Bun are already installed at `/usr/local/bin` and Tailscale is connected. The GitHub runner is installed in `/opt/polydays/runner` as `polydays`, registered only to this repository, and managed by its `actions.runner.*` systemd service. The account may restart or stop only `polydays.service` through sudo. Changes to the privileged unit or deployment helper must be installed explicitly with the bootstrap script; application deployments cannot replace them.
+
+```sh
+ssh pi 'sudo systemctl status polydays --no-pager'
+ssh pi 'sudo journalctl -u polydays -n 100 --no-pager'
+ssh pi 'sudo systemctl restart polydays'
+curl --fail https://pi.gibbon-parrotfish.ts.net/api/health
+```
+
+Push to `main` to deploy automatically, or rerun **Check and deploy Raspberry Pi** on `main` from GitHub Actions. The Pi starts with its own database; moving MacBook data requires a separate consistent transfer.
 
 ## Local MacBook service
 
