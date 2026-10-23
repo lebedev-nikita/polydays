@@ -6,7 +6,7 @@ import {
   type TextInputProps,
   type ViewProps,
 } from "react-native";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 export const colors = {
   ink: "#252421",
@@ -32,6 +32,7 @@ export function Button({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
       className={`min-h-12 flex-row items-center justify-center gap-2 rounded-md px-4 py-2.5 ${secondary ? "border border-line bg-white active:bg-sidebar" : "bg-accent active:opacity-80"} ${disabled ? "opacity-40" : ""}`}
@@ -42,16 +43,31 @@ export function Button({
     </Pressable>
   );
 }
-export function Field({ label, ...props }: TextInputProps & { label: string }) {
+export function Field({
+  label,
+  error,
+  ...props
+}: TextInputProps & { label: string; error?: string }) {
+  const id = useId();
   return (
     <View className="gap-1.5">
-      <Text className="text-xs font-semibold text-muted">{label}</Text>
+      <Text nativeID={`${id}-label`} className="text-xs font-semibold text-muted">
+        {label}
+      </Text>
       <TextInput
         {...props}
         accessibilityLabel={label}
+        accessibilityLabelledBy={`${id}-label`}
+        aria-describedby={error ? `${id}-error` : undefined}
+        aria-invalid={!!error}
         placeholderTextColor="#77736d"
-        className={`min-h-12 rounded-md border border-line bg-white px-3 py-2 text-[15px] text-ink ${props.multiline ? "min-h-24" : ""}`}
+        className={`min-h-12 rounded-md border bg-white px-3 py-2 text-[15px] text-ink ${error ? "border-accent" : "border-line"} ${props.multiline ? "min-h-24" : ""}`}
       />
+      {error && (
+        <Text nativeID={`${id}-error`} accessibilityRole="alert" className="text-sm text-accent">
+          {error}
+        </Text>
+      )}
     </View>
   );
 }

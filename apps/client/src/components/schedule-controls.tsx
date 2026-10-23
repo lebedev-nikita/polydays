@@ -1,8 +1,8 @@
-import { useRef, useState, type ComponentRef } from "react";
+import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from "react";
 import { Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { addDays } from "@polydays/core";
-import { Field, colors } from "./primitives";
+import { Field, ErrorMessage, colors } from "./primitives";
 import {
   calendarDateLabel,
   calendarDays,
@@ -116,18 +116,55 @@ export function TimeZoneControl({
   );
 }
 
-export function EffectiveDateControl({
-  value,
-  today,
-  onChange,
-}: {
+export function EffectiveDateControl(props: {
   value: string;
   today: string;
   onChange: (date: string) => void;
 }) {
+  return (
+    <DateControl
+      {...props}
+      label="Когда применить"
+      accessibilityLabel="Дата начала действия расписания"
+      minDate={props.today}
+      hint="Прошлые полидни останутся без изменений."
+    />
+  );
+}
+
+export function DateControl({
+  value,
+  today,
+  onChange,
+  label,
+  accessibilityLabel = label,
+  minDate,
+  hint,
+  clearable = false,
+  error,
+  trailing,
+  minimal = false,
+  inline = false,
+}: {
+  value: string;
+  today: string;
+  onChange: (date: string) => void;
+  label: string;
+  accessibilityLabel?: string;
+  minDate?: string;
+  hint?: string;
+  clearable?: boolean;
+  error?: string;
+  trailing?: ReactNode;
+  minimal?: boolean;
+  inline?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<ComponentRef<typeof View>>(null);
-  const [month, setMonth] = useState(value.slice(0, 7));
+  const [month, setMonth] = useState((value || today).slice(0, 7));
+  useEffect(() => {
+    if (inline && value) setMonth(value.slice(0, 7));
+  }, [inline, value]);
   const days = calendarDays(month);
   const monthLabel = new Intl.DateTimeFormat("ru-RU", {
     month: "long",
@@ -137,41 +174,60 @@ export function EffectiveDateControl({
   const choose = (date: string) => {
     onChange(date);
     setOpen(false);
-    trigger.current?.focus();
+    if (!inline) trigger.current?.focus();
   };
   return (
     <View className="gap-3">
-      <View className="gap-1.5">
-        <Text className="text-xs font-semibold text-muted">Когда применить</Text>
-        <Pressable
-          ref={trigger}
-          accessibilityRole="button"
-          accessibilityLabel={`Дата начала действия расписания: ${calendarDateLabel(value, today)}`}
-          accessibilityState={{ expanded: open }}
-          onPress={() => {
-            setMonth(value.slice(0, 7));
-            setOpen(!open);
-          }}
-          className="min-h-12 flex-row items-center gap-3 self-start rounded-md border border-line px-3 py-2 active:bg-sidebar"
-        >
-          <CalendarDays size={17} color={colors.muted} />
-          <Text className="shrink text-[15px] text-ink">{calendarDateLabel(value, today)}</Text>
-          <ChevronDown size={16} color={colors.muted} />
-        </Pressable>
-      </View>
-      <Text className="text-xs leading-5 text-muted">Прошлые полидни останутся без изменений.</Text>
-      {open && (
+      {!inline && (
+        <View className="flex-row flex-wrap items-start gap-3">
+          <View
+            className={minimal && open ? "gap-1.5" : "min-w-0 flex-1 gap-1.5"}
+            style={{ minWidth: minimal && open ? 48 : 200 }}
+          >
+            {!minimal && <Text className="text-xs font-semibold text-muted">{label}</Text>}
+            <Pressable
+              ref={trigger}
+              accessibilityRole="button"
+              accessibilityLabel={`${accessibilityLabel}: ${value ? calendarDateLabel(value, today) : "Без даты"}`}
+              aria-expanded={open}
+              onPress={() => {
+                setMonth((value || today).slice(0, 7));
+                setOpen(!open);
+              }}
+              className={
+                minimal && open
+                  ? "h-12 w-12 items-center justify-center rounded-md bg-selected"
+                  : "min-h-12 flex-row items-center gap-3 self-start rounded-md border border-line px-3 py-2 active:bg-sidebar"
+              }
+            >
+              <CalendarDays size={17} color={minimal && open ? colors.accent : colors.muted} />
+              {!(minimal && open) && (
+                <>
+                  <Text className="shrink text-[15px] text-ink">
+                    {value ? calendarDateLabel(value, today) : "Без даты"}
+                  </Text>
+                  <ChevronDown size={16} color={colors.muted} />
+                </>
+              )}
+            </Pressable>
+          </View>
+          {trailing}
+        </View>
+      )}
+      {hint && <Text className="text-xs leading-5 text-muted">{hint}</Text>}
+      <ErrorMessage>{error}</ErrorMessage>
+      {(open || inline) && (
         <View
-          className="gap-2 rounded-lg border border-line p-2"
-          accessibilityLabel="Календарь начала действия расписания"
+          className={inline ? "gap-1" : "gap-2 rounded-lg border border-line p-2"}
+          accessibilityLabel={`Календарь: ${label}`}
         >
           <View className="flex-row items-center justify-between">
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Предыдущий месяц"
-              disabled={month <= today.slice(0, 7)}
+              disabled={!!minDate && month <= minDate.slice(0, 7)}
               onPress={() => setMonth(shiftMonth(month, -1))}
-              className={`h-12 w-12 items-center justify-center rounded-md active:bg-sidebar ${month <= today.slice(0, 7) ? "opacity-40" : ""}`}
+              className={`h-12 w-12 items-center justify-center rounded-md active:bg-sidebar ${minDate && month <= minDate.slice(0, 7) ? "opacity-40" : ""}`}
             >
               <ChevronLeft size={18} color={colors.muted} />
             </Pressable>
@@ -204,10 +260,13 @@ export function EffectiveDateControl({
                   key={date}
                   accessibilityRole="button"
                   accessibilityLabel={calendarDateLabel(date, today)}
-                  accessibilityState={{ selected: date === value, disabled: date < today }}
-                  disabled={date < today}
+                  accessibilityState={{
+                    selected: date === value,
+                    disabled: !!minDate && date < minDate,
+                  }}
+                  disabled={!!minDate && date < minDate}
                   onPress={() => choose(date)}
-                  className={`min-h-12 flex-1 items-center justify-center rounded-md ${date === value ? "bg-selected" : "active:bg-sidebar"} ${date < today ? "opacity-30" : ""}`}
+                  className={`min-h-12 flex-1 items-center justify-center rounded-md ${date === value ? "bg-selected" : "active:bg-sidebar"} ${minDate && date < minDate ? "opacity-30" : ""}`}
                 >
                   <Text
                     className={`text-sm ${date === value ? "font-semibold text-accent" : date.startsWith(month) ? "text-ink" : "text-muted"}`}
@@ -218,21 +277,33 @@ export function EffectiveDateControl({
               ))}
             </View>
           ))}
-          <View className="flex-row gap-2">
-            {[
-              { date: today, label: "Сегодня" },
-              { date: addDays(today, 1), label: "Завтра" },
-            ].map((choice) => (
-              <Pressable
-                key={choice.date}
-                accessibilityRole="button"
-                onPress={() => choose(choice.date)}
-                className="min-h-12 flex-1 items-center justify-center rounded-md active:bg-sidebar"
-              >
-                <Text className="text-sm text-accent">{choice.label}</Text>
-              </Pressable>
-            ))}
-          </View>
+          {!inline && (
+            <View className="flex-row gap-2">
+              {[
+                { date: today, label: "Сегодня" },
+                { date: addDays(today, 1), label: "Завтра" },
+              ].map((choice) => (
+                <Pressable
+                  key={choice.date}
+                  accessibilityRole="button"
+                  disabled={!!minDate && choice.date < minDate}
+                  onPress={() => choose(choice.date)}
+                  className="min-h-12 flex-1 items-center justify-center rounded-md active:bg-sidebar"
+                >
+                  <Text className="text-sm text-accent">{choice.label}</Text>
+                </Pressable>
+              ))}
+              {clearable && (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => choose("")}
+                  className="min-h-12 flex-1 items-center justify-center rounded-md active:bg-sidebar"
+                >
+                  <Text className="text-sm text-muted">Без даты</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
       )}
     </View>

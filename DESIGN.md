@@ -217,11 +217,11 @@ A polite live `Text` stays mounted beneath the heading, initially empty. Approva
 
 ### Chips / Choices
 
-Small rectangular choices with fine borders, rather than pill tags. Interval and scheduling selection uses tomato border/text with pale tomato fill. Priority selection instead uses a warm fill and stronger neutral border (`#aaa49a`), retaining its colored flag and P1–P4 name. Recurrence choices use tomato borders and pale fill; weekday checks switch warm fill to pale tomato.
+Small rectangular choices with fine borders, rather than pill tags. Interval and scheduling selection uses tomato border/text with pale tomato fill. The task composer uses quiet rounded toolbar chips. Its priority menu retains the colored flag and P1–P4 name, with a check marking selection. Recurrence choices use tomato borders and pale fill; weekday checks switch warm fill to pale tomato.
 
 ### Cards / Containers
 
-Settings panels are white, bordered and flat, with `panel` padding and 1.25rem internal gaps. The task editor is a bordered container or the modal composer, not a card around every task. The composer is fluid up to 560 source units wide and 90% maximum height; its body scrolls between separated header and footer. Its body padding (22 source units) and gap (18) are local form values, not a new spacing scale. Modal entry uses the platform `fade` animation, with no authored duration/easing.
+Settings panels are white, bordered and flat, with `panel` padding and 1.25rem internal gaps. The task editor is a bordered container or the modal composer, not a card around every task. The composer is fluid up to 560 source units wide. Below 600 source units it floats above the keyboard with rounded corners, a small handle and safe-area padding. Borderless title and description inputs sit above a horizontally scrolling property toolbar; the submit arrow stays fixed beside it. Destination and priority open short vertical menus above the inputs. Backlog and configured polydays serve as destinations; existing deadlines lead to their date settings until explicitly removed. The date panel replaces the composer body with shortcuts, a Monday-first calendar and an optional time control. Its “Готово” action accepts the draft; Back or Escape restores the previous properties. Recurrence opens separately, with labelled series boundaries and contextual timezone information. Task dates allow historical corrections; schedule dates retain their minimum date. Modal entry uses the platform `fade` animation, with no authored duration/easing.
 
 ### Navigation
 
@@ -233,7 +233,7 @@ Rows use a bottom separator, 0.5rem vertical padding and a source minimum height
 
 Preserve priority-first order and individual rows for recurring occurrences. Overdue metadata includes the original polyday date and name. Quick entry stays open after a new task saves, clears title/description, shows saved feedback and refocuses the title. Editing an existing task closes on save.
 
-On web, unmodified **Q** opens quick entry only for the focused screen when it is ready and its composer is closed. The handler ignores handled/repeated keys, Ctrl/Meta/Alt combinations, inputs, textareas, selects, editable content and dialog descendants. An existing deadline task initially exposes only date/time scheduling; **“Убрать дедлайн”** explicitly clears it before backlog or an untimed polyday can be selected.
+On web, unmodified **Q** opens quick entry only for the focused screen when it is ready and its composer is closed. The handler ignores handled/repeated keys, Ctrl/Meta/Alt combinations, inputs, textareas, selects, editable content and dialog descendants. Typing `!!` or `#` at the end of a title opens priority or destination choices; selecting a choice removes the trigger. An existing deadline task initially exposes only date/time scheduling; **“Убрать дедлайн”** explicitly clears it before backlog or an untimed polyday can be selected.
 
 ### Sync feedback and Android widget
 

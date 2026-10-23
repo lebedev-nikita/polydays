@@ -1,4 +1,12 @@
-import { useRef, useState, type ComponentRef } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+  type RefObject,
+} from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -8,13 +16,33 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native";
-import { X, Flag, Repeat2 } from "lucide-react-native";
+import {
+  X,
+  Flag,
+  Repeat2,
+  CalendarDays,
+  Plus,
+  ArrowUp,
+  ArrowLeft,
+  Inbox,
+  Sun,
+  Clock3,
+  Check,
+  CalendarOff,
+  CalendarArrowUp,
+} from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {
   activeVersion,
   addDays,
   dateAt,
+  deadlineInstant,
+  polydayForInstant,
+  polydaysOn,
+  versionForDate,
   ruleForDate,
   systemNow,
   type Recurrence,
@@ -23,8 +51,12 @@ import {
   type Task,
 } from "@polydays/core";
 import { useApp } from "./provider";
-import { Button, ErrorMessage, Field, colors, priorityName } from "./primitives";
+import { Button, ErrorMessage, colors, priorityName } from "./primitives";
 import { message } from "../data/store";
+import { DateControl } from "./schedule-controls";
+import { TimeField } from "./time-field";
+import { normalizeTimeInput } from "./time-input";
+import { timeZoneLabel } from "./schedule-options";
 
 const days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 type FormProps = {
@@ -32,6 +64,9 @@ type FormProps = {
   readonly task?: Task;
   readonly onClose: () => void;
   readonly editSeries?: boolean;
+  readonly closeRequest?: RefObject<(() => void) | null>;
+  readonly maxHeight?: number;
+  readonly onSwitchSeries?: () => void;
 };
 
 export function TaskComposer({
@@ -43,23 +78,62 @@ export function TaskComposer({
   onClose: () => void;
   scheduling: Scheduling;
 }) {
+  const closeRequest = useRef<(() => void) | null>(null);
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const mobile = width < 600;
+  const maxHeight = height - (mobile ? insets.top + insets.bottom + 24 : 64);
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      accessibilityLabel="Новая задача"
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => closeRequest.current?.()}
+    >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1 items-center justify-center bg-black/30 px-4 py-8"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className={`flex-1 items-center bg-black/30 ${mobile ? "justify-end" : "justify-center"}`}
+        style={{
+          paddingHorizontal: mobile ? 8 : 16,
+          paddingTop: mobile ? insets.top + 24 : 32,
+          paddingBottom: mobile ? insets.bottom + 8 : 32,
+        }}
       >
-        <View className="max-h-[90%] w-full max-w-[560px] rounded-xl bg-white shadow-xl">
-          {visible && <TaskForm scheduling={scheduling} onClose={onClose} />}
+        <View
+          className="w-full max-w-[560px]"
+          style={{
+            maxHeight,
+            flexShrink: 1,
+            borderRadius: mobile ? 24 : 16,
+          }}
+        >
+          {visible && (
+            <TaskForm
+              scheduling={scheduling}
+              onClose={onClose}
+              closeRequest={closeRequest}
+              maxHeight={maxHeight}
+            />
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
 
-export function TaskForm({ scheduling, task, onClose, editSeries = false }: FormProps) {
+export function TaskForm({
+  scheduling,
+  task,
+  onClose,
+  editSeries = false,
+  closeRequest,
+  maxHeight,
+  onSwitchSeries,
+}: FormProps) {
   const { store, calendar, series, now } = useApp();
   const titleRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const titleId = useId();
   const zone = calendar ? activeVersion(calendar, now).timeZone : "UTC";
   const today = dateAt(now, zone);
   const sourceSeries = editSeries ? series.find((item) => item.id === task?.seriesId) : undefined;
@@ -74,11 +148,21 @@ export function TaskForm({ scheduling, task, onClose, editSeries = false }: Form
   const initial = task?.scheduling ?? scheduling;
   const [kind, setKind] = useState<Scheduling["kind"]>(initial.kind);
   const [date, setDate] = useState(initial.kind === "backlog" ? today : initial.date);
-  const slots = calendar ? activeVersion(calendar, now).slots : [];
+  const initialSlots = calendar ? activeVersion(calendar, now).slots : [];
   const [slotId, setSlotId] = useState(
-    initial.kind === "polyday" ? initial.slotId : (slots[0]?.id ?? ""),
+    seriesRule?.recurrence.kind === "polyday"
+      ? seriesRule.recurrence.slotId
+      : initial.kind === "polyday"
+        ? initial.slotId
+        : (initialSlots[0]?.id ?? ""),
   );
-  const [time, setTime] = useState(initial.kind === "deadline" ? initial.time : "09:00");
+  const [time, setTime] = useState(
+    seriesRule?.recurrence.kind === "time"
+      ? seriesRule.recurrence.time
+      : initial.kind === "deadline"
+        ? initial.time
+        : "09:00",
+  );
   const [repeat, setRepeat] = useState<"none" | "every-polyday" | "polyday" | "time">(
     seriesRule?.recurrence.kind ?? "none",
   );
@@ -87,24 +171,176 @@ export function TaskForm({ scheduling, task, onClose, editSeries = false }: Form
       ? seriesRule.recurrence.weekdays
       : [],
   );
-  const [startDate, setStartDate] = useState(seriesRule?.startDate ?? today);
+  const [startDate, setStartDate] = useState(
+    seriesRule?.startDate ?? (initial.kind === "backlog" ? today : initial.date),
+  );
   const [endDate, setEndDate] = useState(seriesRule?.endDate ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [openProperty, setOpenProperty] = useState<
+    "schedule" | "priority" | "repeat" | "destination" | null
+  >(null);
+  const propertySnapshot = useRef({
+    kind,
+    date,
+    slotId,
+    time,
+    repeat,
+    weekdays,
+    startDate,
+    endDate,
+  });
+  const shortcut = useRef<"priority" | "destination" | null>(null);
+  const openPanel = (panel: typeof openProperty) => {
+    if (openProperty === panel) {
+      setOpenProperty(null);
+      return;
+    }
+    propertySnapshot.current = { kind, date, slotId, time, repeat, weekdays, startDate, endDate };
+    shortcut.current = null;
+    setOpenProperty(panel);
+  };
+  const dismissPanel = () => {
+    if (openProperty === "schedule" || openProperty === "repeat") {
+      const previous = propertySnapshot.current;
+      setKind(previous.kind);
+      setDate(previous.date);
+      setSlotId(previous.slotId);
+      setTime(previous.time);
+      setRepeat(previous.repeat);
+      setWeekdays(previous.weekdays);
+      setStartDate(previous.startDate);
+      setEndDate(previous.endDate);
+    }
+    setOpenProperty(null);
+    shortcut.current = null;
+    titleRef.current?.focus();
+  };
+  const finishChoice = () => {
+    if (shortcut.current) setTitle((value) => value.replace(/(?:!!|#)$/, "").trimEnd());
+    shortcut.current = null;
+    setOpenProperty(null);
+    titleRef.current?.focus();
+  };
+  const [titleHeight, setTitleHeight] = useState(40);
+  const { width: formWidth } = useWindowDimensions();
+  useLayoutEffect(() => {
+    if (Platform.OS !== "web") return;
+    const input = titleRef.current as unknown as HTMLTextAreaElement | null;
+    if (!input) return;
+    const previousHeight = input.style.height;
+    input.style.height = "auto";
+    const height = Math.min(140, Math.max(40, input.scrollHeight));
+    input.style.height = previousHeight;
+    setTitleHeight(height);
+  }, [title, formWidth, openProperty]);
+  const [confirmClose, setConfirmClose] = useState(false);
+  const [confirmSwitch, setConfirmSwitch] = useState(false);
+  const [touched, setTouched] = useState<ReadonlyArray<string>>([]);
+  const saving = useRef(false);
+  const snapshot = JSON.stringify({
+    title,
+    description,
+    priority,
+    kind,
+    date,
+    slotId,
+    time,
+    repeat,
+    weekdays,
+    startDate,
+    endDate,
+  });
+  const original = useRef(snapshot);
+  const dirty = task ? original.current !== snapshot : !!(title || description);
+  const pendingLeave = useRef(onClose);
+  const requestLeave = (action: () => void, switching = false) => {
+    if (saving.current) return;
+    pendingLeave.current = action;
+    setConfirmSwitch(switching);
+    if (dirty) setConfirmClose(true);
+    else action();
+  };
+  const requestClose = () => (openProperty ? dismissPanel() : requestLeave(onClose));
+  useEffect(() => {
+    if (!closeRequest) return;
+    closeRequest.current = requestClose;
+    return () => {
+      closeRequest.current = null;
+    };
+  });
+  const errors: Record<string, string> = {};
+  if (!title.trim()) errors.title = "Введите название задачи.";
+  const checkDate = (key: string, value: string) => {
+    if (!validDate(value)) errors[key] = "Выберите дату в календаре.";
+  };
+  if (repeat === "none" && kind !== "backlog") checkDate("date", date);
+  if (repeat !== "none") {
+    checkDate("startDate", startDate);
+    if (endDate) checkDate("endDate", endDate);
+    if (endDate && !errors.endDate && !errors.startDate && endDate < startDate)
+      errors.endDate = "Окончание серии должно быть не раньше начала.";
+  }
+  const normalizedTime = normalizeTimeInput(time);
+  if (((repeat === "none" && kind === "deadline") || repeat === "time") && normalizedTime === null)
+    errors.time = "Введите время от 00:00 до 23:59.";
+  const slotDate =
+    repeat !== "none"
+      ? editSeries && startDate < addDays(today, 1)
+        ? addDays(today, 1)
+        : startDate
+      : date;
+  const validSlotDate = validDate(slotDate);
+  const slots =
+    calendar && validSlotDate
+      ? polydaysOn(calendar, slotDate).map((day) => ({
+          id: day.slotId,
+          name: day.name,
+          start: day.startTime,
+          end: day.endTime,
+        }))
+      : initialSlots;
+  if ((repeat === "none" && kind === "polyday") || repeat === "polyday") {
+    if (validSlotDate && !slots.some((slot) => slot.id === slotId))
+      errors.slotId = "Выберите полидень из расписания на эту дату.";
+  }
+  const touch = (key: string) =>
+    setTouched((previous) => (previous.includes(key) ? previous : [...previous, key]));
+  const fieldError = (key: string) => (touched.includes(key) ? errors[key] : undefined);
+  let placement = "";
+  if (calendar && repeat === "none" && kind === "deadline" && !errors.date && !errors.time) {
+    const view = polydayForInstant(
+      calendar,
+      deadlineInstant(calendar, date, normalizedTime ?? time),
+    );
+    placement = view.polyday
+      ? `${view.polyday.name} · ${formatDate(view.polyday.date)}${view.inSleepGap ? " · дедлайн во время сна" : ""}`
+      : "Дедлайн вне настроенного расписания";
+  }
   const submit = async () => {
-    if (!calendar) return;
+    if (!calendar || saving.current) return;
+    if (Object.keys(errors).length) {
+      setTouched(Object.keys(errors));
+      setError("Проверьте отмеченные поля.");
+      if (Object.keys(errors).some((key) => key !== "title"))
+        openPanel(repeat !== "none" ? "repeat" : "schedule");
+      if (errors.title) titleRef.current?.focus();
+      return;
+    }
+    saving.current = true;
     setBusy(true);
     setError(null);
     setSaved(false);
     try {
       if (!title.trim()) throw new Error("Введите название задачи.");
+      if (normalizedTime !== null) setTime(normalizedTime);
       const when: Scheduling =
         kind === "backlog"
           ? { kind }
           : kind === "polyday"
             ? { kind, date, slotId }
-            : { kind, date, time };
+            : { kind, date, time: normalizedTime ?? time };
       if (repeat !== "none") {
         if (endDate && endDate < startDate)
           throw new Error("Окончание серии должно быть не раньше начала.");
@@ -113,7 +349,7 @@ export function TaskForm({ scheduling, task, onClose, editSeries = false }: Form
             ? { kind: repeat }
             : repeat === "polyday"
               ? { kind: repeat, slotId, weekdays }
-              : { kind: repeat, time, weekdays };
+              : { kind: repeat, time: normalizedTime ?? time, weekdays };
         const rule = {
           effectiveDate: sourceSeries ? addDays(today, 1) : startDate,
           title: title.trim(),
@@ -160,244 +396,647 @@ export function TaskForm({ scheduling, task, onClose, editSeries = false }: Form
       if (task) onClose();
       else {
         setTitle("");
+        setTitleHeight(40);
         setDescription("");
+        setTouched([]);
+        setConfirmClose(false);
         setSaved(true);
         titleRef.current?.focus();
       }
     } catch (cause) {
       setError(message(cause));
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   };
-  const choices = (
-    [
-      { kind: "backlog", label: "Бэклог" },
-      { kind: "polyday", label: "Полидень" },
-      { kind: "deadline", label: "Дата и время" },
-    ] as const
-  ).filter(
-    (choice) =>
-      task?.scheduling.kind !== "deadline" || kind !== "deadline" || choice.kind === "deadline",
-  );
+  const dateLabel = (value: string) =>
+    value === today
+      ? "Сегодня"
+      : value === addDays(today, 1)
+        ? "Завтра"
+        : validDate(value)
+          ? formatDate(value)
+          : "Выберите дату";
+  const destinationLabel =
+    kind === "backlog"
+      ? "Бэклог"
+      : kind === "deadline"
+        ? placement.split(" · ")[0] || "Дедлайн"
+        : (slots.find((slot) => slot.id === slotId)?.name ?? "Полидень");
+  const scheduleLabel =
+    kind === "backlog"
+      ? "Дата"
+      : `${dateLabel(date)}${kind === "deadline" ? `, ${normalizedTime ?? time}` : ""}`;
+  const repeatLabel =
+    repeat === "none"
+      ? "Один раз"
+      : repeat === "every-polyday"
+        ? "Каждый полидень"
+        : `${weekdays.length ? weekdays.map((day) => days[day - 1]).join(", ") : "Ежедневно"} · ${repeat === "time" ? time : (slots.find((slot) => slot.id === slotId)?.name ?? "Полидень")}`;
+  const panel = openProperty === "schedule" || openProperty === "repeat";
+  const acceptPanel = () => {
+    const keys =
+      openProperty === "repeat"
+        ? ["startDate", "endDate", "slotId", "time"]
+        : ["date", "slotId", "time"];
+    const invalid = keys.filter((key) => errors[key]);
+    if (invalid.length) {
+      setTouched((previous) => [...new Set([...previous, ...invalid])]);
+      return;
+    }
+    if (normalizedTime !== null) setTime(normalizedTime);
+    setOpenProperty(null);
+    titleRef.current?.focus();
+  };
+  const chooseDay = (value: string) => {
+    setDate(value);
+    if (calendar) {
+      const available = polydaysOn(calendar, value);
+      if (!available.some((day) => day.slotId === slotId)) setSlotId(available[0]?.slotId ?? "");
+    }
+    if (kind === "backlog") setKind("polyday");
+    touch("date");
+  };
+  const nextMonday = addDays(today, 8 - (new Date(`${today}T12:00:00Z`).getUTCDay() || 7));
   return (
-    <View style={{ flexShrink: 1, minHeight: 0 }}>
-      <View className="flex-row items-center justify-between border-b border-line px-5 py-3">
-        <Text className="text-base font-semibold text-ink">
-          {editSeries ? "Изменить серию" : task ? "Задача" : "Новая задача"}
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Закрыть"
-          onPress={onClose}
-          className="h-12 w-12 items-center justify-center"
-        >
-          <X size={21} color={colors.muted} />
-        </Pressable>
-      </View>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: 22, gap: 18 }}
-      >
-        <TextInput
-          ref={titleRef}
-          accessibilityLabel="Название задачи"
-          placeholder="Что нужно сделать?"
-          placeholderTextColor="#77736d"
-          autoFocus
-          value={title}
-          onChangeText={setTitle}
-          onSubmitEditing={() => {
-            void submit();
-          }}
-          className="min-h-12 text-xl font-semibold text-ink"
-        />
-        <Field
-          label="Описание"
-          placeholder="Добавить подробности"
-          multiline
-          value={description}
-          onChangeText={setDescription}
-        />
-        {!editSeries && (
-          <View className="gap-3">
-            <Text className="text-xs font-semibold text-muted">Когда выполнить</Text>
-            <View className="flex-row gap-2">
-              {choices.map((choice) => (
-                <Pressable
-                  key={choice.kind}
-                  onPress={() => setKind(choice.kind)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: kind === choice.kind }}
-                  className={`min-h-12 flex-1 items-center justify-center rounded-md border px-2 ${kind === choice.kind ? "border-accent bg-selected" : "border-line"}`}
+    <View
+      className={panel ? "overflow-hidden rounded-3xl bg-white shadow-xl" : ""}
+      style={{ flexShrink: 1, minHeight: 0, maxHeight }}
+    >
+      {panel && formWidth < 600 && (
+        <View className="mt-2 h-1 w-9 self-center rounded-full bg-line" />
+      )}
+      {panel ? (
+        <>
+          <View className="flex-row items-center gap-2 px-3 py-2">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Отменить настройки"
+              onPress={dismissPanel}
+              className="h-12 w-12 items-center justify-center rounded-full active:bg-sidebar"
+            >
+              <ArrowLeft size={21} color={colors.ink} />
+            </Pressable>
+            <Text accessibilityRole="header" className="text-xl font-semibold text-ink">
+              {openProperty === "schedule" ? "Дата" : "Повторение"}
+            </Text>
+          </View>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12, gap: 12 }}
+          >
+            {openProperty === "schedule" ? (
+              <>
+                <View className="overflow-hidden rounded-xl bg-sidebar">
+                  <PickerRow icon={Sun} label="Сегодня" onPress={() => chooseDay(today)} />
+                  <PickerRow
+                    icon={Sun}
+                    label="Завтра"
+                    onPress={() => chooseDay(addDays(today, 1))}
+                  />
+                  <PickerRow
+                    icon={CalendarArrowUp}
+                    label="Следующая неделя"
+                    onPress={() => chooseDay(nextMonday)}
+                  />
+                  <PickerRow
+                    icon={CalendarOff}
+                    label="Без срока"
+                    onPress={() => setKind("backlog")}
+                    selected={kind === "backlog"}
+                  />
+                </View>
+                <DateControl
+                  inline
+                  label="Дата задачи"
+                  value={kind === "backlog" ? "" : date}
+                  today={today}
+                  onChange={chooseDay}
+                  error={fieldError("date")}
+                />
+                <View className="rounded-xl bg-sidebar">
+                  {kind === "deadline" ? (
+                    <View className="gap-2 px-4 py-2">
+                      <View className="flex-row flex-wrap items-center justify-between gap-2">
+                        <View className="flex-row items-center gap-3">
+                          <Clock3 size={20} color={colors.muted} />
+                          <TimeField
+                            hideLabel
+                            label="Время дедлайна"
+                            accessibilityLabel="Время дедлайна"
+                            value={time}
+                            onChange={setTime}
+                            submitted={touched.includes("time")}
+                          />
+                        </View>
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => setKind("polyday")}
+                          className="min-h-12 justify-center px-2"
+                        >
+                          <Text className="text-sm text-accent">Убрать дедлайн</Text>
+                        </Pressable>
+                      </View>
+                      {!!placement && (
+                        <Text className="text-xs leading-5 text-muted">{placement}</Text>
+                      )}
+                      {(calendar ? (versionForDate(calendar, date)?.timeZone ?? zone) : zone) !==
+                        Intl.DateTimeFormat().resolvedOptions().timeZone && (
+                        <Text className="text-xs text-muted">
+                          {timeZoneLabel(
+                            calendar ? (versionForDate(calendar, date)?.timeZone ?? zone) : zone,
+                            now,
+                          )}
+                        </Text>
+                      )}
+                    </View>
+                  ) : (
+                    <PickerRow
+                      icon={Clock3}
+                      label="Добавить время"
+                      onPress={() => setKind("deadline")}
+                    />
+                  )}
+                  {(!task || editSeries) && (
+                    <PickerRow
+                      icon={Repeat2}
+                      label={repeat === "none" ? "Повтор" : repeatLabel}
+                      onPress={() => {
+                        if (kind !== "backlog" && repeat === "none") setStartDate(date);
+                        setOpenProperty("repeat");
+                      }}
+                    />
+                  )}
+                </View>
+              </>
+            ) : (
+              <View className="gap-3">
+                <View
+                  accessibilityRole="radiogroup"
+                  accessibilityLabel="Правило повторения"
+                  className="flex-row flex-wrap gap-2"
                 >
-                  <Text
-                    className={`text-xs ${kind === choice.kind ? "font-semibold text-accent" : "text-muted"}`}
-                  >
-                    {choice.label}
+                  {(
+                    [
+                      { value: "none", label: "Один раз" },
+                      { value: "every-polyday", label: "Каждый полидень" },
+                      { value: "polyday", label: "В выбранном полидне" },
+                      { value: "time", label: "В точное время" },
+                    ] as const
+                  )
+                    .filter((item) => !editSeries || item.value !== "none")
+                    .map((item) => (
+                      <Pressable
+                        accessibilityRole="radio"
+                        aria-checked={repeat === item.value}
+                        key={item.value}
+                        onPress={() => {
+                          if (
+                            repeat === "none" &&
+                            item.value !== "none" &&
+                            kind !== "backlog" &&
+                            validDate(date)
+                          )
+                            setStartDate(date);
+                          setRepeat(item.value);
+                        }}
+                        className={`min-h-12 justify-center rounded-md border px-3 ${repeat === item.value ? "border-transparent bg-selected" : "border-transparent bg-sidebar"}`}
+                      >
+                        <Text className="text-sm text-ink">{item.label}</Text>
+                      </Pressable>
+                    ))}
+                </View>
+
+                {repeat === "polyday" && (
+                  <View className="gap-2">
+                    <SlotChoices slots={slots} value={slotId} onChange={setSlotId} />
+                    <ErrorMessage>{fieldError("slotId")}</ErrorMessage>
+                  </View>
+                )}
+                {repeat === "time" && (
+                  <View className="gap-2">
+                    <View className="flex-row flex-wrap items-center gap-3">
+                      <TimeField
+                        hideLabel
+                        label="Время дедлайна"
+                        accessibilityLabel="Время дедлайна"
+                        value={time}
+                        onChange={setTime}
+                        submitted={touched.includes("time")}
+                      />
+                      {zone !== Intl.DateTimeFormat().resolvedOptions().timeZone && (
+                        <Text className="shrink text-xs text-muted">
+                          {timeZoneLabel(zone, now)}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                )}
+                {(repeat === "polyday" || repeat === "time") && (
+                  <View className="gap-2">
+                    <Text className="text-sm text-muted">
+                      {weekdays.length
+                        ? "В выбранные дни недели"
+                        : "Ежедневно · или выберите дни недели"}
+                    </Text>
+                    {weekdays.length > 0 && (
+                      <Button secondary onPress={() => setWeekdays([])}>
+                        Каждый день
+                      </Button>
+                    )}
+                    <View className="flex-row flex-wrap gap-1">
+                      {days.map((name, index) => (
+                        <Pressable
+                          key={name}
+                          accessibilityLabel={name}
+                          accessibilityRole="checkbox"
+                          aria-checked={weekdays.includes(index + 1)}
+                          onPress={() =>
+                            setWeekdays(
+                              weekdays.includes(index + 1)
+                                ? weekdays.filter((item) => item !== index + 1)
+                                : [...weekdays, index + 1],
+                            )
+                          }
+                          className={`h-12 min-w-12 items-center justify-center rounded-md px-2 ${weekdays.includes(index + 1) ? "bg-selected" : "bg-sidebar"}`}
+                        >
+                          <Text className="text-xs text-ink">{name}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                )}
+                {repeat !== "none" && (
+                  <>
+                    <DateControl
+                      label="Начало серии"
+                      value={startDate}
+                      onChange={(value) => {
+                        setStartDate(value);
+                        touch("startDate");
+                      }}
+                      today={today}
+                      error={fieldError("startDate")}
+                    />
+                    <DateControl
+                      label="Окончание серии · необязательно"
+                      value={endDate}
+                      onChange={(value) => {
+                        setEndDate(value);
+                        touch("endDate");
+                      }}
+                      today={today}
+                      clearable
+                      error={fieldError("endDate")}
+                    />
+                  </>
+                )}
+                {editSeries && (
+                  <Text className="text-xs leading-5 text-muted">
+                    Изменения применятся к будущим повторениям с завтрашнего дня. Прошлые и
+                    выполненные задачи сохранятся.
                   </Text>
-                </Pressable>
-              ))}
-            </View>
-            {kind !== "backlog" && (
-              <Field
-                label={
-                  kind === "deadline"
-                    ? "Дата дедлайна · ГГГГ-ММ-ДД"
-                    : "Дата начала полидня · ГГГГ-ММ-ДД"
-                }
-                value={date}
-                onChangeText={setDate}
-                placeholder="2026-10-23"
-              />
-            )}
-            {kind === "deadline" && (
-              <Field
-                label="Время дедлайна · ЧЧ:ММ"
-                value={time}
-                onChangeText={setTime}
-                placeholder="09:00"
-              />
-            )}
-            {kind === "polyday" && (
-              <SlotChoices slots={slots} value={slotId} onChange={setSlotId} />
-            )}
-            {kind === "deadline" && (
-              <View className="gap-2">
-                <Text className="text-xs leading-5 text-muted">
-                  Полидень определится по дате и времени дедлайна.
-                </Text>
-                {task?.scheduling.kind === "deadline" && (
-                  <Button secondary onPress={() => setKind("backlog")}>
-                    Убрать дедлайн
-                  </Button>
                 )}
               </View>
             )}
+          </ScrollView>
+          <View className="items-end px-5 pb-5 pt-2">
+            <Button onPress={acceptPanel}>Готово</Button>
           </View>
-        )}
-        <View className="gap-2">
-          <View className="flex-row items-center gap-2">
-            <Flag size={14} color={colors.muted} />
-            <Text className="text-xs font-semibold text-muted">Приоритет</Text>
-          </View>
-          <View className="flex-row flex-wrap gap-2">
-            {([1, 2, 3, 4] as const).map((value) => (
-              <Pressable
-                key={value}
-                onPress={() => setPriority(value)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: value === priority }}
-                className={`min-h-12 flex-row items-center gap-2 rounded-md border px-3 ${value === priority ? "border-[#aaa49a] bg-sidebar" : "border-line"}`}
-              >
-                <Flag size={13} color={colors.priorities[value]} />
-                <Text className="text-xs text-ink">{priorityName(value)}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-        {(!task || editSeries) && (
-          <View className="gap-3">
-            <View className="flex-row items-center gap-2">
-              <Repeat2 size={14} color={colors.muted} />
-              <Text className="text-xs font-semibold text-muted">Повторение</Text>
-            </View>
-            <View className="flex-row flex-wrap gap-2">
-              {(
-                [
-                  { value: "none", label: "Один раз" },
-                  { value: "every-polyday", label: "Каждый полидень" },
-                  { value: "polyday", label: "В выбранном полидне" },
-                  { value: "time", label: "В точное время" },
-                ] as const
-              )
-                .filter((item) => !editSeries || item.value !== "none")
-                .map((item) => (
-                  <Pressable
-                    accessibilityRole="button"
-                    key={item.value}
-                    onPress={() => setRepeat(item.value)}
-                    className={`min-h-12 justify-center rounded-md border px-3 ${repeat === item.value ? "border-accent bg-selected" : "border-line"}`}
-                  >
-                    <Text className="text-xs text-ink">{item.label}</Text>
-                  </Pressable>
-                ))}
-            </View>
-            {repeat === "polyday" && (
-              <SlotChoices slots={slots} value={slotId} onChange={setSlotId} />
-            )}
-            {repeat === "time" && (
-              <Field label="Время дедлайна · ЧЧ:ММ" value={time} onChangeText={setTime} />
-            )}
-            {(repeat === "polyday" || repeat === "time") && (
-              <View className="gap-2">
-                <Text className="text-xs text-muted">Дни недели · пусто означает ежедневно</Text>
-                <View className="flex-row flex-wrap gap-1">
-                  {days.map((name, index) => (
-                    <Pressable
-                      key={name}
-                      accessibilityLabel={name}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: weekdays.includes(index + 1) }}
-                      onPress={() =>
-                        setWeekdays(
-                          weekdays.includes(index + 1)
-                            ? weekdays.filter((item) => item !== index + 1)
-                            : [...weekdays, index + 1],
-                        )
-                      }
-                      className={`h-12 min-w-12 items-center justify-center rounded-md px-2 ${weekdays.includes(index + 1) ? "bg-selected" : "bg-sidebar"}`}
-                    >
-                      <Text className="text-xs text-ink">{name}</Text>
-                    </Pressable>
+        </>
+      ) : (
+        <>
+          {(openProperty === "priority" || openProperty === "destination") && (
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              className="mb-2 ml-3 rounded-2xl bg-white shadow-lg"
+              style={{
+                width: Math.min(320, formWidth - 40),
+                maxHeight: Math.min(288, (maxHeight ?? 640) / 2),
+              }}
+            >
+              {openProperty === "priority" ? (
+                <View accessibilityRole="radiogroup" accessibilityLabel="Приоритет">
+                  {([1, 2, 3, 4] as const).map((value) => (
+                    <PickerRow
+                      key={value}
+                      icon={Flag}
+                      label={priorityName(value)}
+                      color={colors.priorities[value]}
+                      selected={value === priority}
+                      onPress={() => {
+                        setPriority(value);
+                        finishChoice();
+                      }}
+                      radio
+                    />
                   ))}
                 </View>
+              ) : kind === "deadline" ? (
+                <PickerRow
+                  icon={Clock3}
+                  label="Изменить дедлайн"
+                  onPress={() => openPanel("schedule")}
+                />
+              ) : (
+                <View accessibilityRole="radiogroup" accessibilityLabel="Место задачи">
+                  <PickerRow
+                    icon={Inbox}
+                    label="Бэклог"
+                    selected={kind === "backlog"}
+                    onPress={() => {
+                      setKind("backlog");
+                      finishChoice();
+                    }}
+                    radio
+                  />
+                  {slots.map((slot) => (
+                    <PickerRow
+                      key={slot.id}
+                      icon={Sun}
+                      label={slot.name}
+                      selected={kind === "polyday" && slotId === slot.id}
+                      onPress={() => {
+                        setKind("polyday");
+                        setSlotId(slot.id);
+                        finishChoice();
+                      }}
+                      radio
+                    />
+                  ))}
+                </View>
+              )}
+            </ScrollView>
+          )}
+          <View
+            className="overflow-hidden bg-white shadow-xl"
+            style={{ flexShrink: 1, borderRadius: formWidth < 600 ? 24 : 16 }}
+          >
+            {formWidth < 600 && <View className="mt-2 h-1 w-9 self-center rounded-full bg-line" />}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Закрыть"
+              onPress={requestClose}
+              disabled={busy}
+              className="absolute right-2 top-2 z-10 h-12 w-12 items-center justify-center rounded-full"
+              style={openProperty ? { display: "none" } : undefined}
+            >
+              <X size={19} color={colors.muted} />
+            </Pressable>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{
+                paddingHorizontal: 20,
+                paddingTop: 16,
+                paddingBottom: 16,
+                gap: 8,
+              }}
+            >
+              <View className="gap-1.5 pr-9">
+                <TextInput
+                  ref={titleRef}
+                  accessibilityLabel="Название задачи"
+                  aria-invalid={!!fieldError("title")}
+                  aria-describedby={fieldError("title") ? `${titleId}-error` : undefined}
+                  placeholder="Название задачи"
+                  placeholderTextColor="#77736d"
+                  autoFocus
+                  multiline
+                  submitBehavior="submit"
+                  blurOnSubmit={Platform.OS === "web" ? true : undefined}
+                  returnKeyType="done"
+                  value={title}
+                  maxLength={1000}
+                  onChangeText={(value) => {
+                    setTitle(value);
+                    const trigger = /(?:^|\s)!!$/.test(value)
+                      ? "priority"
+                      : /(?:^|\s)#$/.test(value)
+                        ? "destination"
+                        : null;
+                    if (trigger) {
+                      shortcut.current = trigger;
+                      setOpenProperty(trigger);
+                    } else if (shortcut.current) {
+                      shortcut.current = null;
+                      setOpenProperty(null);
+                    }
+                  }}
+                  onBlur={() => touch("title")}
+                  onSubmitEditing={() => {
+                    void submit();
+                  }}
+                  numberOfLines={1}
+                  onContentSizeChange={
+                    Platform.OS === "web"
+                      ? undefined
+                      : (event) =>
+                          setTitleHeight(
+                            Math.min(140, Math.max(40, event.nativeEvent.contentSize.height)),
+                          )
+                  }
+                  style={{ height: titleHeight }}
+                  className="min-h-10 py-1 text-xl font-semibold leading-7 text-ink"
+                />
+                {fieldError("title") && (
+                  <Text
+                    nativeID={`${titleId}-error`}
+                    accessibilityRole="alert"
+                    className="text-sm text-accent"
+                  >
+                    {errors.title}
+                  </Text>
+                )}
+              </View>
+
+              <TextInput
+                accessibilityLabel="Описание · необязательно"
+                placeholder="Описание"
+                placeholderTextColor={colors.muted}
+                multiline
+                numberOfLines={1}
+                maxLength={20000}
+                textAlignVertical="top"
+                value={description}
+                onChangeText={setDescription}
+                className="min-h-12 max-h-28 py-2 text-base leading-6 text-ink"
+              />
+              {task?.seriesId && !editSeries && (
+                <Text className="text-xs text-muted">Только это повторение</Text>
+              )}
+              {saved && !title && (
+                <Text accessibilityLiveRegion="polite" className="text-sm text-[#317043]">
+                  Задача сохранена. Можно добавить следующую.
+                </Text>
+              )}
+            </ScrollView>
+            <ErrorMessage>
+              {error === "Проверьте отмеченные поля." && !Object.keys(errors).length ? null : error}
+            </ErrorMessage>
+            {confirmClose ? (
+              <View className="gap-3 border-t border-line bg-sidebar px-5 py-4">
+                <Text accessibilityRole="alert" className="text-sm text-ink">
+                  {confirmSwitch
+                    ? "Перейти без сохранения изменений?"
+                    : task
+                      ? "Закрыть без сохранения изменений?"
+                      : "Закрыть и удалить черновик?"}
+                </Text>
+                <View className="flex-row flex-wrap justify-end gap-2">
+                  <Button secondary onPress={() => setConfirmClose(false)}>
+                    Продолжить
+                  </Button>
+                  <Button secondary onPress={() => pendingLeave.current()}>
+                    Не сохранять
+                  </Button>
+                </View>
+              </View>
+            ) : (
+              <View className="flex-row items-center gap-2 px-4 pb-4">
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  style={{ flex: 1 }}
+                  contentContainerStyle={{ gap: 8, alignItems: "center", padding: 4 }}
+                >
+                  {(!task || editSeries) && repeat === "none" && (
+                    <Chip
+                      icon={Plus}
+                      label=""
+                      accessibilityLabel="Настроить повторение"
+                      onPress={() => openPanel("repeat")}
+                    />
+                  )}
+                  {!editSeries && repeat === "none" && (
+                    <Chip
+                      icon={kind === "backlog" ? Inbox : Sun}
+                      label={destinationLabel}
+                      accessibilityLabel={`Место задачи · ${destinationLabel}`}
+                      onPress={() => openPanel("destination")}
+                    />
+                  )}
+                  {!editSeries && repeat === "none" && (
+                    <Chip
+                      icon={CalendarDays}
+                      label={scheduleLabel}
+                      accessibilityLabel={`Когда выполнить · ${scheduleLabel}`}
+                      color={kind === "backlog" ? colors.muted : colors.accent}
+                      onPress={() => openPanel("schedule")}
+                    />
+                  )}
+                  <Chip
+                    icon={Flag}
+                    label={priority === 4 ? "Приоритет" : `P${priority}`}
+                    accessibilityLabel={`Приоритет · ${priorityName(priority)}`}
+                    color={priority === 4 ? colors.muted : colors.priorities[priority]}
+                    onPress={() => openPanel("priority")}
+                  />
+                  {repeat !== "none" && (
+                    <Chip
+                      icon={Repeat2}
+                      label={repeatLabel}
+                      accessibilityLabel={`Повторение · ${repeatLabel}`}
+                      onPress={() => openPanel("repeat")}
+                    />
+                  )}
+                  {onSwitchSeries && (
+                    <Chip
+                      icon={Repeat2}
+                      label={editSeries ? "К повторению" : "Вся серия"}
+                      accessibilityLabel={
+                        editSeries ? "Вернуться к повторению" : "Изменить всю серию"
+                      }
+                      onPress={() => requestLeave(onSwitchSeries, true)}
+                    />
+                  )}
+                </ScrollView>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    busy
+                      ? "Сохраняем…"
+                      : editSeries
+                        ? "Сохранить серию"
+                        : task
+                          ? "Сохранить"
+                          : "Добавить задачу"
+                  }
+                  accessibilityState={{ disabled: busy }}
+                  disabled={busy}
+                  onPress={() => {
+                    void submit();
+                  }}
+                  className={`h-12 w-12 items-center justify-center rounded-2xl bg-accent ${busy ? "opacity-40" : "active:opacity-80"}`}
+                >
+                  <ArrowUp size={25} color="white" strokeWidth={2.2} />
+                </Pressable>
               </View>
             )}
-            {repeat !== "none" && (
-              <>
-                <Field
-                  label="Начало серии · ГГГГ-ММ-ДД"
-                  value={startDate}
-                  onChangeText={setStartDate}
-                />
-                <Field
-                  label="Окончание серии · необязательно"
-                  value={endDate}
-                  onChangeText={setEndDate}
-                  placeholder="ГГГГ-ММ-ДД"
-                />
-              </>
-            )}
-            {editSeries && (
-              <Text className="text-xs leading-5 text-muted">
-                Изменения применятся к будущим повторениям с завтрашнего дня. Прошлые и выполненные
-                задачи сохранятся.
-              </Text>
-            )}
           </View>
-        )}
-        <ErrorMessage>{error}</ErrorMessage>
-        {saved && (
-          <Text accessibilityLiveRegion="polite" className="text-sm text-[#317043]">
-            Задача сохранена. Можно добавить следующую.
-          </Text>
-        )}
-      </ScrollView>
-      <View className="flex-row justify-end gap-3 border-t border-line px-5 py-4">
-        <Button secondary onPress={onClose}>
-          Закрыть
-        </Button>
-        <Button
-          disabled={busy || !title.trim()}
-          onPress={() => {
-            void submit();
-          }}
-        >
-          {task ? "Сохранить" : "Добавить задачу"}
-        </Button>
-      </View>
+        </>
+      )}
     </View>
+  );
+}
+
+function Chip({
+  icon: Icon,
+  label,
+  accessibilityLabel,
+  onPress,
+  color = colors.muted,
+}: {
+  icon: typeof Flag;
+  label: string;
+  accessibilityLabel: string;
+  onPress: () => void;
+  color?: string;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      className="min-h-12 flex-row items-center gap-2 rounded-xl bg-sidebar px-3"
+    >
+      <Icon size={20} color={color} strokeWidth={1.7} />
+      {!!label && (
+        <Text className="text-sm" style={{ color }}>
+          {label}
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
+function PickerRow({
+  icon: Icon,
+  label,
+  onPress,
+  color = colors.muted,
+  selected = false,
+  radio = false,
+}: {
+  icon: typeof Flag;
+  label: string;
+  onPress: () => void;
+  color?: string;
+  selected?: boolean;
+  radio?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole={radio ? "radio" : "button"}
+      aria-checked={radio ? selected : undefined}
+      onPress={onPress}
+      className="min-h-12 flex-row items-center gap-3 px-4 py-3 active:bg-selected"
+    >
+      <Icon size={21} color={color} strokeWidth={1.7} />
+      <Text className="min-w-0 flex-1 text-base text-ink">{label}</Text>
+      {selected && <Check size={17} color={colors.accent} />}
+    </Pressable>
   );
 }
 
@@ -411,16 +1050,16 @@ export function SlotChoices({
   onChange: (id: string) => void;
 }) {
   return (
-    <View className="gap-2">
+    <View accessibilityRole="radiogroup" accessibilityLabel="Полидень" className="gap-2">
       {slots.map((slot) => (
         <Pressable
           key={slot.id}
           accessibilityRole="radio"
-          accessibilityState={{ selected: slot.id === value }}
+          aria-checked={slot.id === value}
           onPress={() => onChange(slot.id)}
-          className={`min-h-12 flex-row items-center justify-between rounded-md border px-3 ${slot.id === value ? "border-accent bg-selected" : "border-line"}`}
+          className={`min-h-12 flex-row items-center justify-between rounded-md border px-3 ${slot.id === value ? "border-transparent bg-selected" : "border-transparent bg-sidebar"}`}
         >
-          <Text className="text-sm text-ink">{slot.name}</Text>
+          <Text className="min-w-0 flex-1 text-sm text-ink">{slot.name}</Text>
           <Text className="text-xs text-muted">
             {slot.start}–{slot.end}
           </Text>
@@ -428,4 +1067,17 @@ export function SlotChoices({
       ))}
     </View>
   );
+}
+
+const formatDate = (value: string) =>
+  new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", timeZone: "UTC" }).format(
+    new Date(`${value}T12:00:00Z`),
+  );
+
+function validDate(value: string): boolean {
+  try {
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) && addDays(value, 0) === value;
+  } catch {
+    return false;
+  }
 }
