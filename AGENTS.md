@@ -4,6 +4,18 @@ Read [CONTEXT.md](CONTEXT.md) for domain terms and [docs/product.md](docs/produc
 
 Release Android and macOS together, using the same version and commit. Follow [release instructions](docs/deployment.md#application-releases); publish only when both platform artifacts are verified.
 
+## UI design
+
+After each user UI correction, update this section with concise, reusable conclusions. Merge related lessons into existing rules.
+
+- Keep related short fields, such as a polyday name and its boundaries, in one compact row when space permits; preserve usable controls on narrow screens.
+- Group repeated form rows with spacing. Use separators only between distinct sections.
+- Place contextual metadata beside the control it explains; show an overnight end beside the end time.
+- Use searchable choices for timezones and a calendar for dates. Display human-readable names and localized dates instead of requiring technical identifiers or format syntax.
+- Use a compact switch for automatic timezone detection, with the effective timezone visible.
+- Infer the underlying usability issue from annotated screenshots and fix every marked area coherently.
+- After UI work, explain the changes and show a screenshot of the verified result. Give each delivered screenshot a unique filename so cached previews cannot show an earlier version.
+
 # Learning more about Effect
 
 This repository uses the Effect Typescript library.

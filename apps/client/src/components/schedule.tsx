@@ -19,6 +19,9 @@ import { useApp } from "./provider";
 import { Button, ErrorMessage, Field, colors } from "./primitives";
 import { SlotChoices } from "./task-editor";
 import { message } from "../data/store";
+import { TimeField } from "./time-field";
+import { normalizeTimeInput } from "./time-input";
+import { EffectiveDateControl, TimeZoneControl } from "./schedule-controls";
 
 export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
   const { store, calendar, now } = useApp();
@@ -33,17 +36,35 @@ export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const removed = current?.slots.filter((slot) => !slots.some((item) => item.id === slot.id)) ?? [];
-  const edit = (id: string, patch: Partial<Slot>) =>
-    setSlots(slots.map((slot) => (slot.id === id ? { ...slot, ...patch } : slot)));
+  const edit = (id: string, patch: Partial<Slot>) => {
+    setSaved(false);
+    setError(null);
+    setSlots((previous) => previous.map((slot) => (slot.id === id ? { ...slot, ...patch } : slot)));
+  };
   const save = async () => {
     setError(null);
+    setSubmitted(true);
     setBusy(true);
     setSaved(false);
     try {
+      const normalizedSlots = slots.map((slot, index) => {
+        const start = normalizeTimeInput(slot.start);
+        const end = normalizeTimeInput(slot.end);
+        if (start === null || end === null)
+          throw new Error(`Проверьте время полидня ${index + 1}: укажите время от 00:00 до 23:59.`);
+        return { ...slot, start, end };
+      });
+      setSlots(normalizedSlots);
       if (removed.length && !destination)
         throw new Error("Выберите полидень для переноса задач из удалённых интервалов.");
-      const version = { id: Crypto.randomUUID(), from: date, timeZone: zone, slots };
+      const version = {
+        id: Crypto.randomUUID(),
+        from: date,
+        timeZone: zone,
+        slots: normalizedSlots,
+      };
       const adjusted = calendar ? changeTimeZone(calendar, zone, systemNow()) : null;
       const next: Calendar = adjusted
         ? { ...updateCalendar(adjusted, version, systemNow()), mode }
@@ -127,83 +148,94 @@ export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
           полидень может пересекать полночь.
         </Text>
       </View>
-      {slots.map((slot, index) => (
-        <View key={slot.id} className="gap-3 border-b border-line pb-5">
-          <View className="flex-row items-center gap-2">
-            <View className="flex-1">
-              <Field
-                label={`Полидень ${index + 1}`}
-                value={slot.name}
-                onChangeText={(name) => edit(slot.id, { name })}
-              />
+      <View className="gap-4">
+        <Text className="text-xs leading-5 text-muted">
+          Время в 24-часовом формате: можно ввести 730 или 7:30 — получится 07:30.
+        </Text>
+        {slots.map((slot, index) => {
+          const start = normalizeTimeInput(slot.start);
+          const end = normalizeTimeInput(slot.end);
+          return (
+            <View key={slot.id}>
+              <View className="flex-row flex-wrap items-start gap-3">
+                <View className="min-w-32 flex-1 basis-40">
+                  <Field
+                    label={`Полидень ${index + 1}`}
+                    value={slot.name}
+                    onChangeText={(name) => edit(slot.id, { name })}
+                  />
+                </View>
+                <View className="max-w-full flex-row flex-wrap items-start gap-3">
+                  <TimeField
+                    label="Начало"
+                    accessibilityLabel={`Начало полидня ${index + 1}`}
+                    value={slot.start}
+                    onChange={(start) => edit(slot.id, { start })}
+                    submitted={submitted}
+                  />
+                  <TimeField
+                    label="Конец"
+                    accessibilityLabel={`Конец полидня ${index + 1}`}
+                    nextDay={start !== null && end !== null && end < start}
+                    value={slot.end}
+                    onChange={(end) => edit(slot.id, { end })}
+                    submitted={submitted}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Удалить полидень ${slot.name}`}
+                    onPress={() => setSlots(slots.filter((item) => item.id !== slot.id))}
+                    className="mt-5 h-12 w-12 items-center justify-center rounded-md active:bg-sidebar"
+                  >
+                    <Trash2 size={18} color={colors.muted} />
+                  </Pressable>
+                </View>
+              </View>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Удалить полидень ${slot.name}`}
-              onPress={() => setSlots(slots.filter((item) => item.id !== slot.id))}
-              className="mt-5 h-12 w-12 items-center justify-center"
-            >
-              <Trash2 size={18} color={colors.muted} />
-            </Pressable>
-          </View>
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <Field
-                label="Начало · ЧЧ:ММ"
-                value={slot.start}
-                onChangeText={(start) => edit(slot.id, { start })}
-              />
-            </View>
-            <View className="flex-1">
-              <Field
-                label="Конец · ЧЧ:ММ"
-                value={slot.end}
-                onChangeText={(end) => edit(slot.id, { end })}
-              />
-            </View>
-          </View>
-        </View>
-      ))}
-      <Pressable
-        accessibilityRole="button"
-        onPress={() =>
-          setSlots([
-            ...slots,
-            { id: Crypto.randomUUID(), name: "Новый полидень", start: "03:00", end: "05:00" },
-          ])
-        }
-        className="min-h-12 flex-row items-center gap-2"
-      >
-        <Plus size={17} color={colors.accent} />
-        <Text className="text-sm font-semibold text-accent">Добавить полидень</Text>
-      </Pressable>
-      <Field
-        label="Часовой пояс"
-        value={zone}
-        onChangeText={setZone}
-        autoCapitalize="none"
-        placeholder="Asia/Tbilisi"
-      />
-      <View className="flex-row gap-3">
-        {(
-          [
-            { value: "fixed", label: "Фиксированный пояс" },
-            { value: "local", label: "Следовать местному" },
-          ] as const
-        ).map((choice) => (
-          <Pressable
-            accessibilityRole="button"
-            key={choice.value}
-            onPress={() => setMode(choice.value)}
-            className={`min-h-12 flex-1 items-center justify-center rounded-md border px-3 ${choice.value === mode ? "border-accent bg-selected" : "border-line"}`}
-          >
-            <Text className="text-xs text-ink">{choice.label}</Text>
-          </Pressable>
-        ))}
+          );
+        })}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() =>
+            setSlots([
+              ...slots,
+              { id: Crypto.randomUUID(), name: "Новый полидень", start: "03:00", end: "05:00" },
+            ])
+          }
+          className="min-h-12 flex-row items-center gap-2"
+        >
+          <Plus size={17} color={colors.accent} />
+          <Text className="text-sm font-semibold text-accent">Добавить полидень</Text>
+        </Pressable>
       </View>
-      {!initial && (
-        <Field label="Применить с даты · ГГГГ-ММ-ДД" value={date} onChangeText={setDate} />
-      )}
+      <View className="flex-row flex-wrap items-start gap-6 border-t border-line pt-6">
+        <View className="min-w-60 flex-1">
+          <TimeZoneControl
+            zone={zone}
+            mode={mode}
+            now={now}
+            onChange={(nextZone, nextMode) => {
+              setZone(nextZone);
+              setMode(nextMode);
+              setSaved(false);
+              setError(null);
+            }}
+          />
+        </View>
+        {!initial && (
+          <View className="min-w-60 flex-1">
+            <EffectiveDateControl
+              value={date}
+              today={dateAt(now, current?.timeZone ?? zone)}
+              onChange={(nextDate) => {
+                setDate(nextDate);
+                setSaved(false);
+                setError(null);
+              }}
+            />
+          </View>
+        )}
+      </View>
       {removed.length > 0 && (
         <View className="gap-3">
           <Text className="text-sm leading-5 text-ink">
