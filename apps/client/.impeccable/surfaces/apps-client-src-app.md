@@ -1,8 +1,8 @@
 ---
 version: 1
 slug: "apps-client-src-app"
-primary_target: "apps/client/src/app"
-related_targets: ["apps/client/src/components"]
+primary_target: "src/app"
+related_targets: ["src/components"]
 ---
 
 # Task lists

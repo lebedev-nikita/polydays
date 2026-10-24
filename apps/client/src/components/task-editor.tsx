@@ -26,11 +26,7 @@ import {
   ArrowUp,
   ArrowLeft,
   Inbox,
-  Sun,
-  Clock3,
   Check,
-  CalendarOff,
-  CalendarArrowUp,
   ArrowDown,
   Trash2,
 } from "lucide-react-native";
@@ -40,10 +36,7 @@ import {
   activeVersion,
   addDays,
   dateAt,
-  deadlineInstant,
-  polydayForInstant,
   polydaysOn,
-  versionForDate,
   ruleForDate,
   systemNow,
   parseTaskTitle,
@@ -61,6 +54,7 @@ import { normalizeTimeInput } from "./time-input";
 import { timeZoneLabel } from "./schedule-options";
 import { KeyboardAvoidingView } from "./keyboard";
 import { PropertyMenu } from "./property-menu";
+import { TaskScheduleMenu } from "./task-schedule-menu";
 
 const days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 type FormProps = {
@@ -197,9 +191,7 @@ export function TaskForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [openProperty, setOpenProperty] = useState<
-    "schedule" | "priority" | "repeat" | "destination" | null
-  >(null);
+  const [openProperty, setOpenProperty] = useState<"schedule" | "priority" | "repeat" | null>(null);
   const propertySnapshot = useRef({
     kind,
     date,
@@ -210,7 +202,7 @@ export function TaskForm({
     startDate,
     endDate,
   });
-  const shortcut = useRef<"priority" | "destination" | null>(null);
+  const shortcut = useRef<"priority" | "schedule" | null>(null);
   const openPanel = (panel: typeof openProperty) => {
     if (openProperty === panel) {
       setOpenProperty(null);
@@ -221,7 +213,7 @@ export function TaskForm({
     setOpenProperty(panel);
   };
   const dismissPanel = () => {
-    if (openProperty === "schedule" || openProperty === "repeat") {
+    if (openProperty === "repeat") {
       const previous = propertySnapshot.current;
       setKind(previous.kind);
       setDate(previous.date);
@@ -374,16 +366,6 @@ export function TaskForm({
   const touch = (key: string) =>
     setTouched((previous) => (previous.includes(key) ? previous : [...previous, key]));
   const fieldError = (key: string) => (touched.includes(key) ? errors[key] : undefined);
-  let placement = "";
-  if (calendar && repeat === "none" && kind === "deadline" && !errors.date && !errors.time) {
-    const view = polydayForInstant(
-      calendar,
-      deadlineInstant(calendar, date, normalizedTime ?? time),
-    );
-    placement = view.polyday
-      ? `${view.polyday.name} · ${formatDate(view.polyday.date)}${view.inSleepGap ? " · дедлайн во время сна" : ""}`
-      : "Дедлайн вне настроенного расписания";
-  }
   const submit = async () => {
     if (!calendar || saving.current) return;
     if (Object.keys(errors).length) {
@@ -484,28 +466,21 @@ export function TaskForm({
         : validDate(value)
           ? formatDate(value)
           : "Выберите дату";
-  const destinationLabel =
+  const scheduleLabel =
     kind === "backlog"
       ? "Входящие"
       : kind === "deadline"
-        ? placement.split(" · ")[0] || "Дедлайн"
-        : (slots.find((slot) => slot.id === slotId)?.name ?? "Полидень");
-  const scheduleLabel =
-    kind === "backlog"
-      ? "Дата"
-      : `${dateLabel(date)}${kind === "deadline" ? `, ${normalizedTime ?? time}` : ""}`;
+        ? `${dateLabel(date)}, ${normalizedTime ?? time}`
+        : `${dateLabel(date)} · ${slots.find((slot) => slot.id === slotId)?.name ?? "Полидень"}`;
   const repeatLabel =
     repeat === "none"
       ? "Один раз"
       : repeat === "every-polyday"
         ? "Каждый полидень"
         : `${weekdays.length ? weekdays.map((day) => days[day - 1]).join(", ") : "Ежедневно"} · ${repeat === "time" ? time : (slots.find((slot) => slot.id === slotId)?.name ?? "Полидень")}`;
-  const panel = openProperty === "schedule" || openProperty === "repeat";
+  const panel = openProperty === "repeat";
   const acceptPanel = () => {
-    const keys =
-      openProperty === "repeat"
-        ? ["startDate", "endDate", "slotId", "time"]
-        : ["date", "slotId", "time"];
+    const keys = ["startDate", "endDate", "slotId", "time"];
     const invalid = keys.filter((key) => errors[key]);
     if (invalid.length) {
       setTouched((previous) => [...new Set([...previous, ...invalid])]);
@@ -515,16 +490,12 @@ export function TaskForm({
     setOpenProperty(null);
     titleRef.current?.focus();
   };
-  const chooseDay = (value: string) => {
-    setDate(value);
-    if (calendar) {
-      const available = polydaysOn(calendar, value);
-      if (!available.some((day) => day.slotId === slotId)) setSlotId(available[0]?.slotId ?? "");
-    }
-    if (kind === "backlog") setKind("polyday");
-    touch("date");
+  const applyScheduling = (next: Scheduling) => {
+    setKind(next.kind);
+    if (next.kind !== "backlog") setDate(next.date);
+    if (next.kind === "polyday") setSlotId(next.slotId);
+    if (next.kind === "deadline") setTime(next.time);
   };
-  const nextMonday = addDays(today, 8 - (new Date(`${today}T12:00:00Z`).getUTCDay() || 7));
   return (
     <View
       ref={formRef}
@@ -553,227 +524,139 @@ export function TaskForm({
               <ArrowLeft size={21} color={colors.ink} />
             </Pressable>
             <Text accessibilityRole="header" className="text-xl font-semibold text-ink">
-              {openProperty === "schedule" ? "Дата" : "Повторение"}
+              Повторение
             </Text>
           </View>
           <ScrollView
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12, gap: 12 }}
           >
-            {openProperty === "schedule" ? (
-              <>
-                <View className="overflow-hidden rounded-xl bg-sidebar">
-                  <PickerRow icon={Sun} label="Сегодня" onPress={() => chooseDay(today)} />
-                  <PickerRow
-                    icon={Sun}
-                    label="Завтра"
-                    onPress={() => chooseDay(addDays(today, 1))}
-                  />
-                  <PickerRow
-                    icon={CalendarArrowUp}
-                    label="Следующая неделя"
-                    onPress={() => chooseDay(nextMonday)}
-                  />
-                  <PickerRow
-                    icon={CalendarOff}
-                    label="Без срока"
-                    onPress={() => setKind("backlog")}
-                    selected={kind === "backlog"}
-                  />
-                </View>
-                <DateControl
-                  inline
-                  label="Дата задачи"
-                  value={kind === "backlog" ? "" : date}
-                  today={today}
-                  onChange={chooseDay}
-                  error={fieldError("date")}
-                />
-                <View className="overflow-hidden rounded-xl bg-sidebar">
-                  {kind === "deadline" ? (
-                    <View className="gap-2 px-4 py-2">
-                      <View className="flex-row flex-wrap items-center justify-between gap-2">
-                        <View className="flex-row items-center gap-3">
-                          <Clock3 size={20} color={colors.muted} />
-                          <TimeField
-                            hideLabel
-                            label="Время дедлайна"
-                            accessibilityLabel="Время дедлайна"
-                            value={time}
-                            onChange={setTime}
-                            submitted={touched.includes("time")}
-                          />
-                        </View>
-                        <Pressable
-                          accessibilityRole="button"
-                          onPress={() => setKind("polyday")}
-                          className="min-h-12 justify-center px-2"
-                        >
-                          <Text className="text-sm text-accent">Убрать дедлайн</Text>
-                        </Pressable>
-                      </View>
-                      {!!placement && (
-                        <Text className="text-xs leading-5 text-muted">{placement}</Text>
-                      )}
-                      {(calendar ? (versionForDate(calendar, date)?.timeZone ?? zone) : zone) !==
-                        Intl.DateTimeFormat().resolvedOptions().timeZone && (
-                        <Text className="text-xs text-muted">
-                          {timeZoneLabel(
-                            calendar ? (versionForDate(calendar, date)?.timeZone ?? zone) : zone,
-                            now,
-                          )}
-                        </Text>
-                      )}
-                    </View>
-                  ) : (
-                    <PickerRow
-                      icon={Clock3}
-                      label="Добавить время"
-                      onPress={() => setKind("deadline")}
-                    />
-                  )}
-                  {(!task || editSeries) && (
-                    <PickerRow
-                      icon={Repeat2}
-                      label={repeat === "none" ? "Повтор" : repeatLabel}
+            <View className="gap-3">
+              <View
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Правило повторения"
+                className="flex-row flex-wrap gap-2"
+              >
+                {(
+                  [
+                    { value: "none", label: "Один раз" },
+                    { value: "every-polyday", label: "Каждый полидень" },
+                    { value: "polyday", label: "В выбранном полидне" },
+                    { value: "time", label: "В точное время" },
+                  ] as const
+                )
+                  .filter((item) => !editSeries || item.value !== "none")
+                  .map((item) => (
+                    <Pressable
+                      accessibilityRole="radio"
+                      aria-checked={repeat === item.value}
+                      key={item.value}
                       onPress={() => {
-                        if (kind !== "backlog" && repeat === "none") setStartDate(date);
-                        setOpenProperty("repeat");
+                        if (
+                          repeat === "none" &&
+                          item.value !== "none" &&
+                          kind !== "backlog" &&
+                          validDate(date)
+                        )
+                          setStartDate(date);
+                        setRepeat(item.value);
                       }}
-                    />
-                  )}
+                      className={`min-h-12 justify-center rounded-md border px-3 ${repeat === item.value ? "border-transparent bg-selected" : "border-transparent bg-sidebar"}`}
+                    >
+                      <Text className="text-sm text-ink">{item.label}</Text>
+                    </Pressable>
+                  ))}
+              </View>
+
+              {repeat === "polyday" && (
+                <View className="gap-2">
+                  <SlotChoices slots={slots} value={slotId} onChange={setSlotId} />
+                  <ErrorMessage>{fieldError("slotId")}</ErrorMessage>
                 </View>
-              </>
-            ) : (
-              <View className="gap-3">
-                <View
-                  accessibilityRole="radiogroup"
-                  accessibilityLabel="Правило повторения"
-                  className="flex-row flex-wrap gap-2"
-                >
-                  {(
-                    [
-                      { value: "none", label: "Один раз" },
-                      { value: "every-polyday", label: "Каждый полидень" },
-                      { value: "polyday", label: "В выбранном полидне" },
-                      { value: "time", label: "В точное время" },
-                    ] as const
-                  )
-                    .filter((item) => !editSeries || item.value !== "none")
-                    .map((item) => (
+              )}
+              {repeat === "time" && (
+                <View className="gap-2">
+                  <View className="flex-row flex-wrap items-center gap-3">
+                    <TimeField
+                      hideLabel
+                      label="Время дедлайна"
+                      accessibilityLabel="Время дедлайна"
+                      value={time}
+                      onChange={setTime}
+                      submitted={touched.includes("time")}
+                    />
+                    {zone !== Intl.DateTimeFormat().resolvedOptions().timeZone && (
+                      <Text className="shrink text-xs text-muted">{timeZoneLabel(zone, now)}</Text>
+                    )}
+                  </View>
+                </View>
+              )}
+              {(repeat === "polyday" || repeat === "time") && (
+                <View className="gap-2">
+                  <Text className="text-sm text-muted">
+                    {weekdays.length
+                      ? "В выбранные дни недели"
+                      : "Ежедневно · или выберите дни недели"}
+                  </Text>
+                  {weekdays.length > 0 && (
+                    <Button secondary onPress={() => setWeekdays([])}>
+                      Каждый день
+                    </Button>
+                  )}
+                  <View className="flex-row flex-wrap gap-1">
+                    {days.map((name, index) => (
                       <Pressable
-                        accessibilityRole="radio"
-                        aria-checked={repeat === item.value}
-                        key={item.value}
-                        onPress={() => {
-                          if (
-                            repeat === "none" &&
-                            item.value !== "none" &&
-                            kind !== "backlog" &&
-                            validDate(date)
+                        key={name}
+                        accessibilityLabel={name}
+                        accessibilityRole="checkbox"
+                        aria-checked={weekdays.includes(index + 1)}
+                        onPress={() =>
+                          setWeekdays(
+                            weekdays.includes(index + 1)
+                              ? weekdays.filter((item) => item !== index + 1)
+                              : [...weekdays, index + 1],
                           )
-                            setStartDate(date);
-                          setRepeat(item.value);
-                        }}
-                        className={`min-h-12 justify-center rounded-md border px-3 ${repeat === item.value ? "border-transparent bg-selected" : "border-transparent bg-sidebar"}`}
+                        }
+                        className={`h-12 min-w-12 items-center justify-center rounded-md px-2 ${weekdays.includes(index + 1) ? "bg-selected" : "bg-sidebar"}`}
                       >
-                        <Text className="text-sm text-ink">{item.label}</Text>
+                        <Text className="text-xs text-ink">{name}</Text>
                       </Pressable>
                     ))}
+                  </View>
                 </View>
-
-                {repeat === "polyday" && (
-                  <View className="gap-2">
-                    <SlotChoices slots={slots} value={slotId} onChange={setSlotId} />
-                    <ErrorMessage>{fieldError("slotId")}</ErrorMessage>
-                  </View>
-                )}
-                {repeat === "time" && (
-                  <View className="gap-2">
-                    <View className="flex-row flex-wrap items-center gap-3">
-                      <TimeField
-                        hideLabel
-                        label="Время дедлайна"
-                        accessibilityLabel="Время дедлайна"
-                        value={time}
-                        onChange={setTime}
-                        submitted={touched.includes("time")}
-                      />
-                      {zone !== Intl.DateTimeFormat().resolvedOptions().timeZone && (
-                        <Text className="shrink text-xs text-muted">
-                          {timeZoneLabel(zone, now)}
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-                )}
-                {(repeat === "polyday" || repeat === "time") && (
-                  <View className="gap-2">
-                    <Text className="text-sm text-muted">
-                      {weekdays.length
-                        ? "В выбранные дни недели"
-                        : "Ежедневно · или выберите дни недели"}
-                    </Text>
-                    {weekdays.length > 0 && (
-                      <Button secondary onPress={() => setWeekdays([])}>
-                        Каждый день
-                      </Button>
-                    )}
-                    <View className="flex-row flex-wrap gap-1">
-                      {days.map((name, index) => (
-                        <Pressable
-                          key={name}
-                          accessibilityLabel={name}
-                          accessibilityRole="checkbox"
-                          aria-checked={weekdays.includes(index + 1)}
-                          onPress={() =>
-                            setWeekdays(
-                              weekdays.includes(index + 1)
-                                ? weekdays.filter((item) => item !== index + 1)
-                                : [...weekdays, index + 1],
-                            )
-                          }
-                          className={`h-12 min-w-12 items-center justify-center rounded-md px-2 ${weekdays.includes(index + 1) ? "bg-selected" : "bg-sidebar"}`}
-                        >
-                          <Text className="text-xs text-ink">{name}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </View>
-                )}
-                {repeat !== "none" && (
-                  <>
-                    <DateControl
-                      label="Начало серии"
-                      value={startDate}
-                      onChange={(value) => {
-                        setStartDate(value);
-                        touch("startDate");
-                      }}
-                      today={today}
-                      error={fieldError("startDate")}
-                    />
-                    <DateControl
-                      label="Окончание серии · необязательно"
-                      value={endDate}
-                      onChange={(value) => {
-                        setEndDate(value);
-                        touch("endDate");
-                      }}
-                      today={today}
-                      clearable
-                      error={fieldError("endDate")}
-                    />
-                  </>
-                )}
-                {editSeries && (
-                  <Text className="text-xs leading-5 text-muted">
-                    Изменения применятся к будущим повторениям с завтрашнего дня. Прошлые и
-                    выполненные задачи сохранятся.
-                  </Text>
-                )}
-              </View>
-            )}
+              )}
+              {repeat !== "none" && (
+                <>
+                  <DateControl
+                    label="Начало серии"
+                    value={startDate}
+                    onChange={(value) => {
+                      setStartDate(value);
+                      touch("startDate");
+                    }}
+                    today={today}
+                    error={fieldError("startDate")}
+                  />
+                  <DateControl
+                    label="Окончание серии · необязательно"
+                    value={endDate}
+                    onChange={(value) => {
+                      setEndDate(value);
+                      touch("endDate");
+                    }}
+                    today={today}
+                    clearable
+                    error={fieldError("endDate")}
+                  />
+                </>
+              )}
+              {editSeries && (
+                <Text className="text-xs leading-5 text-muted">
+                  Изменения применятся к будущим повторениям с завтрашнего дня. Прошлые и
+                  выполненные задачи сохранятся.
+                </Text>
+              )}
+            </View>
           </ScrollView>
           <View className="items-end px-5 pb-5 pt-2">
             <Button onPress={acceptPanel}>Готово</Button>
@@ -781,64 +664,63 @@ export function TaskForm({
         </>
       ) : (
         <>
-          {(openProperty === "priority" || openProperty === "destination") && (
+          {openProperty === "schedule" && calendar && (
+            <TaskScheduleMenu
+              anchor={formRef}
+              calendar={calendar}
+              today={today}
+              now={now}
+              defaultSlotId={slotId}
+              value={
+                kind === "backlog"
+                  ? { kind }
+                  : kind === "polyday"
+                    ? { kind, date, slotId }
+                    : { kind, date, time }
+              }
+              width={Math.min(344, formWidth - 32)}
+              maxHeight={maxHeight ?? 640}
+              onDismiss={dismissPanel}
+              onConfirm={(next) => {
+                applyScheduling(next);
+                finishChoice();
+              }}
+              onRepeat={
+                !task || editSeries
+                  ? (next, selectedDate) => {
+                      applyScheduling(next);
+                      if (repeat === "none") setStartDate(selectedDate);
+                      if (shortcut.current) setTitle((value) => value.replace(/#$/, "").trimEnd());
+                      shortcut.current = null;
+                      setOpenProperty("repeat");
+                    }
+                  : undefined
+              }
+            />
+          )}
+          {openProperty === "priority" && (
             <PropertyMenu
               anchor={formRef}
               width={Math.min(320, formWidth - 40)}
               maxHeight={Math.min(288, (maxHeight ?? 640) / 2)}
             >
-              {openProperty === "priority" ? (
-                <View accessibilityRole="radiogroup" accessibilityLabel="Приоритет">
-                  {([1, 2, 3, 4] as const).map((value) => (
-                    <PickerRow
-                      key={value}
-                      icon={Flag}
-                      label={priorityName(value)}
-                      color={colors.priorities[value]}
-                      filled={value !== 4}
-                      selected={value === priority}
-                      onPress={() => {
-                        setPriority(value);
-                        finishChoice();
-                      }}
-                      radio
-                    />
-                  ))}
-                </View>
-              ) : kind === "deadline" ? (
-                <PickerRow
-                  icon={Clock3}
-                  label="Изменить дедлайн"
-                  onPress={() => openPanel("schedule")}
-                />
-              ) : (
-                <View accessibilityRole="radiogroup" accessibilityLabel="Место задачи">
+              <View accessibilityRole="radiogroup" accessibilityLabel="Приоритет">
+                {([1, 2, 3, 4] as const).map((value) => (
                   <PickerRow
-                    icon={Inbox}
-                    label="Входящие"
-                    selected={kind === "backlog"}
+                    key={value}
+                    icon={Flag}
+                    label={priorityName(value)}
+                    color={colors.priorities[value]}
+                    filled={value !== 4}
+                    selected={value === priority}
                     onPress={() => {
-                      setKind("backlog");
+                      setPriority(value);
                       finishChoice();
                     }}
                     radio
                   />
-                  {slots.map((slot) => (
-                    <PickerRow
-                      key={slot.id}
-                      icon={Sun}
-                      label={slot.name}
-                      selected={kind === "polyday" && slotId === slot.id}
-                      onPress={() => {
-                        setKind("polyday");
-                        setSlotId(slot.id);
-                        finishChoice();
-                      }}
-                      radio
-                    />
-                  ))}
-                </View>
-              )}
+                ))}
+              </View>
             </PropertyMenu>
           )}
           <View
@@ -896,7 +778,7 @@ export function TaskForm({
                     const trigger = /(?:^|\s)!!$/.test(value)
                       ? "priority"
                       : /(?:^|\s)#$/.test(value)
-                        ? "destination"
+                        ? "schedule"
                         : null;
                     if (trigger) {
                       shortcut.current = trigger;
@@ -996,19 +878,12 @@ export function TaskForm({
                 >
                   {!editSeries && repeat === "none" && (
                     <Chip
-                      icon={kind === "backlog" ? Inbox : Sun}
-                      label={destinationLabel}
-                      accessibilityLabel={`Место задачи · ${destinationLabel}`}
-                      onPress={() => openPanel("destination")}
-                    />
-                  )}
-                  {!editSeries && repeat === "none" && (
-                    <Chip
-                      icon={CalendarDays}
+                      icon={kind === "backlog" ? Inbox : CalendarDays}
                       label={scheduleLabel}
                       accessibilityLabel={`Когда выполнить · ${scheduleLabel}`}
                       color={kind === "backlog" ? colors.muted : colors.accent}
                       onPress={() => openPanel("schedule")}
+                      wide
                     />
                   )}
                   <Chip
@@ -1125,6 +1000,7 @@ function Chip({
   onPress,
   color = colors.muted,
   filled = false,
+  wide = false,
 }: {
   icon: typeof Flag;
   label: string;
@@ -1132,6 +1008,7 @@ function Chip({
   onPress: () => void;
   color?: string;
   filled?: boolean;
+  wide?: boolean;
 }) {
   return (
     <Pressable
@@ -1143,7 +1020,11 @@ function Chip({
       <View className="min-h-8 flex-row items-center gap-1.5 rounded-md border border-line px-2">
         <Icon size={16} color={color} fill={filled ? color : "none"} strokeWidth={1.7} />
         {!!label && (
-          <Text numberOfLines={1} className="max-w-28 text-xs" style={{ color }}>
+          <Text
+            numberOfLines={1}
+            className={wide ? "max-w-60 text-xs" : "max-w-28 text-xs"}
+            style={{ color }}
+          >
             {label}
           </Text>
         )}
