@@ -10,7 +10,7 @@ test("custom server persists and supplies authentication and sync endpoints", as
     const path = new URL(request.url()).pathname;
     calls.push(path);
     const headers = {
-      "access-control-allow-origin": "http://localhost:3400",
+      "access-control-allow-origin": new URL(page.url()).origin,
       "access-control-allow-credentials": "true",
       "access-control-allow-headers": "content-type,x-trpc-source",
     };
@@ -98,7 +98,7 @@ test("an unreachable server remains editable after restart", async ({ page }) =>
   await page.reload();
   await expect(field).toHaveValue("https://offline.polydays.test");
   await expect(page.getByRole("alert")).toContainText("Нет связи с сервером");
-  await field.fill("http://localhost:3400");
+  await field.fill(new URL(page.url()).origin);
   await page.getByRole("button", { name: "Подключиться", exact: true }).click();
   await expect(page.getByRole("button", { name: "Открыть пространство разработки" })).toBeVisible();
 });

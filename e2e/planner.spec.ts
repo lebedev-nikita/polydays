@@ -49,7 +49,7 @@ test("durable offline capture, reconnect, second device and completion history",
   ).toBeVisible();
   const other = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const phone = await other.newPage();
-  await phone.goto("http://localhost:3400/current");
+  await phone.goto(new URL("/current", page.url()).href);
   await phone.getByRole("button", { name: "Открыть пространство разработки" }).click();
   await expect(
     phone.getByRole("button", {
@@ -95,16 +95,15 @@ test("a deadline is explicitly removed before selecting an untimed polyday or in
     exact: true,
   });
   await taskLink.click();
-  await page.getByRole("button", { name: /^Место задачи ·/ }).click();
+  await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
   await expect(page.getByRole("radio", { name: "Входящие", exact: true })).not.toBeVisible();
-  await page.getByRole("button", { name: "Изменить дедлайн", exact: true }).click();
   await page.getByRole("button", { name: "Убрать дедлайн", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Время дедлайна" })).not.toBeVisible();
   await done(page);
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await taskLink.click();
-  await page.getByRole("button", { name: /^Место задачи ·/ }).click();
-  await page.getByRole("radio", { name: "Входящие", exact: true }).click();
+  await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
+  await page.getByRole("button", { name: "Во входящие", exact: true }).click();
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
   await page.getByRole("link", { name: "Входящие", exact: true }).click();
@@ -143,7 +142,7 @@ test("compact capture supports shortcut menus, transactional dates and narrow sc
   await expect(title).toHaveValue("Подготовить план");
   await expect(page.getByRole("radio")).toHaveCount(0);
   await title.fill("Подготовить план #");
-  await page.getByRole("radio", { name: "Входящие", exact: true }).click();
+  await page.getByRole("button", { name: "Во входящие", exact: true }).click();
   await expect(title).toHaveValue("Подготовить план");
   await page
     .getByRole("textbox", { name: "Описание · необязательно" })
@@ -155,9 +154,10 @@ test("compact capture supports shortcut menus, transactional dates and narrow sc
   await page.keyboard.press("Escape");
   await expect(title).toHaveValue("Подготовить план");
   await expect(
-    page.getByRole("button", { name: "Когда выполнить · Дата", exact: true }),
+    page.getByRole("button", { name: "Когда выполнить · Входящие", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
+  await page.getByRole("button", { name: "Открыть календарь", exact: true }).click();
   await page.getByRole("button", { name: "Предыдущий месяц", exact: true }).click();
   await page.getByRole("button", { name: /^15 / }).click();
   await page.getByRole("button", { name: "Добавить время", exact: true }).click();
@@ -339,10 +339,10 @@ for (const [width, height] of [
     await expectStationary();
     await page.keyboard.press("Escape");
     await title.fill("Подготовить план");
-    await page.getByRole("button", { name: /^Место задачи ·/ }).click();
-    await expect(page.getByRole("radiogroup", { name: "Место задачи", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
+    await expect(page.getByRole("radiogroup", { name: "Полидень", exact: true })).toBeVisible();
     await expectStationary();
-    await page.getByRole("radio", { name: "Входящие", exact: true }).click();
+    await page.getByRole("button", { name: "Во входящие", exact: true }).click();
     await expectStationary();
   });
 }

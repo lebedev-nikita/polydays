@@ -20,7 +20,7 @@ for (const width of [1440, 390]) {
     await expectClippedCorner(page.getByRole("radio", { name: "P1 · Высокий", exact: true }));
     await page.getByRole("radio", { name: "P3 · Низкий", exact: true }).click();
     await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
-    await expectSingleContour(page.getByRole("heading", { name: "Дата", exact: true }));
+    await expectSingleContour(page.getByRole("radiogroup", { name: "Полидень", exact: true }));
     await expectClippedCorner(page.getByRole("button", { name: "Сегодня", exact: true }));
     await expectClippedCorner(page.getByRole("button", { name: "Добавить время", exact: true }));
     await page.getByRole("button", { name: "Повтор", exact: true }).click();
@@ -54,7 +54,7 @@ for (const width of [1440, 390]) {
       clip: panel,
     });
     await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
-    await expectSingleContour(page.getByRole("heading", { name: "Дата", exact: true }), true);
+    await expectSingleContour(page.getByRole("radiogroup", { name: "Полидень", exact: true }));
     await expectClippedCorner(page.getByRole("button", { name: "Добавить время", exact: true }));
     await page.screenshot({ path: testInfo.outputPath(`date-corners-${width}-${Date.now()}.png`) });
   });
