@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import { BoxDB, MigrationSet } from "@boxdb/client";
+import { BoxDB, MigrationSet, type TransactionHandle } from "@boxdb/client";
 import {
   buildWidgetProjection,
   decodeDocument,
@@ -16,8 +16,10 @@ import {
   mergeOperation,
   type SyncRequest,
   type SyncResponse,
+  type Versioned,
 } from "@polydays/sync";
 import { Context, Effect, Layer, Schema } from "effect";
+import { prepareCommand, type AppCommand } from "./commands.ts";
 
 export class DatabaseError extends Schema.TaggedError<DatabaseError>()("DatabaseError", {
   message: Schema.String,
@@ -53,6 +55,8 @@ export class Database extends Context.Service<
   {
     readonly client: BoxDB;
     exchange(userId: string, request: SyncRequest): Effect.Effect<SyncResponse, DatabaseError>;
+    snapshot(userId: string): Effect.Effect<ReadonlyArray<Versioned>, DatabaseError>;
+    command(userId: string, command: AppCommand): Effect.Effect<unknown, DatabaseError>;
   }
 >()("polydays/server/Database") {
   static layer(path: string) {
@@ -74,7 +78,21 @@ export class Database extends Context.Service<
               new DatabaseError({ message: "Не удалось синхронизировать данные.", cause }),
           }),
         );
-        return Database.of({ client: db, exchange });
+        const snapshot = (userId: string) =>
+          Effect.tryPromise({
+            try: () => snapshotDatabase(db, userId),
+            catch: (cause) => new DatabaseError({ message: "Не удалось прочитать данные.", cause }),
+          });
+        const command = (userId: string, command: AppCommand) =>
+          Effect.tryPromise({
+            try: () => commandDatabase(db, userId, command),
+            catch: (cause) =>
+              new DatabaseError({
+                message: cause instanceof Error ? cause.message : "Не удалось сохранить команду.",
+                cause,
+              }),
+          });
+        return Database.of({ client: db, exchange, snapshot, command });
       }),
     );
   }
@@ -85,11 +103,21 @@ export async function exchangeDatabase(
   userId: string,
   request: SyncRequest,
 ): Promise<SyncResponse> {
+  await using tx = await db.begin();
+  const response = await exchangeTransaction(tx, userId, request);
+  await tx.commit();
+  return response;
+}
+
+async function exchangeTransaction(
+  tx: TransactionHandle,
+  userId: string,
+  request: SyncRequest,
+): Promise<SyncResponse> {
   if (request.operations.length > 100 || request.cursor < 0)
     throw new Error("Недопустимый размер запроса синхронизации.");
   const acknowledged: string[] = [];
   const conflicts: Array<typeof Conflict.Type> = [];
-  await using tx = await db.begin();
   let calendar: Extract<Document, { kind: "calendar" }>["data"] | null = null;
   const calendarRow =
     await tx.query`SELECT body, revision FROM polydays_documents WHERE user_id = ${userId} AND id = ${"calendar:calendar"}`.get();
@@ -167,6 +195,63 @@ export async function exchangeDatabase(
       systemNow(),
     ),
   };
-  await tx.commit();
   return response;
+}
+
+export async function snapshotDatabase(
+  db: BoxDB | TransactionHandle,
+  userId: string,
+): Promise<ReadonlyArray<Versioned>> {
+  const rows = Schema.decodeUnknownSync(Schema.Array(DocumentRow))(
+    await db.query`SELECT body, revision FROM polydays_documents WHERE user_id = ${userId}`,
+  );
+  return rows.map((row) => ({ document: parseDocument(row.body), revision: Number(row.revision) }));
+}
+
+export async function commandDatabase(
+  db: BoxDB,
+  userId: string,
+  command: AppCommand,
+): Promise<unknown> {
+  await using tx = await db.begin();
+  const input = JSON.stringify(command);
+  const saved =
+    await tx.query`SELECT input, result FROM polydays_commands WHERE user_id = ${userId} AND id = ${command.requestId}`.get();
+  if (saved) {
+    const row = Schema.decodeUnknownSync(
+      Schema.Struct({ input: Schema.String, result: Schema.String }),
+    )(saved);
+    if (row.input !== input) throw new Error("Этот requestId уже использован для другой команды.");
+    await tx.commit();
+    return JSON.parse(row.result);
+  }
+  const records = await snapshotDatabase(tx, userId);
+  const now = systemNow();
+  const changes = prepareCommand(records, command, now);
+  // A structural command may transfer more than one sync page of tasks.
+  for (let offset = 0; offset < changes.length; offset += 100) {
+    const response = await exchangeTransaction(tx, userId, {
+      cursor: 0,
+      operations: changes.slice(offset, offset + 100).map((entity, index) => ({
+        id: `mcp:${command.requestId}:${offset + index}`,
+        entity,
+        base: records.find((row) => entityId(row.document) === entityId(entity))?.document ?? null,
+        at: now,
+      })),
+    });
+    if (response.conflicts.length)
+      throw new Error(
+        "Данные изменились. Прочитайте их снова и повторите команду с новым requestId.",
+      );
+  }
+  const updated = await snapshotDatabase(tx, userId);
+  const result = {
+    requestId: command.requestId,
+    changes: updated.filter((row) =>
+      changes.some((entity) => entityId(entity) === entityId(row.document)),
+    ),
+  };
+  await tx.query`INSERT INTO polydays_commands(user_id, id, input, result) VALUES(${userId}, ${command.requestId}, ${input}, ${JSON.stringify(result)})`.run();
+  await tx.commit();
+  return result;
 }

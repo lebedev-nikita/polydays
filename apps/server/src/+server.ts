@@ -1,5 +1,7 @@
 import { createServer } from "node:http";
 import { randomBytes } from "node:crypto";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { Config, Effect } from "effect";
 import { createAPI } from "./api.ts";
 import { createAuth } from "./auth.ts";
@@ -25,6 +27,12 @@ const config = await Effect.runPromise(
     const ownerEmail = yield* Config.String("OWNER_EMAIL").pipe(Config.withDefault(""));
     const secret = yield* Config.String("BETTER_AUTH_SECRET").pipe(Config.withDefault(""));
     const devAuth = yield* Config.Boolean("POLYDAYS_DEV_AUTH").pipe(Config.withDefault(false));
+    const additionalOrigins = (yield* Config.String("ADDITIONAL_ORIGINS").pipe(
+      Config.withDefault(""),
+    ))
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
     return {
       port,
       host,
@@ -36,6 +44,7 @@ const config = await Effect.runPromise(
       ownerEmail,
       secret,
       devAuth,
+      additionalOrigins,
     };
   }),
 );
@@ -65,6 +74,8 @@ const auth = authDatabase
 const api = createAPI({ ...config, auth, staticDirectory: "apps/client/dist" });
 await api.ready();
 const server = createServer(async (incoming, outgoing) => {
+  const abort = new AbortController();
+  outgoing.once("close", () => abort.abort());
   try {
     const chunks: Buffer[] = [];
     let size = 0;
@@ -86,6 +97,7 @@ const server = createServer(async (incoming, outgoing) => {
       new Request(new URL(incoming.url ?? "/", config.baseURL), {
         method,
         headers,
+        signal: abort.signal,
         ...(method === "GET" || method === "HEAD" ? {} : { body: Buffer.concat(chunks) }),
       }),
     );
@@ -93,8 +105,10 @@ const server = createServer(async (incoming, outgoing) => {
     const cookies = response.headers.getSetCookie();
     if (cookies.length) responseHeaders["set-cookie"] = cookies;
     outgoing.writeHead(response.status, responseHeaders);
-    outgoing.end(Buffer.from(await response.arrayBuffer()));
+    if (response.body) await pipeline(Readable.from(response.body), outgoing);
+    else outgoing.end();
   } catch (error) {
+    if (abort.signal.aborted) return;
     console.error(error instanceof Error ? error.message : "Server request failed");
     if (!outgoing.headersSent) outgoing.writeHead(500, { "Content-Type": "application/json" });
     outgoing.end(JSON.stringify({ error: "Сервер не смог обработать запрос." }));

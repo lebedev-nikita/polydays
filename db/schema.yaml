@@ -3,6 +3,21 @@ version: 1
 pragmas:
   application_id: 1112496196
 tables:
+  account:
+    columns:
+      id: TEXT PRIMARY KEY
+      accountId: TEXT
+      providerId: TEXT
+      userId: TEXT REFERENCES "user"("id") ON DELETE CASCADE
+      accessToken?: TEXT
+      refreshToken?: TEXT
+      idToken?: TEXT
+      accessTokenExpiresAt?: TEXT
+      refreshTokenExpiresAt?: TEXT
+      scope?: TEXT
+      password?: TEXT
+      createdAt: TEXT
+      updatedAt: TEXT
   deviceCode:
     columns:
       id: TEXT PRIMARY KEY
@@ -15,12 +30,143 @@ tables:
       pollingInterval?: INTEGER
       clientId?: TEXT
       scope?: TEXT
+  jwks:
+    columns:
+      id: TEXT PRIMARY KEY
+      publicKey: TEXT
+      privateKey: TEXT
+      createdAt: TEXT
+      expiresAt?: TEXT
+      alg?: TEXT
+      crv?: TEXT
+  oauthAccessToken:
+    columns:
+      id: TEXT PRIMARY KEY
+      token?: TEXT UNIQUE
+      clientId: TEXT REFERENCES "oauthClient"("clientId") ON DELETE CASCADE
+      sessionId?: TEXT REFERENCES "session"("id") ON DELETE SET NULL
+      userId?: TEXT REFERENCES "user"("id") ON DELETE CASCADE
+      referenceId?: TEXT
+      authorizationCodeId?: TEXT
+      resources?: TEXT
+      requestedUserInfoClaims?: TEXT
+      refreshId?: TEXT REFERENCES "oauthRefreshToken"("id") ON DELETE CASCADE
+      expiresAt?: TEXT
+      createdAt?: TEXT
+      revoked?: TEXT
+      confirmation?: TEXT
+      scopes: TEXT
+  oauthClient:
+    columns:
+      id: TEXT PRIMARY KEY
+      clientId: TEXT UNIQUE
+      clientSecret?: TEXT
+      clientDiscoveryId?: TEXT
+      disabled?: INTEGER
+      skipConsent?: INTEGER
+      enableEndSession?: INTEGER
+      subjectType?: TEXT
+      scopes?: TEXT
+      clientCredentialsScopes?: TEXT
+      userId?: TEXT REFERENCES "user"("id") ON DELETE CASCADE
+      createdAt?: TEXT
+      updatedAt?: TEXT
+      name?: TEXT
+      uri?: TEXT
+      icon?: TEXT
+      contacts?: TEXT
+      tos?: TEXT
+      policy?: TEXT
+      softwareId?: TEXT
+      softwareVersion?: TEXT
+      softwareStatement?: TEXT
+      redirectUris: TEXT
+      postLogoutRedirectUris?: TEXT
+      backchannelLogoutUri?: TEXT
+      backchannelLogoutSessionRequired?: INTEGER
+      tokenEndpointAuthMethod?: TEXT
+      applicationType?: TEXT
+      jwks?: TEXT
+      jwksUri?: TEXT
+      grantTypes?: TEXT
+      responseTypes?: TEXT
+      requirePKCE?: INTEGER
+      dpopBoundAccessTokens?: INTEGER
+      referenceId?: TEXT
+      metadata?: TEXT
+  oauthClientAssertion:
+    columns:
+      id: TEXT PRIMARY KEY
+      expiresAt: TEXT
+  oauthClientResource:
+    columns:
+      id: TEXT PRIMARY KEY
+      clientId: TEXT REFERENCES "oauthClient"("clientId") ON DELETE CASCADE
+      resourceId: TEXT REFERENCES "oauthResource"("identifier") ON DELETE CASCADE
+      metadata?: TEXT
+      createdAt?: TEXT
+  oauthConsent:
+    columns:
+      id: TEXT PRIMARY KEY
+      clientId: TEXT REFERENCES "oauthClient"("clientId") ON DELETE CASCADE
+      userId?: TEXT REFERENCES "user"("id") ON DELETE CASCADE
+      referenceId?: TEXT
+      resources?: TEXT
+      requestedUserInfoClaims?: TEXT
+      scopes: TEXT
+      createdAt?: TEXT
+      updatedAt?: TEXT
+  oauthRefreshToken:
+    columns:
+      id: TEXT PRIMARY KEY
+      token: TEXT UNIQUE
+      clientId: TEXT REFERENCES "oauthClient"("clientId") ON DELETE CASCADE
+      sessionId?: TEXT REFERENCES "session"("id") ON DELETE SET NULL
+      userId: TEXT REFERENCES "user"("id") ON DELETE CASCADE
+      referenceId?: TEXT
+      authorizationCodeId?: TEXT
+      resources?: TEXT
+      requestedUserInfoClaims?: TEXT
+      expiresAt?: TEXT
+      createdAt?: TEXT
+      revoked?: TEXT
+      rotatedAt?: TEXT
+      rotationReplayResponse?: TEXT
+      rotationReplayExpiresAt?: TEXT
+      authTime?: TEXT
+      confirmation?: TEXT
+      scopes: TEXT
+  oauthResource:
+    columns:
+      id: TEXT PRIMARY KEY
+      identifier: TEXT UNIQUE
+      name: TEXT
+      accessTokenTtl?: REAL
+      refreshTokenTtl?: REAL
+      signingAlgorithm?: TEXT
+      signingKeyId?: TEXT
+      allowedScopes?: TEXT
+      customClaims?: TEXT
+      dpopBoundAccessTokensRequired?: INTEGER
+      disabled?: INTEGER
+      createdAt?: TEXT
+      updatedAt?: TEXT
+      policyVersion?: REAL
+      metadata?: TEXT
   polydays_changes:
     columns:
       seq: INTEGER PRIMARY KEY AUTOINCREMENT
       user_id: TEXT
       entity_id: TEXT
       body: JSON
+  polydays_commands:
+    columns:
+      user_id: TEXT
+      id: TEXT
+      input: JSON
+      result: JSON
+    constraints:
+      - primary_key: [user_id, id]
   polydays_documents:
     columns:
       user_id: TEXT
@@ -49,6 +195,33 @@ tables:
       time_zone: TEXT
     constraints:
       - primary_key: [user_id, version_id, slot_id]
+  session:
+    columns:
+      id: TEXT PRIMARY KEY
+      expiresAt: TEXT
+      token: TEXT UNIQUE
+      createdAt: TEXT
+      updatedAt: TEXT
+      ipAddress?: TEXT
+      userAgent?: TEXT
+      userId: TEXT REFERENCES "user"("id") ON DELETE CASCADE
+  user:
+    columns:
+      id: TEXT PRIMARY KEY
+      name: TEXT
+      email: TEXT UNIQUE
+      emailVerified: INTEGER
+      image?: TEXT
+      createdAt: TEXT
+      updatedAt: TEXT
+  verification:
+    columns:
+      id: TEXT PRIMARY KEY
+      identifier: TEXT
+      value: TEXT
+      expiresAt: TEXT
+      createdAt: TEXT
+      updatedAt: TEXT
 indexes:
   deviceCode_deviceCode_idx:
     type: unique
@@ -73,3 +246,6 @@ migrations:
   - version: "20261023080000"
     name: device_authorization
     checksum: a2135b6f897aac5bc0fcd18f04bb2890ed67693e4842cd309ae89e126a8dee40
+  - version: "20261024130000"
+    name: mcp_authorization
+    checksum: 015256b413c1423308616a7a8d72bada9f76ab68a1e8bfc4d22d0f01861b797c

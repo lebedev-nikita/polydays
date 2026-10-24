@@ -3,13 +3,18 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@better-auth/cimd": "1.7.12",
     "@better-auth/expo": "1.7.12",
+    "@better-auth/mcp": "1.7.12",
+    "@better-auth/oauth-provider": "1.7.12",
     "@boxdb/better-auth-adapter": "0.5.1",
     "@boxdb/client": "0.5.1",
+    "@modelcontextprotocol/server": "2",
     "@polydays/core": "workspace:*",
     "@polydays/sync": "workspace:*",
     "@trpc/server": "^11.19.0",
     "better-auth": "1.7.12",
-    "effect": "4.0.0-rc.118"
+    "effect": "4.0.0-rc.118",
+    "zod": "4"
   }
 }

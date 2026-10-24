@@ -40,7 +40,7 @@ jobs:
       - name: Build production web application
         run: bun run build && bun run prepare:web
         env:
-          EXPO_PUBLIC_API_URL: https://pi.gibbon-parrotfish.ts.net
+          EXPO_PUBLIC_API_URL: https://polydays.gibbon-parrotfish.ts.net
       - name: Package source and web application
         run: |
           stage=$(mktemp -d)
@@ -68,4 +68,4 @@ jobs:
           DEPLOY_SHA: ${{ github.sha }}
         run: /usr/local/libexec/polydays-deploy "$DEPLOY_SHA" < release.tar.gz
       - name: Verify Tailscale HTTPS
-        run: curl --fail --show-error --retry 5 --retry-delay 2 https://pi.gibbon-parrotfish.ts.net/api/health
+        run: curl --fail --show-error --retry 5 --retry-delay 2 https://polydays.gibbon-parrotfish.ts.net/api/health

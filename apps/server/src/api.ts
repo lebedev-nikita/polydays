@@ -6,6 +6,8 @@ import { decodeSyncRequest } from "@polydays/sync";
 import { Effect, ManagedRuntime } from "effect";
 import { Database } from "./database.ts";
 import type { Auth } from "./auth.ts";
+import { createAppMcp, protectAppMcp } from "./mcp.ts";
+import { oauthPage } from "./oauth-pages.ts";
 
 type User = { readonly id: string; readonly name: string; readonly email: string };
 export type APIContext = {
@@ -39,6 +41,9 @@ export type ServerOptions = {
   readonly googleClientId: string;
   readonly devAuth: boolean;
   readonly staticDirectory: string;
+  readonly baseURL?: string;
+  readonly jwksUrl?: string;
+  readonly additionalOrigins?: ReadonlyArray<string>;
 };
 
 const mime: Record<string, string> = {
@@ -57,6 +62,15 @@ export function createAPI(options: ServerOptions) {
   const runtime = ManagedRuntime.make(Database.layer(options.databasePath));
   const exchange = (userId: string, request: ReturnType<typeof decodeSyncRequest>) =>
     runtime.runPromise(Database.use((database) => database.exchange(userId, request)));
+  const baseURL = options.baseURL ?? options.webOrigin;
+  const mcp = createAppMcp({
+    snapshot: (userId) => runtime.runPromise(Database.use((database) => database.snapshot(userId))),
+    command: (userId, command) =>
+      runtime.runPromise(Database.use((database) => database.command(userId, command))),
+  });
+  const protectedMcp = options.auth
+    ? protectAppMcp(options.auth, mcp, `${baseURL}/mcp`, options.ownerEmail, options.jwksUrl)
+    : null;
   const getUser = async (request: Request): Promise<User | null> => {
     if (options.devAuth && request.headers.get("x-polydays-dev") === "1")
       return {
@@ -72,7 +86,10 @@ export function createAPI(options: ServerOptions) {
   const handle = async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
     const origin = request.headers.get("origin");
-    const allowedOrigin = origin === options.webOrigin || origin === url.origin;
+    const allowedOrigin =
+      origin === options.webOrigin ||
+      origin === url.origin ||
+      Boolean(origin && options.additionalOrigins?.includes(origin));
     const cors: Record<string, string> =
       allowedOrigin && origin
         ? {
@@ -88,16 +105,49 @@ export function createAPI(options: ServerOptions) {
         status: 204,
         headers: {
           ...cors,
-          "Access-Control-Allow-Headers": "content-type,x-polydays-dev",
-          "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+          "Access-Control-Allow-Headers":
+            "content-type,authorization,x-polydays-dev,mcp-protocol-version,mcp-session-id",
+          "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
+          "Access-Control-Expose-Headers": "WWW-Authenticate,Mcp-Session-Id,MCP-Protocol-Version",
         },
       });
+    }
+    if (url.pathname === "/mcp") {
+      if (origin && !allowedOrigin) return json({ error: "Недопустимый источник запроса." }, 403);
+      const response =
+        options.devAuth && request.headers.get("x-polydays-dev") === "1"
+          ? await mcp.fetch(request, {
+              authInfo: {
+                token: "",
+                clientId: "local",
+                scopes: ["polydays:read", "polydays:write"],
+                extra: { userId: "local-developer" },
+              },
+            })
+          : protectedMcp
+            ? await protectedMcp(request)
+            : json({ error: "Для MCP требуется авторизация." }, 401);
+      for (const [name, value] of Object.entries(cors)) response.headers.set(name, value);
+      response.headers.set("Cache-Control", "no-store");
+      response.headers.set(
+        "Access-Control-Expose-Headers",
+        "WWW-Authenticate,Mcp-Session-Id,MCP-Protocol-Version",
+      );
+      return response;
+    }
+    if (url.pathname === "/connect" || url.pathname.startsWith("/connect/")) {
+      if (!options.auth) return json({ error: "Google-вход ещё не настроен." }, 503);
+      try {
+        return await oauthPage(request, options.auth, options.ownerEmail, baseURL);
+      } catch {
+        return json({ error: "Не удалось обработать подключение. Начните его заново." }, 400);
+      }
     }
     if (url.pathname === "/api/health") return json({ ok: true, database: "BoxDB" });
     if (url.pathname === "/api/config")
       return json({ google: options.auth !== null, devAuth: options.devAuth });
     if (url.pathname === "/api/google-config") return json({ clientId: options.googleClientId });
-    if (url.pathname.startsWith("/api/auth/")) {
+    if (url.pathname.startsWith("/api/auth/") || url.pathname.startsWith("/.well-known/")) {
       if (!options.auth) return json({ error: "Google-вход ещё не настроен на сервере." }, 503);
       const response = await options.auth.handler(request);
       for (const [name, value] of Object.entries(cors)) response.headers.set(name, value);
@@ -169,7 +219,10 @@ export function createAPI(options: ServerOptions) {
   };
   return {
     handle,
-    close: () => runtime.dispose(),
+    close: async () => {
+      await mcp.close();
+      await runtime.dispose();
+    },
     exchange,
     ready: () => runtime.runPromise(Database.use((database) => Effect.succeed(database.client))),
   };
