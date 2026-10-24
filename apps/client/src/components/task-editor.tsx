@@ -44,6 +44,7 @@ import {
   versionForDate,
   ruleForDate,
   systemNow,
+  parseTaskTitle,
   type Recurrence,
   type Scheduling,
   type Series,
@@ -814,6 +815,14 @@ export function TaskForm({
                   value={title}
                   maxLength={1000}
                   onChangeText={(value) => {
+                    const parsed = parseTaskTitle(value);
+                    if (parsed.priority !== null) {
+                      setTitle(parsed.title);
+                      setPriority(parsed.priority);
+                      shortcut.current = null;
+                      setOpenProperty(null);
+                      return;
+                    }
                     setTitle(value);
                     const trigger = /(?:^|\s)!!$/.test(value)
                       ? "priority"

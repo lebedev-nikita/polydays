@@ -16,6 +16,7 @@ After each user UI correction, update this section with concise, reusable conclu
 - Keep task entry fields and the submit action above the software keyboard, including inside Android modal windows; verify with the native keyboard open and after reopening it.
 - Let the task panel own its border and corner radius so their contours match in both quick entry and task details. Use consistent priority colors across menus, controls and task rows: P1 red, P2 orange, P3 blue, P4 neutral; fill only P1–P3 flags.
 - Open web property menus as overlays without changing the task form's position or size; keep the choices within the viewport on short and narrow screens.
+- Apply complete task-title shortcuts immediately to their property controls and remove the command from the title; support every priority, including P4 (none), during creation and editing.
 - Place contextual metadata beside the control it explains: show an overnight end beside the end time and the calculated polyday duration below the start/end pair. Update duration while editing and hide it for invalid or equal boundaries.
 - Use searchable choices for timezones and a calendar for dates. Display human-readable names and localized dates instead of requiring technical identifiers or format syntax.
 - Use a compact switch for automatic timezone detection, with the effective timezone visible.
