@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState } from "react";
-import { ScrollView, useWindowDimensions } from "react-native";
+import { ScrollView, View, useWindowDimensions } from "react-native";
 import type { PropertyMenuProps } from "./property-menu";
 
 export function PropertyMenu({ anchor, width, maxHeight, children }: PropertyMenuProps) {
@@ -37,13 +37,14 @@ export function PropertyMenu({ anchor, width, maxHeight, children }: PropertyMen
           : { top: bounds.bottom + gap }),
       }}
     >
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        className="rounded-2xl bg-white shadow-lg"
-        style={{ width, maxHeight: Math.min(maxHeight, availableHeight) }}
-      >
-        {children}
-      </ScrollView>
+      <View className="overflow-hidden rounded-2xl bg-white shadow-lg" style={{ width }}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          style={{ maxHeight: Math.min(maxHeight, availableHeight) }}
+        >
+          {children}
+        </ScrollView>
+      </View>
     </div>
   );
 }

@@ -238,6 +238,8 @@ Small rectangular choices with fine borders, rather than pill tags. Interval and
 
 ### Cards / Containers
 
+Each rounded surface owns its border, background, shadow and content clipping. Groups with edge-to-edge rows clip the rows and pressed fills to that contour, including date settings and property menus.
+
 Settings panels are white, bordered and flat, with `panel` padding and 1.25rem internal gaps. The task editor owns its border and matching corner radius in both task details and the modal composer. The composer is fluid up to 560 source units wide. Below 600 source units it floats above the keyboard with rounded corners, a small handle and safe-area padding. Borderless title and description inputs sit above a horizontally scrolling property toolbar; the submit arrow stays fixed beside it. Destination and priority open short vertical menus above the inputs. On web, these menus overlay the page without moving the form and adapt to the available viewport space. Inbox and configured polydays serve as destinations; existing deadlines lead to their date settings until explicitly removed. The date panel replaces the composer body with shortcuts, a Monday-first calendar and an optional time control. Its “Готово” action accepts the draft; Back or Escape restores the previous properties. Recurrence opens separately, with labelled series boundaries and contextual timezone information. Task dates allow historical corrections; schedule dates retain their minimum date. Modal entry uses the platform `fade` animation, with no authored duration/easing.
 
 ### Navigation

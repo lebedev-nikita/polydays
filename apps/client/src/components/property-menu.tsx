@@ -1,5 +1,5 @@
 import type { ComponentRef, ReactNode, RefObject } from "react";
-import { ScrollView, type View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 export type PropertyMenuProps = {
   readonly anchor: RefObject<ComponentRef<typeof View> | null>;
@@ -10,12 +10,13 @@ export type PropertyMenuProps = {
 
 export function PropertyMenu({ width, maxHeight, children }: PropertyMenuProps) {
   return (
-    <ScrollView
-      keyboardShouldPersistTaps="handled"
-      className="mb-2 ml-3 rounded-2xl bg-white shadow-lg"
+    <View
+      className="mb-2 ml-3 overflow-hidden rounded-2xl bg-white shadow-lg"
       style={{ width, maxHeight }}
     >
-      {children}
-    </ScrollView>
+      <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight }}>
+        {children}
+      </ScrollView>
+    </View>
   );
 }
