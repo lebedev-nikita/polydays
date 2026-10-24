@@ -522,7 +522,7 @@ export function TaskForm({
                   onChange={chooseDay}
                   error={fieldError("date")}
                 />
-                <View className="rounded-xl bg-sidebar">
+                <View className="overflow-hidden rounded-xl bg-sidebar">
                   {kind === "deadline" ? (
                     <View className="gap-2 px-4 py-2">
                       <View className="flex-row flex-wrap items-center justify-between gap-2">

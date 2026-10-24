@@ -293,6 +293,13 @@ for (const [width, height] of [
     await expect(choices).toBeVisible();
     await expectStationary();
     await expect(page.getByRole("radio", { name: "P1 · Высокий", exact: true })).toBeInViewport();
+    if (height === 400) {
+      await choices.hover();
+      await page.mouse.wheel(0, 240);
+      await expect(
+        page.getByRole("radio", { name: "P4 · Без приоритета", exact: true }),
+      ).toBeInViewport({ ratio: 1 });
+    }
     await page
       .getByRole("radio", { name: "P4 · Без приоритета", exact: true })
       .scrollIntoViewIfNeeded();
