@@ -42,6 +42,8 @@ just release
 
 `just release` runs both builds before publishing a GitHub Release. Assets are staged in `.data/releases/<version>` with checksums and a source manifest; publishing refuses missing platform assets, changed checksums, an uncommitted tree or artifacts from another commit. A draft holds both platforms before the release becomes public.
 
+Publish the Android APK, macOS DMG and `SHA256SUMS`. The DMG contains the macOS application, so no separate application ZIP is built. Keep `release.json` locally for publishing checks; it is not uploaded to GitHub.
+
 Set the version in the root, client and macOS package manifests, Expo `app.json`, and desktop Cargo/Tauri manifests. Increase Android's `versionCode` for each release. Add the release notes at `docs/releases/<version>.md`.
 
 The root `.env` supplies `EXPO_PUBLIC_API_URL` and four private signing settings: `POLYDAYS_ANDROID_KEYSTORE` (absolute path), `POLYDAYS_ANDROID_STORE_PASSWORD`, `POLYDAYS_ANDROID_KEY_ALIAS` and `POLYDAYS_ANDROID_KEY_PASSWORD`. Preserve the keystore in `.data/signing/` and its passwords for updates; copy them securely when changing build machines. The Gradle init script applies the release identity without editing generated Android code. Register that certificate's SHA-1 in the Google Android OAuth client.

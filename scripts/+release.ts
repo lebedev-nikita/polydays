@@ -32,7 +32,6 @@ const output = Effect.fn("release.output")((command: string, args: string[]) =>
 const files = (version: string) => [
   `Polydays-${version}-android-arm64.apk`,
   `Polydays-${version}-macos-arm64.dmg`,
-  `Polydays-${version}-macos-arm64.app.zip`,
 ];
 const program = Effect.gen(function* () {
   const action = Schema.decodeUnknownSync(Schema.Literals(["build", "publish"]))(process.argv[2]);
@@ -126,14 +125,6 @@ const program = Effect.gen(function* () {
     );
     if (!androidMetadata.includes(`versionName='${version}'`))
       return yield* Effect.fail(new Error("The APK version does not match this release."));
-    yield* run("ditto", [
-      "-c",
-      "-k",
-      "--sequesterRsrc",
-      "--keepParent",
-      bundle,
-      join(directory, names[2]!),
-    ]);
     yield* Effect.tryPromise(async () => {
       const assets = [];
       for (const name of names) {
@@ -195,7 +186,8 @@ const program = Effect.gen(function* () {
   if ((yield* output("git", ["rev-list", "-n", "1", tag])) !== commit)
     return yield* Effect.fail(new Error("Release tag points to another commit."));
   yield* run("git", ["push", "origin", `refs/tags/${tag}`]);
-  const assets = [...names, "SHA256SUMS", "release.json"].map((name) => join(directory, name));
+  const publishedNames = [...names, "SHA256SUMS"];
+  const assets = publishedNames.map((name) => join(directory, name));
   yield* run("gh", [
     "release",
     "create",
@@ -211,11 +203,7 @@ const program = Effect.gen(function* () {
   const uploaded = Schema.decodeUnknownSync(
     Schema.Struct({ assets: Schema.Array(Schema.Struct({ name: Schema.String })) }),
   )(JSON.parse(yield* output("gh", ["release", "view", tag, "--json", "assets"])));
-  if (
-    [...names, "SHA256SUMS", "release.json"].some(
-      (name) => !uploaded.assets.some((asset) => asset.name === name),
-    )
-  )
+  if (publishedNames.some((name) => !uploaded.assets.some((asset) => asset.name === name)))
     return yield* Effect.fail(
       new Error("Release assets are incomplete; the release stays a draft."),
     );
