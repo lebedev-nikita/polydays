@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
-import { Link, router, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, ChevronRight, LogOut, ArrowDown, ArrowUp, Trash2 } from "lucide-react-native";
+import { Link, Redirect, useLocalSearchParams } from "expo-router";
+import { ChevronLeft, ChevronRight, LogOut } from "lucide-react-native";
 import {
   activeVersion,
   addDays,
@@ -23,10 +23,7 @@ import { PageContent } from "./page-content";
 import { TaskList } from "./task-list";
 import { Button, ErrorMessage, colors } from "./primitives";
 import { ScheduleEditor } from "./schedule";
-import { TaskForm } from "./task-editor";
 import { message } from "../data/store";
-import * as Crypto from "expo-crypto";
-import { enqueue } from "@polydays/sync";
 import { pinWidget } from "../data/widget";
 
 function prettyDate(date: string): string {
@@ -149,7 +146,8 @@ function PolydayTasks({
 }) {
   const app = useApp();
   const calendar = app.calendar;
-  const [showCompleted, setShowCompleted] = useState(false);
+  const { taskId } = useLocalSearchParams<{ taskId?: string }>();
+  const [showCompleted, setShowCompleted] = useState(!!taskId);
   const all = calendar ? expandedTasks(app.tasks, app.series, calendar, addDays(date, 7)) : [];
   const rows =
     calendar && day
@@ -414,122 +412,32 @@ export function TaskScreen() {
 
 function TaskDetails({ id }: { id: string }) {
   const app = useApp();
-  const [editingSeries, setEditingSeries] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const date = app.calendar
     ? dateAt(app.now, activeVersion(app.calendar, app.now).timeZone)
     : "2026-01-01";
   const requestedDate = id?.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? date;
   const until = requestedDate > addDays(date, 30) ? requestedDate : addDays(date, 30);
   const all = app.calendar ? expandedTasks(app.tasks, app.series, app.calendar, until) : [];
-  const task = all.find((item) => item.id === id);
-  const reorder = async (direction: -1 | 1) => {
-    if (!task || !app.calendar) return;
-    try {
-      const view = taskView(task, app.calendar, app.now);
-      const group = sortTasks(
-        all
-          .filter((item) => item.priority === task.priority && !item.completed)
-          .map((item) => taskView(item, app.calendar!, app.now))
-          .filter((item) => item.polyday?.id === view.polyday?.id),
-      );
-      const index = group.findIndex((item) => item.task.id === task.id);
-      if (index + direction < 0 || index + direction >= group.length) return;
-      const reordered = [...group];
-      const moved = reordered.splice(index, 1)[0];
-      if (!moved) return;
-      reordered.splice(index + direction, 0, moved);
-      await app.store.update((state) => {
-        let next = state;
-        for (const [rank, row] of reordered.entries())
-          next = enqueue(
-            next,
-            { kind: "task", data: { ...row.task, order: rank } },
-            Crypto.randomUUID(),
-            app.now,
-          );
-        return next;
-      });
-      void app.store.sync();
-    } catch (cause) {
-      setError(message(cause));
-    }
-  };
-  const remove = async () => {
-    if (!task) return;
-    try {
-      await app.store.save(
-        { kind: "task", data: { ...task, deleted: true } },
-        { kind: "task", data: task },
-      );
-      router.back();
-    } catch (cause) {
-      setError(message(cause));
-    }
-  };
+  const task = all.find((item) => item.id === id && !item.deleted);
+  if (!task || !app.calendar)
+    return (
+      <Title
+        title="Задача не найдена"
+        subtitle="Она могла быть удалена или ещё не загружена на это устройство."
+      />
+    );
+  const view = taskView(task, app.calendar, app.now);
   return (
-    <>
-      <ErrorMessage>{error}</ErrorMessage>
-      {!task ? (
-        <Title
-          title="Задача не найдена"
-          subtitle="Она могла быть удалена или ещё не загружена на это устройство."
-        />
-      ) : (
-        <>
-          <View className="mb-5 flex-row flex-wrap items-center gap-3">
-            <Button
-              secondary
-              onPress={() => {
-                void app.store
-                  .complete(task, !task.completed)
-                  .catch((cause) => setError(message(cause)));
-              }}
-            >
-              {task.completed ? "Вернуть в работу" : "Завершить задачу"}
-            </Button>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Поднять задачу внутри приоритета"
-              onPress={() => {
-                void reorder(-1);
-              }}
-              className="h-12 w-12 items-center justify-center"
-            >
-              <ArrowUp size={18} color={colors.muted} />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Опустить задачу внутри приоритета"
-              onPress={() => {
-                void reorder(1);
-              }}
-              className="h-12 w-12 items-center justify-center"
-            >
-              <ArrowDown size={18} color={colors.muted} />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Удалить задачу"
-              onPress={() => {
-                void remove();
-              }}
-              className="h-12 w-12 items-center justify-center"
-            >
-              <Trash2 size={18} color={colors.muted} />
-            </Pressable>
-          </View>
-          <TaskForm
-            key={`${task.id}:${editingSeries}`}
-            task={task}
-            editSeries={editingSeries}
-            scheduling={task.scheduling}
-            onSwitchSeries={task.seriesId ? () => setEditingSeries(!editingSeries) : undefined}
-            onClose={() => router.back()}
-          />
-        </>
-      )}
-    </>
+    <Redirect
+      href={
+        view.polyday
+          ? {
+              pathname: "/day/[date]/[slotId]",
+              params: { date: view.polyday.date, slotId: view.polyday.slotId, taskId: id },
+            }
+          : { pathname: "/backlog", params: { taskId: id } }
+      }
+    />
   );
 }
 

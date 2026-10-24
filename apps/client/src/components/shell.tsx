@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   View,
   useWindowDimensions,
@@ -23,6 +22,7 @@ import {
 } from "lucide-react-native";
 import { colors, ErrorMessage } from "./primitives";
 import { useApp } from "./provider";
+import { TaskScrollView } from "./keyboard";
 import { LoginScreen } from "./login";
 import { ScheduleEditor } from "./schedule";
 import { TaskComposer } from "./task-editor";
@@ -221,7 +221,7 @@ export function AppShell({
             </Pressable>
           </Link>
         ) : null}
-        <ScrollView
+        <TaskScrollView
           className="flex-1"
           contentContainerStyle={{ alignItems: "center", paddingBottom: desktop ? 70 : 100 }}
           keyboardShouldPersistTaps="handled"
@@ -229,7 +229,7 @@ export function AppShell({
           <View className={`w-full max-w-[850px] ${desktop ? "px-14 pt-12" : "px-5 pt-7"}`}>
             {children}
           </View>
-        </ScrollView>
+        </TaskScrollView>
         {!desktop && (
           <View className="flex-row border-t border-line bg-white px-2 pb-3 pt-1">
             {navigation}

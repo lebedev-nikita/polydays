@@ -31,6 +31,8 @@ import {
   Check,
   CalendarOff,
   CalendarArrowUp,
+  ArrowDown,
+  Trash2,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
@@ -69,6 +71,10 @@ type FormProps = {
   readonly closeRequest?: RefObject<(() => void) | null>;
   readonly maxHeight?: number;
   readonly onSwitchSeries?: () => void;
+  readonly inline?: boolean;
+  readonly changeRequest?: RefObject<((action: () => void) => void) | null>;
+  readonly onDelete?: () => Promise<void>;
+  readonly onReorder?: (direction: -1 | 1) => Promise<void>;
 };
 
 export function TaskComposer({
@@ -85,6 +91,8 @@ export function TaskComposer({
   const insets = useSafeAreaInsets();
   const mobile = width < 600;
   const maxHeight = height - (mobile ? insets.top + insets.bottom + 24 : 64);
+  // Restore web focus before a task in the underlying list can be opened.
+  if (Platform.OS === "web" && !visible) return null;
   return (
     <Modal
       accessibilityLabel="Новая задача"
@@ -135,10 +143,15 @@ export function TaskForm({
   closeRequest,
   maxHeight,
   onSwitchSeries,
+  inline = false,
+  changeRequest,
+  onDelete,
+  onReorder,
 }: FormProps) {
   const { store, calendar, series, now } = useApp();
   const titleRef = useRef<ComponentRef<typeof TextInput>>(null);
   const formRef = useRef<ComponentRef<typeof View>>(null);
+  const descriptionRef = useRef<ComponentRef<typeof TextInput>>(null);
   const titleId = useId();
   const zone = calendar ? activeVersion(calendar, now).timeZone : "UTC";
   const today = dateAt(now, zone);
@@ -229,7 +242,13 @@ export function TaskForm({
     setOpenProperty(null);
     titleRef.current?.focus();
   };
+  useEffect(() => {
+    if (!inline) return;
+    const frame = requestAnimationFrame(() => titleRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [inline]);
   const [titleHeight, setTitleHeight] = useState(40);
+  const [descriptionHeight, setDescriptionHeight] = useState(36);
   const { width: formWidth } = useWindowDimensions();
   useLayoutEffect(() => {
     if (Platform.OS !== "web") return;
@@ -241,6 +260,16 @@ export function TaskForm({
     input.style.height = previousHeight;
     setTitleHeight(height);
   }, [title, formWidth, openProperty]);
+  useLayoutEffect(() => {
+    if (Platform.OS !== "web") return;
+    const input = descriptionRef.current as unknown as HTMLTextAreaElement | null;
+    if (!input) return;
+    const previousHeight = input.style.height;
+    input.style.height = "auto";
+    const height = Math.min(112, Math.max(36, input.scrollHeight));
+    input.style.height = previousHeight;
+    setDescriptionHeight(height);
+  }, [description, formWidth, openProperty]);
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmSwitch, setConfirmSwitch] = useState(false);
   const [touched, setTouched] = useState<ReadonlyArray<string>>([]);
@@ -276,6 +305,37 @@ export function TaskForm({
       closeRequest.current = null;
     };
   });
+  useEffect(() => {
+    if (!changeRequest) return;
+    changeRequest.current = requestLeave;
+    return () => {
+      changeRequest.current = null;
+    };
+  });
+  useEffect(() => {
+    if (!inline || Platform.OS !== "web") return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      requestClose();
+    };
+    document.addEventListener("keydown", escape);
+    return () => document.removeEventListener("keydown", escape);
+  });
+  const runAction = async (action: () => Promise<void>) => {
+    if (saving.current) return;
+    saving.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+    } catch (cause) {
+      setError(message(cause));
+    } finally {
+      saving.current = false;
+      setBusy(false);
+    }
+  };
   const errors: Record<string, string> = {};
   if (!title.trim()) errors.title = "Введите название задачи.";
   const checkDate = (key: string, value: string) => {
@@ -468,10 +528,17 @@ export function TaskForm({
   return (
     <View
       ref={formRef}
-      className={panel ? "overflow-hidden border border-line bg-white shadow-xl" : ""}
-      style={{ flexShrink: 1, minHeight: 0, maxHeight, borderRadius: formWidth < 600 ? 24 : 16 }}
+      className={
+        panel ? `overflow-hidden border border-line bg-white ${inline ? "" : "shadow-xl"}` : ""
+      }
+      style={{
+        flexShrink: 1,
+        minHeight: 0,
+        maxHeight,
+        borderRadius: inline ? 12 : formWidth < 600 ? 24 : 16,
+      }}
     >
-      {panel && formWidth < 600 && (
+      {panel && !inline && formWidth < 600 && (
         <View className="mt-2 h-1 w-9 self-center rounded-full bg-line" />
       )}
       {panel ? (
@@ -775,10 +842,12 @@ export function TaskForm({
             </PropertyMenu>
           )}
           <View
-            className="overflow-hidden border border-line bg-white shadow-xl"
-            style={{ flexShrink: 1, borderRadius: formWidth < 600 ? 24 : 16 }}
+            className={`overflow-hidden border border-line bg-white ${inline ? "" : "shadow-xl"}`}
+            style={{ flexShrink: 1, borderRadius: inline ? 12 : formWidth < 600 ? 24 : 16 }}
           >
-            {formWidth < 600 && <View className="mt-2 h-1 w-9 self-center rounded-full bg-line" />}
+            {!inline && formWidth < 600 && (
+              <View className="mt-2 h-1 w-9 self-center rounded-full bg-line" />
+            )}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Закрыть"
@@ -864,6 +933,7 @@ export function TaskForm({
               </View>
 
               <TextInput
+                ref={descriptionRef}
                 accessibilityLabel="Описание · необязательно"
                 placeholder="Описание"
                 placeholderTextColor={colors.muted}
@@ -874,6 +944,15 @@ export function TaskForm({
                 textAlignVertical="top"
                 value={description}
                 onChangeText={setDescription}
+                onContentSizeChange={
+                  Platform.OS === "web"
+                    ? undefined
+                    : (event) =>
+                        setDescriptionHeight(
+                          Math.min(112, Math.max(36, event.nativeEvent.contentSize.height)),
+                        )
+                }
+                style={{ height: descriptionHeight }}
                 className="composer-field min-h-9 max-h-28 py-1 text-sm leading-5 text-ink"
               />
               {task?.seriesId && !editSeries && (
@@ -956,6 +1035,35 @@ export function TaskForm({
                       onPress={() => openPanel("repeat")}
                     />
                   )}
+                  {onReorder &&
+                    !editSeries &&
+                    ([-1, 1] as const).map((direction) => (
+                      <Chip
+                        key={direction}
+                        icon={direction === -1 ? ArrowUp : ArrowDown}
+                        label=""
+                        accessibilityLabel={
+                          direction === -1
+                            ? "Поднять задачу внутри приоритета"
+                            : "Опустить задачу внутри приоритета"
+                        }
+                        onPress={() => {
+                          void runAction(() => onReorder(direction));
+                        }}
+                      />
+                    ))}
+                  {onDelete && !editSeries && (
+                    <Chip
+                      icon={Trash2}
+                      label=""
+                      accessibilityLabel="Удалить задачу"
+                      onPress={() =>
+                        requestLeave(() => {
+                          void runAction(onDelete);
+                        })
+                      }
+                    />
+                  )}
                   {onSwitchSeries && (
                     <Chip
                       icon={Repeat2}
@@ -985,11 +1093,21 @@ export function TaskForm({
                   }}
                   className={`h-11 w-11 items-center justify-center rounded-lg ${busy || !title.trim() ? "bg-selected" : "bg-accent active:opacity-80"}`}
                 >
-                  <ArrowUp
-                    size={22}
-                    color={busy || !title.trim() ? colors.accent : "white"}
-                    strokeWidth={2.2}
-                  />
+                  <View>
+                    {task ? (
+                      <Check
+                        size={22}
+                        color={busy || !title.trim() ? colors.accent : "white"}
+                        strokeWidth={2.2}
+                      />
+                    ) : (
+                      <ArrowUp
+                        size={22}
+                        color={busy || !title.trim() ? colors.accent : "white"}
+                        strokeWidth={2.2}
+                      />
+                    )}
+                  </View>
                 </Pressable>
               </View>
             )}
