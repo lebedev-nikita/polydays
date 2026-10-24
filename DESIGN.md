@@ -229,7 +229,7 @@ Settings panels are white, bordered and flat, with `panel` padding and 1.25rem i
 
 ### Navigation
 
-Desktop destinations have muted outline icons and dark labels; the active destination has pale tomato fill, tomato icon/text and semibold type. Pressed inactive destinations use the selection fill. A selected explicit polyday also marks the current-polyday destination active. Mobile uses the same four destinations with compact captions and centered icons. Settings and sync actions move into the top bar. Icons come from Lucide vector components, not text glyphs.
+Desktop destinations have muted outline icons and dark labels; the active destination has pale tomato fill, tomato icon/text and semibold type. Pressed inactive destinations use the selection fill. A selected explicit polyday also marks the current-polyday destination active. Primary destinations and selected polydays open with their heading and controls immediately. A tomato activity indicator occupies the list area while its contents are prepared after the first painted frame; week changes and back navigation follow the same rule. Leaving a screen cancels pending preparation. Mobile uses the same four destinations with compact captions and centered icons. Settings and sync actions move into the top bar. Icons come from Lucide vector components, not text glyphs.
 
 ### Task rows and quick entry
 

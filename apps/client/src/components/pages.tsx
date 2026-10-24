@@ -15,9 +15,11 @@ import {
   taskView,
   type Scheduling,
   type Document,
+  type Polyday,
 } from "@polydays/core";
 import { useApp } from "./provider";
 import { AppShell } from "./shell";
+import { PageContent } from "./page-content";
 import { TaskList } from "./task-list";
 import { Button, ErrorMessage, colors } from "./primitives";
 import { ScheduleEditor } from "./schedule";
@@ -49,7 +51,6 @@ function Title({ title, subtitle }: { title: string; subtitle?: string }) {
 export function PolydayScreen({ explicit = false }: { explicit?: boolean }) {
   const app = useApp();
   const params = useLocalSearchParams<{ date?: string; slotId?: string }>();
-  const [showCompleted, setShowCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const calendar = app.calendar;
   const current = calendar ? currentPolyday(calendar, app.now) : null;
@@ -63,15 +64,6 @@ export function PolydayScreen({ explicit = false }: { explicit?: boolean }) {
   const scheduling: Scheduling = day
     ? { kind: "polyday", date: day.date, slotId: day.slotId }
     : { kind: "backlog" };
-  const all = calendar ? expandedTasks(app.tasks, app.series, calendar, addDays(date, 7)) : [];
-  const rows =
-    calendar && day
-      ? sortTasks(
-          all
-            .map((task) => taskView(task, calendar, app.now))
-            .filter((view) => view.polyday?.id === day.id || (!explicit && view.overdue)),
-        )
-      : [];
   const detectedZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const zone = calendar ? activeVersion(calendar, app.now).timeZone : detectedZone;
   const adoptZone = async () => {
@@ -137,6 +129,38 @@ export function PolydayScreen({ explicit = false }: { explicit?: boolean }) {
           ))}
         </View>
       )}
+      <PageContent key={`${explicit}:${day?.id}`}>
+        <PolydayTasks day={day} date={date} explicit={explicit} scheduling={scheduling} />
+      </PageContent>
+    </AppShell>
+  );
+}
+
+function PolydayTasks({
+  day,
+  date,
+  explicit,
+  scheduling,
+}: {
+  day: Polyday | null;
+  date: string;
+  explicit: boolean;
+  scheduling: Scheduling;
+}) {
+  const app = useApp();
+  const calendar = app.calendar;
+  const [showCompleted, setShowCompleted] = useState(false);
+  const all = calendar ? expandedTasks(app.tasks, app.series, calendar, addDays(date, 7)) : [];
+  const rows =
+    calendar && day
+      ? sortTasks(
+          all
+            .map((task) => taskView(task, calendar, app.now))
+            .filter((view) => view.polyday?.id === day.id || (!explicit && view.overdue)),
+        )
+      : [];
+  return (
+    <>
       <TaskList rows={rows.filter((row) => !row.task.completed)} scheduling={scheduling} />
       {rows.some((row) => row.task.completed) && (
         <View className="mt-6">
@@ -158,11 +182,22 @@ export function PolydayScreen({ explicit = false }: { explicit?: boolean }) {
           )}
         </View>
       )}
-    </AppShell>
+    </>
   );
 }
 
 export function BacklogScreen() {
+  return (
+    <AppShell>
+      <Title title="Входящие" subtitle="Задачи, которым вы ещё не выбрали полидень" />
+      <PageContent>
+        <BacklogTasks />
+      </PageContent>
+    </AppShell>
+  );
+}
+
+function BacklogTasks() {
   const { calendar, tasks, now } = useApp();
   const rows = calendar
     ? sortTasks(
@@ -171,16 +206,11 @@ export function BacklogScreen() {
           .map((task) => taskView(task, calendar, now)),
       )
     : [];
-  return (
-    <AppShell>
-      <Title title="Входящие" subtitle="Задачи, которым вы ещё не выбрали полидень" />
-      <TaskList rows={rows} scheduling={{ kind: "backlog" }} />
-    </AppShell>
-  );
+  return <TaskList rows={rows} scheduling={{ kind: "backlog" }} />;
 }
 
 export function TimelineScreen({ history = false }: { history?: boolean }) {
-  const { calendar, tasks, series, now } = useApp();
+  const { calendar, now } = useApp();
   const params = useLocalSearchParams<{ from?: string }>();
   const today = calendar ? dateAt(now, activeVersion(calendar, now).timeZone) : "2026-01-01";
   const from =
@@ -190,25 +220,20 @@ export function TimelineScreen({ history = false }: { history?: boolean }) {
         ? addDays(today, -6)
         : today;
   const until = addDays(from, 6);
-  const days = calendar
-    ? polydaysBetween(calendar, from, until)
-        .filter((day) => (history ? day.end <= now : day.end > now))
-        .sort((a, b) => (history ? b.start - a.start : a.start - b.start))
-    : [];
-  const all = calendar ? expandedTasks(tasks, series, calendar, until) : [];
-  const views = calendar ? all.map((task) => taskView(task, calendar, now)) : [];
   const path = history ? "/history" : "/upcoming";
   return (
     <AppShell>
-      <View className="flex-row items-start justify-between">
-        <Title
-          title={history ? "История полидней" : "Предстоящие"}
-          subtitle={
-            history
-              ? "Выполненные задачи остаются в своих полиднях"
-              : "Планируйте задачи на следующие полидни"
-          }
-        />
+      <View className="flex-row items-start justify-between gap-3">
+        <View className="min-w-0 flex-1">
+          <Title
+            title={history ? "История полидней" : "Предстоящие"}
+            subtitle={
+              history
+                ? "Выполненные задачи остаются в своих полиднях"
+                : "Планируйте задачи на следующие полидни"
+            }
+          />
+        </View>
         <View className="flex-row">
           <Link href={{ pathname: path, params: { from: addDays(from, -7) } }} asChild>
             <Pressable
@@ -231,6 +256,24 @@ export function TimelineScreen({ history = false }: { history?: boolean }) {
       <Text className="mb-5 text-sm text-muted">
         {prettyDate(from)} — {prettyDate(until)}
       </Text>
+      <PageContent key={`${history}:${from}`}>
+        <TimelineDays from={from} until={until} history={history} />
+      </PageContent>
+    </AppShell>
+  );
+}
+
+function TimelineDays({ from, until, history }: { from: string; until: string; history: boolean }) {
+  const { calendar, tasks, series, now } = useApp();
+  const days = calendar
+    ? polydaysBetween(calendar, from, until)
+        .filter((day) => (history ? day.end <= now : day.end > now))
+        .sort((a, b) => (history ? b.start - a.start : a.start - b.start))
+    : [];
+  const all = calendar ? expandedTasks(tasks, series, calendar, until) : [];
+  const views = calendar ? all.map((task) => taskView(task, calendar, now)) : [];
+  return (
+    <>
       {!days.length && (
         <Text className="py-10 text-sm text-muted">
           На этой неделе пока нет {history ? "завершённых" : "предстоящих"} полидней.
@@ -276,7 +319,7 @@ export function TimelineScreen({ history = false }: { history?: boolean }) {
           </View>
         );
       })}
-    </AppShell>
+    </>
   );
 }
 
@@ -359,8 +402,18 @@ export function SettingsScreen() {
 }
 
 export function TaskScreen() {
-  const app = useApp();
   const { id } = useLocalSearchParams<{ id: string }>();
+  return (
+    <AppShell>
+      <PageContent key={id}>
+        <TaskDetails id={id} />
+      </PageContent>
+    </AppShell>
+  );
+}
+
+function TaskDetails({ id }: { id: string }) {
+  const app = useApp();
   const [editingSeries, setEditingSeries] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const date = app.calendar
@@ -415,7 +468,7 @@ export function TaskScreen() {
     }
   };
   return (
-    <AppShell>
+    <>
       <ErrorMessage>{error}</ErrorMessage>
       {!task ? (
         <Title
@@ -478,7 +531,7 @@ export function TaskScreen() {
           </View>
         </>
       )}
-    </AppShell>
+    </>
   );
 }
 
