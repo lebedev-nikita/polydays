@@ -212,6 +212,63 @@ test("recurrence editing preserves the series deadline independently of an occur
   await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
 });
 
+for (const [width, height] of [
+  [1440, 900],
+  [1440, 400],
+  [390, 640],
+  [320, 640],
+] as const) {
+  test(`property menus keep the composer stationary at ${width}×${height}`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height });
+    await openComposer(page);
+    const title = page.getByRole("textbox", { name: "Название задачи" });
+    const description = page.getByRole("textbox", { name: "Описание · необязательно" });
+    const submit = page.getByRole("button", { name: "Добавить задачу", exact: true }).last();
+    await title.fill("Подготовить план");
+    const fields = [title, description, submit];
+    const bounds = await Promise.all(fields.map((field) => field.boundingBox()));
+    const expectStationary = async () => {
+      for (const [index, field] of fields.entries()) {
+        await expect.poll(() => field.boundingBox()).toEqual(bounds[index]);
+      }
+    };
+
+    await page.getByRole("button", { name: /^Приоритет ·/ }).click();
+    const choices = page.getByRole("radiogroup", { name: "Приоритет", exact: true });
+    await expect(choices).toBeVisible();
+    await expectStationary();
+    await expect(page.getByRole("radio", { name: "P1 · Высокий", exact: true })).toBeInViewport();
+    await page
+      .getByRole("radio", { name: "P4 · Без приоритета", exact: true })
+      .scrollIntoViewIfNeeded();
+    await expect(
+      page.getByRole("radio", { name: "P4 · Без приоритета", exact: true }),
+    ).toBeInViewport();
+    if (height === 900 || width === 390) {
+      await page.screenshot({
+        path: testInfo.outputPath(`priority-stationary-${width}-${Date.now()}.png`),
+        animations: "disabled",
+      });
+    }
+    await page.getByRole("radio", { name: "P1 · Высокий", exact: true }).click();
+    await expect(title).toBeFocused();
+    await expectStationary();
+
+    await title.fill("Подготовить план !!");
+    await expect(page.getByRole("radio", { name: "P1 · Высокий", exact: true })).toBeVisible();
+    await expectStationary();
+    await page.keyboard.press("Escape");
+    await title.fill("Подготовить план");
+    await page.getByRole("button", { name: /^Место задачи ·/ }).click();
+    await expect(page.getByRole("radiogroup", { name: "Место задачи", exact: true })).toBeVisible();
+    await expectStationary();
+    await page.getByRole("radio", { name: "Входящие", exact: true }).click();
+    await expectStationary();
+  });
+}
+
 async function openComposer(page: Page) {
   await page.goto("/backlog");
   await page.getByRole("button", { name: "Открыть пространство разработки" }).click();

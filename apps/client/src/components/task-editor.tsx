@@ -57,6 +57,7 @@ import { TimeField } from "./time-field";
 import { normalizeTimeInput } from "./time-input";
 import { timeZoneLabel } from "./schedule-options";
 import { KeyboardAvoidingView } from "./keyboard";
+import { PropertyMenu } from "./property-menu";
 
 const days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 type FormProps = {
@@ -136,6 +137,7 @@ export function TaskForm({
 }: FormProps) {
   const { store, calendar, series, now } = useApp();
   const titleRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const formRef = useRef<ComponentRef<typeof View>>(null);
   const titleId = useId();
   const zone = calendar ? activeVersion(calendar, now).timeZone : "UTC";
   const today = dateAt(now, zone);
@@ -464,6 +466,7 @@ export function TaskForm({
   const nextMonday = addDays(today, 8 - (new Date(`${today}T12:00:00Z`).getUTCDay() || 7));
   return (
     <View
+      ref={formRef}
       className={panel ? "overflow-hidden rounded-3xl bg-white shadow-xl" : ""}
       style={{ flexShrink: 1, minHeight: 0, maxHeight }}
     >
@@ -711,13 +714,10 @@ export function TaskForm({
       ) : (
         <>
           {(openProperty === "priority" || openProperty === "destination") && (
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              className="mb-2 ml-3 rounded-2xl bg-white shadow-lg"
-              style={{
-                width: Math.min(320, formWidth - 40),
-                maxHeight: Math.min(288, (maxHeight ?? 640) / 2),
-              }}
+            <PropertyMenu
+              anchor={formRef}
+              width={Math.min(320, formWidth - 40)}
+              maxHeight={Math.min(288, (maxHeight ?? 640) / 2)}
             >
               {openProperty === "priority" ? (
                 <View accessibilityRole="radiogroup" accessibilityLabel="Приоритет">
@@ -770,7 +770,7 @@ export function TaskForm({
                   ))}
                 </View>
               )}
-            </ScrollView>
+            </PropertyMenu>
           )}
           <View
             className="overflow-hidden bg-white shadow-xl"
