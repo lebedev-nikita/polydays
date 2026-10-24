@@ -8,6 +8,7 @@ import { Database } from "./database.ts";
 import type { Auth } from "./auth.ts";
 import { createAppMcp, protectAppMcp } from "./mcp.ts";
 import { oauthPage } from "./oauth-pages.ts";
+import { createAccountAccess, type AccountAccessConfig } from "./account-access.ts";
 
 type User = { readonly id: string; readonly name: string; readonly email: string };
 export type APIContext = {
@@ -27,17 +28,21 @@ const authenticated = t.procedure.use(({ ctx, next }) => {
   return next({ ctx: { ...ctx, user: ctx.user } });
 });
 export const appRouter = t.router({
-  sync: authenticated
-    .input(decodeSyncRequest)
-    .mutation(({ ctx, input }) => ctx.exchange(ctx.user.id, input)),
+  sync: authenticated.input(decodeSyncRequest).mutation(({ ctx, input }) => {
+    if (input.accountId !== undefined && input.accountId !== ctx.user.id)
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Аккаунт изменился. Войдите снова; локальные изменения сохранены.",
+      });
+    return ctx.exchange(ctx.user.id, input);
+  }),
 });
 export type AppRouter = typeof appRouter;
 
-export type ServerOptions = {
+export type ServerOptions = AccountAccessConfig & {
   readonly databasePath: string;
   readonly auth: Auth | null;
   readonly webOrigin: string;
-  readonly ownerEmail: string;
   readonly googleClientId: string;
   readonly devAuth: boolean;
   readonly staticDirectory: string;
@@ -63,13 +68,14 @@ export function createAPI(options: ServerOptions) {
   const exchange = (userId: string, request: ReturnType<typeof decodeSyncRequest>) =>
     runtime.runPromise(Database.use((database) => database.exchange(userId, request)));
   const baseURL = options.baseURL ?? options.webOrigin;
+  const canAccess = createAccountAccess(options);
   const mcp = createAppMcp({
     snapshot: (userId) => runtime.runPromise(Database.use((database) => database.snapshot(userId))),
     command: (userId, command) =>
       runtime.runPromise(Database.use((database) => database.command(userId, command))),
   });
   const protectedMcp = options.auth
-    ? protectAppMcp(options.auth, mcp, `${baseURL}/mcp`, options.ownerEmail, options.jwksUrl)
+    ? protectAppMcp(options.auth, mcp, `${baseURL}/mcp`, canAccess, options.jwksUrl)
     : null;
   const getUser = async (request: Request): Promise<User | null> => {
     if (options.devAuth && request.headers.get("x-polydays-dev") === "1")
@@ -79,8 +85,7 @@ export function createAPI(options: ServerOptions) {
         email: "development@localhost",
       };
     const session = await options.auth?.api.getSession({ headers: request.headers });
-    if (!session || session.user.email.toLowerCase() !== options.ownerEmail.toLowerCase())
-      return null;
+    if (!session || !canAccess(session.user)) return null;
     return { id: session.user.id, name: session.user.name, email: session.user.email };
   };
   const handle = async (request: Request): Promise<Response> => {
@@ -138,7 +143,7 @@ export function createAPI(options: ServerOptions) {
     if (url.pathname === "/connect" || url.pathname.startsWith("/connect/")) {
       if (!options.auth) return json({ error: "Google-вход ещё не настроен." }, 503);
       try {
-        return await oauthPage(request, options.auth, options.ownerEmail, baseURL);
+        return await oauthPage(request, options.auth, canAccess, baseURL);
       } catch {
         return json({ error: "Не удалось обработать подключение. Начните его заново." }, 400);
       }
@@ -181,7 +186,13 @@ export function createAPI(options: ServerOptions) {
         );
       if (request.method !== "POST") return json({ error: "Используйте POST." }, 405);
       try {
-        return json(await exchange(user.id, decodeSyncRequest(await request.json())));
+        const input = decodeSyncRequest(await request.json());
+        if (input.accountId !== undefined && input.accountId !== user.id)
+          return json(
+            { error: "Аккаунт изменился. Войдите снова; локальные изменения сохранены." },
+            401,
+          );
+        return json(await exchange(user.id, input));
       } catch (error) {
         return json(
           { error: error instanceof Error ? error.message : "Не удалось синхронизировать данные." },

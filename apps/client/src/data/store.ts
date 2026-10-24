@@ -218,6 +218,7 @@ export class AppStore {
         const result = await executeMutation(["sync", apiURL, account.id], async () =>
           decodeSyncResponse(
             await this.client.sync.mutate({
+              accountId: account.id,
               cursor: local.cursor,
               operations: local.pending.slice(0, 100),
             }),

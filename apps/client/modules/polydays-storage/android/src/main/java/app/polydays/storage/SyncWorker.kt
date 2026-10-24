@@ -20,7 +20,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : Worker(context, p
       repeat(100) {
         if (store.profile()?.getString("id") != account) return Result.success()
         val state = store.load(account)?.getJSONObject("state") ?: return Result.success()
-        val request = JSONObject().put("cursor", state.getLong("cursor")).put("operations", JSONArray(state.getJSONArray("pending").objects().take(100)))
+        val request = JSONObject().put("accountId", account).put("cursor", state.getLong("cursor")).put("operations", JSONArray(state.getJSONArray("pending").objects().take(100)))
         val connection = URL("$api/api/sync").openConnection() as HttpURLConnection
         try {
           connection.requestMethod = "POST"; connection.connectTimeout = 15000; connection.readTimeout = 20000; connection.doOutput = true; connection.instanceFollowRedirects = false

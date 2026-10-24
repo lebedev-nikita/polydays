@@ -7,6 +7,7 @@ import { createAuth } from "./auth.ts";
 import { openDatabase } from "./database.ts";
 import { createAppMcp, protectAppMcp } from "./mcp.ts";
 import { oauthPage } from "./oauth-pages.ts";
+import { createAccountAccess } from "./account-access.ts";
 
 it("completes OAuth PKCE and immediately revokes JWT access without reviving it on reconnection", async () => {
   const db = await openDatabase(":memory:");
@@ -32,7 +33,8 @@ it("completes OAuth PKCE and immediately revokes JWT access without reviving it 
       throw new Error("Must not write");
     },
   });
-  const protectedMcp = protectAppMcp(auth, handler, resource, "owner@example.com");
+  const canAccess = createAccountAccess({ ownerEmail: "owner@example.com" });
+  const protectedMcp = protectAppMcp(auth, handler, resource, canAccess);
   try {
     const metadata = await auth.handler(
       new Request(`${baseURL}/.well-known/oauth-protected-resource/mcp`),
@@ -168,7 +170,7 @@ it("completes OAuth PKCE and immediately revokes JWT access without reviving it 
         body: JSON.stringify({ id: consents[0]!.id }),
       }),
       auth,
-      "owner@example.com",
+      canAccess,
       baseURL,
     );
     expect(revoke.status).toBe(200);

@@ -14,15 +14,21 @@ NODE_ENV=production bun run server
 
 ## Google credentials
 
-In [Google Auth Platform](https://console.cloud.google.com/auth/overview), configure branding and audience for your project. While the consent screen is in testing, add the owner account as a test user.
+In [Google Auth Platform](https://console.cloud.google.com/auth/overview), configure branding and audience for your project. Google sign-in requests only the basic identity scopes (`openid`, `email`, `profile`); [Google documents an exception to testing-mode user allowlists for these scopes](https://developers.google.com/identity/protocols/oauth2/production-readiness/overview). If you add other Google scopes, configure the audience and test users accordingly.
 
-Create a **Web application** OAuth client. Add the web origin as an authorised JavaScript origin and the exact callback `${BETTER_AUTH_URL}/api/auth/callback/google` as an authorised redirect URI. Put that client's ID and secret in `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`; set `OWNER_EMAIL` to the verified Google account allowed to use this server. Other accounts cannot create a user or access sync.
+Create a **Web application** OAuth client. Add the web origin as an authorised JavaScript origin and the exact callback `${BETTER_AUTH_URL}/api/auth/callback/google` as an authorised redirect URI. Put that client's ID and secret in `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Configure server admission as described below; Google authentication and server admission are separate checks.
 
 For Android, create an **Android** OAuth client in the same project for package `app.polydays.mobile`, registering the SHA-1 certificate fingerprint of each signing key you use. The native Credential Manager request uses the web client's ID as its server audience. Register development and release signing certificates separately. See [Google's Credential Manager integration](https://developer.android.com/identity/sign-in/credential-manager-siwg) and [Better Auth's Google provider](https://www.better-auth.com/docs/authentication/google).
 
 On the Android or macOS sign-in screen, enter your public HTTPS server origin in **Сервер**, then choose **Подключиться** before signing in. The address is saved on that device. To change servers, first sign out; synchronise pending changes or explicitly confirm their removal. The current address is also shown in account settings. Use an origin such as `https://polydays.example.com`, without an API path, query or credentials. Web clients also offer this setting; a separate server origin must permit the web client's origin and browser session cookies.
 
 `EXPO_PUBLIC_API_URL` supplies the default address for a build; a saved address takes precedence. Validate sign-in on the actual development and signed release builds. The server exchanges the native ID token through Better Auth; Google login is never embedded inside a WebView.
+
+## Account access
+
+Set `ALLOWED_EMAILS=*` to admit any verified Google account, or use a comma-separated allowlist such as `ALLOWED_EMAILS=alice@example.com,bob@example.com`. Each account has independent tasks, schedule, history and MCP connections. This policy applies to registration, application sessions, MCP requests and connection management, including existing sessions and tokens after a server restart.
+
+For existing installations, `OWNER_EMAIL` remains a fallback when `ALLOWED_EMAILS` is absent. An explicit `ALLOWED_EMAILS` overrides it. Without either setting, verified Google accounts are admitted. Network access is separate: users of the private Pi service still need Tailscale access.
 
 ## Android distribution
 
@@ -76,7 +82,7 @@ sudo tailscale serve --service=svc:polydays --https=443 http://127.0.0.1:3000
 
 Tailscale provides the service DNS name, virtual addresses and TLS certificate. More services can share the Pi using distinct `svc:` names and backend ports. Their names do not require renaming the device or buying a domain. The address remains private; cloud clients need a separate network tunnel or public entry point.
 
-The 64-bit Bookworm host uses Node.js from [.node-version](../.node-version), Bun 1.4.3, and BoxDB 0.5.1 with its bundled Linux ARM64 addon. The `polydays` system account owns application releases under `/opt/polydays/releases` and persistent data under `/var/lib/polydays`. `/opt/polydays/current` points to the active commit. The root-only `/etc/polydays/server.env` supplies Google credentials, owner email, session secret, the database path and the service HTTPS origin; development authentication is disabled. `BETTER_AUTH_URL` and `WEB_ORIGIN` use the service origin. `ADDITIONAL_ORIGINS=https://pi.gibbon-parrotfish.ts.net,https://pi.gibbon-parrotfish.ts.net:8443` keeps the previous web origins trusted during migration.
+The 64-bit Bookworm host uses Node.js from [.node-version](../.node-version), Bun 1.4.3, and BoxDB 0.5.1 with its bundled Linux ARM64 addon. The `polydays` system account owns application releases under `/opt/polydays/releases` and persistent data under `/var/lib/polydays`. `/opt/polydays/current` points to the active commit. The root-only `/etc/polydays/server.env` supplies Google credentials, account admission settings, session secret, the database path and the service HTTPS origin; development authentication is disabled. `BETTER_AUTH_URL` and `WEB_ORIGIN` use the service origin. `ADDITIONAL_ORIGINS=https://pi.gibbon-parrotfish.ts.net,https://pi.gibbon-parrotfish.ts.net:8443` keeps the previous web origins trusted during migration.
 
 [The workflow](../.github/workflows/deploy-pi.yml) checks formatting and types, runs unit and browser tests on a GitHub-hosted Linux runner, builds the production web client, and uploads a source-and-web artifact. Only successful `main` runs deploy. A repository-specific ARM64 runner named `polydays-pi` downloads that artifact on the Pi; pull requests run checks on GitHub and never enter this deployment job. The runner uses GitHub's outbound connection, so CI needs no SSH key or separate Tailscale credential.
 
@@ -133,7 +139,7 @@ launchctl bootout "gui/$(id -u)/app.polydays.server"
 
 To restore the login service, run `launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/app.polydays.server.plist"`. Rebuild the web export with `just build` after client changes.
 
-Google Cloud project `polydays-20261023` has a testing audience restricted to the owner, a Polydays name and logo, the web client described above, and separate Android clients for the local development and permanent release signing certificates. The native request uses `GOOGLE_CLIENT_ID` as its server audience; `GOOGLE_ANDROID_CLIENT_ID`, `GOOGLE_ANDROID_RELEASE_CLIENT_ID` and `GOOGLE_CLOUD_PROJECT` in `.env` record the matching Cloud resources. Publishing the app for other people and configuring public domains are separate deployment steps.
+Google Cloud project `polydays-20261023` has an external testing audience with basic identity scopes, a Polydays name and logo, the web client described above, and separate Android clients for the local development and permanent release signing certificates. The native request uses `GOOGLE_CLIENT_ID` as its server audience; `GOOGLE_ANDROID_CLIENT_ID`, `GOOGLE_ANDROID_RELEASE_CLIENT_ID` and `GOOGLE_CLOUD_PROJECT` in `.env` record the matching Cloud resources. Users also need network access through Tailscale. Configuring a public domain or a cloud MCP tunnel is a separate deployment step.
 
 ## T3 worktrees
 

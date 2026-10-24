@@ -24,6 +24,7 @@ export const Conflict = Schema.Struct({
 });
 export type Conflict = typeof Conflict.Type;
 export const SyncRequest = Schema.Struct({
+  accountId: Schema.optionalKey(Schema.NonEmptyString),
   operations: Schema.Array(Operation),
   cursor: Schema.Int,
 });
