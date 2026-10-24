@@ -108,8 +108,12 @@ test("compact capture supports shortcut menus, transactional dates and narrow sc
   await expect(title).toBeFocused();
   await expect(page.getByRole("textbox", { name: "Описание · необязательно" })).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(0);
-  await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
-  await expect(title).toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page.getByRole("button", { name: "Добавить задачу", exact: true }).last(),
+  ).toBeDisabled();
+  await page.getByRole("textbox", { name: "Описание · необязательно" }).click();
+  await expect(title).toHaveAttribute("aria-invalid", "false");
+  await expect(page.getByText("Введите название задачи.")).not.toBeVisible();
   await title.fill("Подготовить подробный план следующего полидня и обсудить его с командой");
   // Long titles grow, then remain scrollable without hiding their final line.
   await expect.poll(() => title.evaluate((input) => input.clientHeight)).toBeGreaterThan(48);

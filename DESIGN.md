@@ -165,7 +165,7 @@ The palette is warm and quiet; color identifies action, selection, priority and 
 The hierarchy is compact and sentence case, built from explicit task text sizes and the installed utility scale rather than a fixed ratio.
 
 - **Headline:** bold screen/polyday heading, using `headline`.
-- **Title:** semibold composer entry and supporting titles, using `title`; section titles also use the smaller base and large utility steps.
+- **Title:** semibold supporting titles use `title`; composer entry uses the smaller large utility step. Section titles also use the base and large utility steps.
 - **Body:** task titles use `body`; fields share its size without a separately authored line height.
 - **Body small:** explanatory copy and subtitles use `body-small`.
 - **Label:** field labels use semibold `label`; metadata and choice labels use the same size at regular weight, with selected choices semibold.
@@ -221,7 +221,7 @@ A polite live `Text` stays mounted beneath the heading, initially empty. Approva
 
 ### Chips / Choices
 
-Small rectangular choices with fine borders, rather than pill tags. Interval and scheduling selection uses tomato border/text with pale tomato fill. The task composer uses quiet rounded toolbar chips. Its priority menu retains the colored flag and P1–P4 name, with a check marking selection. Recurrence choices use tomato borders and pale fill; weekday checks switch warm fill to pale tomato.
+Small rectangular choices with fine borders, rather than pill tags. Interval and scheduling selection uses tomato border/text with pale tomato fill. The task composer uses small outlined toolbar controls within touch targets of at least 44 source units. Unset priority and secondary actions use icons with accessible names. Its priority menu retains the colored flag and P1–P4 name, with a check marking selection. Recurrence choices use tomato borders and pale fill; weekday checks switch warm fill to pale tomato.
 
 ### Cards / Containers
 
