@@ -16,6 +16,9 @@
     outline: 2px solid #b9382e;
     outline-offset: 3px;
   }
+  .composer-field:focus-visible {
+    outline: none;
+  }
   ::selection {
     background: #f9e9e4;
     color: #252421;

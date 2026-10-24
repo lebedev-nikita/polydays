@@ -792,8 +792,8 @@ export function TaskForm({
               contentContainerStyle={{
                 paddingHorizontal: 20,
                 paddingTop: 16,
-                paddingBottom: 16,
-                gap: 8,
+                paddingBottom: 8,
+                gap: 4,
               }}
             >
               <View className="gap-1.5 pr-9">
@@ -804,6 +804,7 @@ export function TaskForm({
                   aria-describedby={fieldError("title") ? `${titleId}-error` : undefined}
                   placeholder="Название задачи"
                   placeholderTextColor="#77736d"
+                  underlineColorAndroid="transparent"
                   autoFocus
                   multiline
                   submitBehavior="submit"
@@ -826,7 +827,6 @@ export function TaskForm({
                       setOpenProperty(null);
                     }
                   }}
-                  onBlur={() => touch("title")}
                   onSubmitEditing={() => {
                     void submit();
                   }}
@@ -840,7 +840,7 @@ export function TaskForm({
                           )
                   }
                   style={{ height: titleHeight }}
-                  className="min-h-10 py-1 text-xl font-semibold leading-7 text-ink"
+                  className="composer-field min-h-10 py-1 text-lg font-semibold leading-6 text-ink"
                 />
                 {fieldError("title") && (
                   <Text
@@ -857,13 +857,14 @@ export function TaskForm({
                 accessibilityLabel="Описание · необязательно"
                 placeholder="Описание"
                 placeholderTextColor={colors.muted}
+                underlineColorAndroid="transparent"
                 multiline
                 numberOfLines={1}
                 maxLength={20000}
                 textAlignVertical="top"
                 value={description}
                 onChangeText={setDescription}
-                className="min-h-12 max-h-28 py-2 text-base leading-6 text-ink"
+                className="composer-field min-h-9 max-h-28 py-1 text-sm leading-5 text-ink"
               />
               {task?.seriesId && !editSeries && (
                 <Text className="text-xs text-muted">Только это повторение</Text>
@@ -896,22 +897,14 @@ export function TaskForm({
                 </View>
               </View>
             ) : (
-              <View className="flex-row items-center gap-2 px-4 pb-4">
+              <View className="flex-row items-center gap-2 px-5 pb-3">
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                   style={{ flex: 1 }}
-                  contentContainerStyle={{ gap: 8, alignItems: "center", padding: 4 }}
+                  contentContainerStyle={{ gap: 4, alignItems: "center", paddingVertical: 4 }}
                 >
-                  {(!task || editSeries) && repeat === "none" && (
-                    <Chip
-                      icon={Plus}
-                      label=""
-                      accessibilityLabel="Настроить повторение"
-                      onPress={() => openPanel("repeat")}
-                    />
-                  )}
                   {!editSeries && repeat === "none" && (
                     <Chip
                       icon={kind === "backlog" ? Inbox : Sun}
@@ -931,7 +924,7 @@ export function TaskForm({
                   )}
                   <Chip
                     icon={Flag}
-                    label={priority === 4 ? "Приоритет" : `P${priority}`}
+                    label={priority === 4 ? "" : `P${priority}`}
                     accessibilityLabel={`Приоритет · ${priorityName(priority)}`}
                     color={priority === 4 ? colors.muted : colors.priorities[priority]}
                     onPress={() => openPanel("priority")}
@@ -941,6 +934,14 @@ export function TaskForm({
                       icon={Repeat2}
                       label={repeatLabel}
                       accessibilityLabel={`Повторение · ${repeatLabel}`}
+                      onPress={() => openPanel("repeat")}
+                    />
+                  )}
+                  {(!task || editSeries) && repeat === "none" && (
+                    <Chip
+                      icon={Plus}
+                      label=""
+                      accessibilityLabel="Настроить повторение"
                       onPress={() => openPanel("repeat")}
                     />
                   )}
@@ -966,14 +967,18 @@ export function TaskForm({
                           ? "Сохранить"
                           : "Добавить задачу"
                   }
-                  accessibilityState={{ disabled: busy }}
-                  disabled={busy}
+                  accessibilityState={{ disabled: busy || !title.trim() }}
+                  disabled={busy || !title.trim()}
                   onPress={() => {
                     void submit();
                   }}
-                  className={`h-12 w-12 items-center justify-center rounded-2xl bg-accent ${busy ? "opacity-40" : "active:opacity-80"}`}
+                  className={`h-11 w-11 items-center justify-center rounded-lg ${busy || !title.trim() ? "bg-selected" : "bg-accent active:opacity-80"}`}
                 >
-                  <ArrowUp size={25} color="white" strokeWidth={2.2} />
+                  <ArrowUp
+                    size={22}
+                    color={busy || !title.trim() ? colors.accent : "white"}
+                    strokeWidth={2.2}
+                  />
                 </Pressable>
               </View>
             )}
@@ -1002,14 +1007,16 @@ function Chip({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      className="min-h-12 flex-row items-center gap-2 rounded-xl bg-sidebar px-3"
+      className="min-h-11 min-w-11 items-center justify-center rounded-md active:bg-sidebar"
     >
-      <Icon size={20} color={color} strokeWidth={1.7} />
-      {!!label && (
-        <Text className="text-sm" style={{ color }}>
-          {label}
-        </Text>
-      )}
+      <View className="min-h-8 flex-row items-center gap-1.5 rounded-md border border-line px-2">
+        <Icon size={16} color={color} strokeWidth={1.7} />
+        {!!label && (
+          <Text numberOfLines={1} className="max-w-28 text-xs" style={{ color }}>
+            {label}
+          </Text>
+        )}
+      </View>
     </Pressable>
   );
 }
