@@ -19,6 +19,8 @@ For Google sign-in, configure the private root `.env`, run `just build`, then `b
 
 In the web app, press **Q** outside a text field to add a task. Tasks with an exact deadline are rescheduled by editing their date and time; **Убрать дедлайн** explicitly switches them to the inbox or an untimed polyday.
 
+MCP clients can connect at `${BETTER_AUTH_URL}/mcp` with OAuth and separate read/write permissions. Approve or revoke applications at `/connect`; see [MCP setup and private-network access](docs/mcp.md).
+
 ```sh
 just check       # Formatting, lint and both TypeScript projects
 just test        # Domain, synchronisation, BoxDB and HTTP tests

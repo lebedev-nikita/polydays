@@ -66,21 +66,29 @@ The application merges device operations through its API. Database file replicat
 
 ## Raspberry Pi service and CI/CD
 
-The production server and bundled web client run at <https://pi.gibbon-parrotfish.ts.net>, reachable from the tailnet. Tailscale Serve forwards HTTPS on port 443 to `127.0.0.1:3000`; Funnel is disabled. Google OAuth permits this origin, its `:8443` variant, and `https://pi.gibbon-parrotfish.ts.net/api/auth/callback/google`. The production web client uses port 443.
+The production server and bundled web client run at <https://polydays.gibbon-parrotfish.ts.net>, reachable from the tailnet. The stable Tailscale Service `svc:polydays` forwards HTTPS on port 443 to `127.0.0.1:3000` on the Pi. The device keeps its separate name `pi`; <https://pi.gibbon-parrotfish.ts.net> remains available for existing clients. Funnel is disabled. Google OAuth permits the service origin and its exact `/api/auth/callback/google` URI, alongside the existing device entries. See [MCP setup](mcp.md) for `/mcp` authorization and `/connect` connection management.
 
-The 64-bit Bookworm host uses Node.js from [.node-version](../.node-version), Bun 1.4.3, and BoxDB 0.5.1 with its bundled Linux ARM64 addon. The `polydays` system account owns application releases under `/opt/polydays/releases` and persistent data under `/var/lib/polydays`. `/opt/polydays/current` points to the active commit. The root-only `/etc/polydays/server.env` supplies Google credentials, owner email, session secret, the database path and the Pi HTTPS origin; development authentication is disabled.
+To provision another host, define the service `polydays` with `tcp:443` in the Tailscale admin console. Give the host a server tag owned by your administrator, advertise the service with the command below, then approve the host under Services. Services require a tagged host; keep SSH access valid when replacing user ownership with a tag. The configured Pi uses `tag:server` and ordinary SSH key authentication.
+
+```sh
+sudo tailscale serve --service=svc:polydays --https=443 http://127.0.0.1:3000
+```
+
+Tailscale provides the service DNS name, virtual addresses and TLS certificate. More services can share the Pi using distinct `svc:` names and backend ports. Their names do not require renaming the device or buying a domain. The address remains private; cloud clients need a separate network tunnel or public entry point.
+
+The 64-bit Bookworm host uses Node.js from [.node-version](../.node-version), Bun 1.4.3, and BoxDB 0.5.1 with its bundled Linux ARM64 addon. The `polydays` system account owns application releases under `/opt/polydays/releases` and persistent data under `/var/lib/polydays`. `/opt/polydays/current` points to the active commit. The root-only `/etc/polydays/server.env` supplies Google credentials, owner email, session secret, the database path and the service HTTPS origin; development authentication is disabled. `BETTER_AUTH_URL` and `WEB_ORIGIN` use the service origin. `ADDITIONAL_ORIGINS=https://pi.gibbon-parrotfish.ts.net,https://pi.gibbon-parrotfish.ts.net:8443` keeps the previous web origins trusted during migration.
 
 [The workflow](../.github/workflows/deploy-pi.yml) checks formatting and types, runs unit and browser tests on a GitHub-hosted Linux runner, builds the production web client, and uploads a source-and-web artifact. Only successful `main` runs deploy. A repository-specific ARM64 runner named `polydays-pi` downloads that artifact on the Pi; pull requests run checks on GitHub and never enter this deployment job. The runner uses GitHub's outbound connection, so CI needs no SSH key or separate Tailscale credential.
 
 [The deployment script](../deploy/raspberry-pi/deploy.sh) serialises deployments, installs locked production dependencies, verifies the native BoxDB addon, stops the service for a consistent database snapshot, switches the release symlink, and checks readiness. Failed startups restore the previous code and database snapshot. The current and previous releases remain available, while database snapshots accumulate in `/var/lib/polydays/backups`; copy these to separate storage and review retention as data grows. Deployments preserve the database and private environment outside the release directory.
 
-The systemd unit and privileged deployment helper are installed by `sudo bash deploy/raspberry-pi/bootstrap.sh`. This assumes Node.js and Bun are already installed at `/usr/local/bin` and Tailscale is connected. Bootstrap enables Tailscale DNS acceptance so the Pi can resolve MagicDNS names during deployment, and configures the persistent HTTPS proxy. The GitHub runner is installed in `/opt/polydays/runner` as `polydays`, registered only to this repository, and managed by its `actions.runner.*` systemd service. The account may restart or stop only `polydays.service` through sudo. Changes to the privileged unit or deployment helper must be installed explicitly with the bootstrap script; application deployments cannot replace them.
+The systemd unit and privileged deployment helper are installed by `sudo bash deploy/raspberry-pi/bootstrap.sh`. This assumes Node.js and Bun are already installed at `/usr/local/bin` and Tailscale is connected. Bootstrap enables Tailscale DNS acceptance so the Pi can resolve MagicDNS names during deployment, and configures the persistent device HTTPS proxy. After defining and approving the service, run bootstrap with `sudo TAILSCALE_SERVICE=svc:polydays bash deploy/raspberry-pi/bootstrap.sh` to configure its proxy too. The GitHub runner is installed in `/opt/polydays/runner` as `polydays`, registered only to this repository, and managed by its `actions.runner.*` systemd service. The account may restart or stop only `polydays.service` through sudo. Changes to the privileged unit or deployment helper must be installed explicitly with the bootstrap script; application deployments cannot replace them.
 
 ```sh
 ssh pi 'sudo systemctl status polydays --no-pager'
 ssh pi 'sudo journalctl -u polydays -n 100 --no-pager'
 ssh pi 'sudo systemctl restart polydays'
-curl --fail https://pi.gibbon-parrotfish.ts.net/api/health
+curl --fail https://polydays.gibbon-parrotfish.ts.net/api/health
 ```
 
 Push to `main` to deploy automatically, or rerun **Check and deploy Raspberry Pi** on `main` from GitHub Actions. The Pi starts with its own database; moving MacBook data requires a separate consistent transfer.

@@ -160,7 +160,7 @@ The palette is warm and quiet; color identifies action, selection, priority and 
 
 ## Typography
 
-**Body and interface font:** platform system sans. The frontmatter's family is React Native for Web's actual `System` expansion; native text uses its platform default. There is no custom font, display face or monospaced role.
+**Body and interface font:** platform system sans. The frontmatter's family is React Native for Web's actual `System` expansion; native text uses its platform default. There is no custom font, display face or monospaced role in the shared client.
 
 The hierarchy is compact and sentence case, built from explicit task text sizes and the installed utility scale rather than a fixed ratio.
 
@@ -173,6 +173,8 @@ The hierarchy is compact and sentence case, built from explicit task text sizes 
 
 **The Compact Hierarchy Rule.** Keep task titles visually primary and metadata subordinate; preserve the short mobile captions as text scales.
 
+Server-rendered OAuth and connection pages use the same system sans stack, with local CSS sizes: body (15px/1.5), bold wordmark (24px), heading (22px/1.3), connection title (16px), semibold actions (14px) and supporting account/scope text (13px). The MCP address alone uses the browser's monospace `code` face (13px).
+
 ## Layout
 
 At window width **850 or greater**, the shell uses a left sidebar (244 source units) and a centred content container (maximum 850 source units). Desktop content insets are 3.5rem horizontally and 3rem above; smaller windows use 1.25rem horizontally and 1.75rem above. The wide layout has a sidebar add action; the narrow layout has a top app bar, bottom destination bar and a floating add button above it.
@@ -180,6 +182,8 @@ At window width **850 or greater**, the shell uses a left sidebar (244 source un
 Interval choices form a wrapping row with 0.5rem gaps; they are not constrained to a single horizontal strip. Priority and recurrence choices also wrap. Main content scrolls with bottom padding (70 source units wide, 100 narrow) to leave room around fixed navigation and the add action. Native content is inside top and bottom safe areas.
 
 The browser device authorization screen uses a `ScrollView` with growing, centred content and outer padding (24 source units). Its full-width white panel has a local maximum width (410 source pixels), a fine border, `rounded.xl` corners, `spacing.8` padding (2rem) and `spacing.6` gaps. Short viewports scroll vertically so the heading and both actions remain reachable. These are source layout values, not measured native dimensions or new system tokens.
+
+Server-rendered OAuth login, consent and connection management share a centred, fluid white card (maximum 440px including padding and border) on the warm `sidebar` background. The card has a fine border, 12px corners, 32px padding and no shadow; the page has a minimum height of 100dvh and 24px outer padding. At viewport widths of 480px or less, outer padding becomes 16px and card padding 24px. Content grows vertically in normal document flow. These are local CSS pixel values, independent of the shared client's rem scale.
 
 The frontmatter retains source `rem` values. On web these resolve against the browser root; NativeWind's installed Metro default inlines rem at 14 and this app supplies no override. Explicit source pixels and React Native dimensions describe style inputs, not measured physical pixels or universal Android dp guarantees. Native font scaling can change text and row height. Widget XML dimensions below are explicitly dp/sp.
 
@@ -218,6 +222,14 @@ The shared sign-in screen includes a labelled server-origin field and a secondar
 The [device authorization screen](apps/client/src/app/device.tsx) retains the shared `Field`, primary and secondary `Button`, and `ErrorMessage`. A semibold title identifies Mac sign-in; supporting copy asks users to approve only a sign-in they initiated, followed by the labelled code, account email, primary “Разрешить вход” and secondary “Отклонить”. Both actions disable while busy or when the code is empty; the field becomes noneditable while busy. Invalid or expired codes direct the user to restart sign-in on Mac; other request failures ask them to check the code and retry. Unauthenticated visitors see the shared sign-in screen.
 
 A polite live `Text` stays mounted beneath the heading, initially empty. Approval or denial updates it with the outcome and next step in regular ink body text, while the form and actions disappear. This persistent announcement and the scrolling layout are part of the built browser interaction.
+
+### OAuth and connections
+
+The server-rendered [OAuth pages](apps/server/src/oauth-pages.ts) preserve the compact warm white/tomato auth world. A tomato vector mark and bold Polydays wordmark lead the card; a footer link returns to the app. Login offers Google sign-in. Consent identifies the requesting client, lists the requested permissions in plain language, shows the account email, and stacks the primary approval above a bordered white denial action. Connection management shows a warm address block that wraps long URLs, followed by flat connection sections with a fine top border, client name, muted scope summary and secondary revoke action; the empty state stays inside the same card.
+
+These local buttons fill the card width, have a 44px minimum height, 10px 16px padding and 6px corners. Primary uses tomato/white; secondary uses white/ink with the fine border. Hover retains these colors, with no authored animation or separate press treatment. Links and buttons retain the tomato focus-visible outline (2px, offset 3px).
+
+During a request, all buttons disable at 65% opacity with a wait cursor, and the initiating label becomes “Подождите…”. A persistent polite alert below the content remains visually absent when empty; failures give it the pale-red error surface, tomato text, 12px padding and 6px corners. Transport and unreadable-response failures provide Russian recovery instructions; failure restores the initiating label and enables the buttons for retry. These local pending/error states do not replace the shared client's button states.
 
 ### Chips / Choices
 
