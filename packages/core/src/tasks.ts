@@ -18,6 +18,18 @@ import {
 } from "./model.ts";
 import { Schema } from "effect";
 
+export function parseTaskTitle(input: string): {
+  readonly title: string;
+  readonly priority: Task["priority"] | null;
+} {
+  let priority: Task["priority"] | null = null;
+  const title = input.replace(/(?:^|\s)!!([1-4])(?=\s|$)/g, (_, value: string) => {
+    priority = Number(value) as Task["priority"];
+    return "";
+  });
+  return { title: priority === null ? title : title.trim(), priority };
+}
+
 export function taskView(task: Task, calendar: Calendar, now: number): TaskView {
   if (task.scheduling.kind === "backlog")
     return { task, polyday: null, deadline: null, overdue: false, inSleepGap: false };

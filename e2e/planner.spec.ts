@@ -165,6 +165,59 @@ test("compact capture supports shortcut menus, transactional dates and narrow sc
   await expect(title).toBeFocused();
 });
 
+for (const width of [1440, 390]) {
+  test(`title shortcuts select and persist all four priorities at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await openComposer(page);
+    const title = page.getByRole("textbox", { name: "Название задачи" });
+    const labels = ["P1 · Высокий", "P2 · Средний", "P3 · Низкий", "P4 · Без приоритета"];
+    for (const priority of [1, 2, 3, 4]) {
+      const name = `План ${width} P${priority}`;
+      await title.fill(name);
+      await title.pressSequentially(" !!");
+      await expect(page.getByRole("radiogroup", { name: "Приоритет", exact: true })).toBeVisible();
+      await title.pressSequentially(String(priority));
+      await expect(title).toHaveValue(name);
+      await expect(page.getByRole("radio")).toHaveCount(0);
+      await expect(title).toBeFocused();
+      await expect(
+        page.getByRole("button", { name: `Приоритет · ${labels[priority - 1]}`, exact: true }),
+      ).toBeVisible();
+      if (priority === 3) {
+        await page.screenshot({
+          path: testInfo.outputPath(`priority-shortcut-${width}-${Date.now()}.png`),
+        });
+      }
+      await send(page);
+    }
+    await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+    for (const priority of [1, 2, 3, 4]) {
+      await page
+        .getByRole("link", { name: `Открыть задачу: План ${width} P${priority}`, exact: true })
+        .click();
+      await expect(
+        page.getByRole("button", { name: `Приоритет · ${labels[priority - 1]}`, exact: true }),
+      ).toBeVisible();
+      await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+    }
+    const task = page.getByRole("link", { name: `Открыть задачу: План ${width} P1`, exact: true });
+    await task.click();
+    // Pasting a complete command also works while editing an existing task.
+    await title.fill(`План ${width} P1 !!4`);
+    await expect(title).toHaveValue(`План ${width} P1`);
+    await expect(
+      page.getByRole("button", { name: "Приоритет · P4 · Без приоритета", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+    await task.click();
+    await expect(
+      page.getByRole("button", { name: "Приоритет · P4 · Без приоритета", exact: true }),
+    ).toBeVisible();
+  });
+}
+
 test("recurrence editing preserves the series deadline independently of an occurrence", async ({
   page,
 }) => {
