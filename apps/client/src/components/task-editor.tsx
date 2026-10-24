@@ -467,8 +467,8 @@ export function TaskForm({
   return (
     <View
       ref={formRef}
-      className={panel ? "overflow-hidden rounded-3xl bg-white shadow-xl" : ""}
-      style={{ flexShrink: 1, minHeight: 0, maxHeight }}
+      className={panel ? "overflow-hidden border border-line bg-white shadow-xl" : ""}
+      style={{ flexShrink: 1, minHeight: 0, maxHeight, borderRadius: formWidth < 600 ? 24 : 16 }}
     >
       {panel && formWidth < 600 && (
         <View className="mt-2 h-1 w-9 self-center rounded-full bg-line" />
@@ -727,6 +727,7 @@ export function TaskForm({
                       icon={Flag}
                       label={priorityName(value)}
                       color={colors.priorities[value]}
+                      filled={value !== 4}
                       selected={value === priority}
                       onPress={() => {
                         setPriority(value);
@@ -773,7 +774,7 @@ export function TaskForm({
             </PropertyMenu>
           )}
           <View
-            className="overflow-hidden bg-white shadow-xl"
+            className="overflow-hidden border border-line bg-white shadow-xl"
             style={{ flexShrink: 1, borderRadius: formWidth < 600 ? 24 : 16 }}
           >
             {formWidth < 600 && <View className="mt-2 h-1 w-9 self-center rounded-full bg-line" />}
@@ -926,7 +927,8 @@ export function TaskForm({
                     icon={Flag}
                     label={priority === 4 ? "" : `P${priority}`}
                     accessibilityLabel={`Приоритет · ${priorityName(priority)}`}
-                    color={priority === 4 ? colors.muted : colors.priorities[priority]}
+                    color={colors.priorities[priority]}
+                    filled={priority !== 4}
                     onPress={() => openPanel("priority")}
                   />
                   {repeat !== "none" && (
@@ -995,12 +997,14 @@ function Chip({
   accessibilityLabel,
   onPress,
   color = colors.muted,
+  filled = false,
 }: {
   icon: typeof Flag;
   label: string;
   accessibilityLabel: string;
   onPress: () => void;
   color?: string;
+  filled?: boolean;
 }) {
   return (
     <Pressable
@@ -1010,7 +1014,7 @@ function Chip({
       className="min-h-11 min-w-11 items-center justify-center rounded-md active:bg-sidebar"
     >
       <View className="min-h-8 flex-row items-center gap-1.5 rounded-md border border-line px-2">
-        <Icon size={16} color={color} strokeWidth={1.7} />
+        <Icon size={16} color={color} fill={filled ? color : "none"} strokeWidth={1.7} />
         {!!label && (
           <Text numberOfLines={1} className="max-w-28 text-xs" style={{ color }}>
             {label}
@@ -1028,6 +1032,7 @@ function PickerRow({
   color = colors.muted,
   selected = false,
   radio = false,
+  filled = false,
 }: {
   icon: typeof Flag;
   label: string;
@@ -1035,6 +1040,7 @@ function PickerRow({
   color?: string;
   selected?: boolean;
   radio?: boolean;
+  filled?: boolean;
 }) {
   return (
     <Pressable
@@ -1043,7 +1049,7 @@ function PickerRow({
       onPress={onPress}
       className="min-h-12 flex-row items-center gap-3 px-4 py-3 active:bg-selected"
     >
-      <Icon size={21} color={color} strokeWidth={1.7} />
+      <Icon size={21} color={color} fill={filled ? color : "none"} strokeWidth={1.7} />
       <Text className="min-w-0 flex-1 text-base text-ink">{label}</Text>
       {selected && <Check size={17} color={colors.accent} />}
     </Pressable>

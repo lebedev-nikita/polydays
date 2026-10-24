@@ -519,16 +519,14 @@ function TaskDetails({ id }: { id: string }) {
               <Trash2 size={18} color={colors.muted} />
             </Pressable>
           </View>
-          <View className="overflow-hidden rounded-lg border border-line">
-            <TaskForm
-              key={`${task.id}:${editingSeries}`}
-              task={task}
-              editSeries={editingSeries}
-              scheduling={task.scheduling}
-              onSwitchSeries={task.seriesId ? () => setEditingSeries(!editingSeries) : undefined}
-              onClose={() => router.back()}
-            />
-          </View>
+          <TaskForm
+            key={`${task.id}:${editingSeries}`}
+            task={task}
+            editSeries={editingSeries}
+            scheduling={task.scheduling}
+            onSwitchSeries={task.seriesId ? () => setEditingSeries(!editingSeries) : undefined}
+            onClose={() => router.back()}
+          />
         </>
       )}
     </>
