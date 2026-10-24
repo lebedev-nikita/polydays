@@ -13,6 +13,7 @@ After each user UI correction, update this section with concise, reusable conclu
 - Use the canonical names from CONTEXT.md consistently in navigation, headings, destination menus and empty states.
 - Keep interfaces minimal: show only what is necessary for the current action. Omit optional labels, explanations and repeated values; preserve accessible names when removing visual labels.
 - Keep task titles visually primary. Use a compact composer with borderless title and description, a horizontal property toolbar and one submit action. Open date settings separately and use short menus for priority and destination; reveal secondary controls on demand.
+- Keep task entry fields and the submit action above the software keyboard, including inside Android modal windows; verify with the native keyboard open and after reopening it.
 - Place contextual metadata beside the control it explains: show an overnight end beside the end time and the calculated polyday duration below the start/end pair. Update duration while editing and hide it for invalid or equal boundaries.
 - Use searchable choices for timezones and a calendar for dates. Display human-readable names and localized dates instead of requiring technical identifiers or format syntax.
 - Use a compact switch for automatic timezone detection, with the effective timezone visible.

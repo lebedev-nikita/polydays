@@ -8,7 +8,6 @@ import {
   type RefObject,
 } from "react";
 import {
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -57,6 +56,7 @@ import { DateControl } from "./schedule-controls";
 import { TimeField } from "./time-field";
 import { normalizeTimeInput } from "./time-input";
 import { timeZoneLabel } from "./schedule-options";
+import { KeyboardAvoidingView } from "./keyboard";
 
 const days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 type FormProps = {
@@ -93,8 +93,11 @@ export function TaskComposer({
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className={`flex-1 items-center bg-black/30 ${mobile ? "justify-end" : "justify-center"}`}
         style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: mobile ? "flex-end" : "center",
+          backgroundColor: "rgba(0, 0, 0, 0.3)",
           paddingHorizontal: mobile ? 8 : 16,
           paddingTop: mobile ? insets.top + 24 : 32,
           paddingBottom: mobile ? insets.bottom + 8 : 32,
