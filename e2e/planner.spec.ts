@@ -17,7 +17,7 @@ test("durable offline capture, reconnect, second device and completion history",
   await expect(page.getByText("Задача сохранена. Можно добавить следующую.")).toBeVisible();
   await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
   await expect(
-    page.getByRole("link", { name: "Открыть задачу: Отправить план полидня", exact: true }),
+    page.getByRole("button", { name: "Редактировать задачу: Отправить план полидня", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("Синхронизировано", { exact: true }).filter({ visible: true }),
@@ -28,7 +28,7 @@ test("durable offline capture, reconnect, second device and completion history",
   await page.context().setOffline(true);
   await page.reload();
   await expect(
-    page.getByRole("link", { name: "Открыть задачу: Отправить план полидня", exact: true }),
+    page.getByRole("button", { name: "Редактировать задачу: Отправить план полидня", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Добавить задачу", exact: true }).first().click();
   await page.getByRole("textbox", { name: "Название задачи" }).fill("Сохранить задачу без сети");
@@ -37,7 +37,10 @@ test("durable offline capture, reconnect, second device and completion history",
   await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
   await page.reload();
   await expect(
-    page.getByRole("link", { name: "Открыть задачу: Сохранить задачу без сети", exact: true }),
+    page.getByRole("button", {
+      name: "Редактировать задачу: Сохранить задачу без сети",
+      exact: true,
+    }),
   ).toBeVisible();
   await page.context().setOffline(false);
   await page.getByRole("button", { name: "Синхронизировать задачи" }).click();
@@ -49,18 +52,27 @@ test("durable offline capture, reconnect, second device and completion history",
   await phone.goto("http://localhost:3400/current");
   await phone.getByRole("button", { name: "Открыть пространство разработки" }).click();
   await expect(
-    phone.getByRole("link", { name: "Открыть задачу: Сохранить задачу без сети", exact: true }),
+    phone.getByRole("button", {
+      name: "Редактировать задачу: Сохранить задачу без сети",
+      exact: true,
+    }),
   ).toBeVisible();
   await phone
     .getByRole("checkbox", { name: "Завершить: Сохранить задачу без сети", exact: true })
     .click();
   await expect(
-    phone.getByRole("link", { name: "Открыть задачу: Сохранить задачу без сети", exact: true }),
+    phone.getByRole("button", {
+      name: "Редактировать задачу: Сохранить задачу без сети",
+      exact: true,
+    }),
   ).not.toBeVisible();
   await page.getByRole("button", { name: "Синхронизировать задачи" }).click();
   await page.getByRole("button", { name: "Показать выполненные" }).click();
   await expect(
-    page.getByRole("link", { name: "Открыть задачу: Сохранить задачу без сети", exact: true }),
+    page.getByRole("button", {
+      name: "Редактировать задачу: Сохранить задачу без сети",
+      exact: true,
+    }),
   ).toBeVisible();
   await other.close();
 });
@@ -78,8 +90,8 @@ test("a deadline is explicitly removed before selecting an untimed polyday or in
   await send(page);
   await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
   await page.getByRole("link", { name: "Предстоящие", exact: true }).click();
-  const taskLink = page.getByRole("link", {
-    name: "Открыть задачу: Изменить режим планирования",
+  const taskLink = page.getByRole("button", {
+    name: "Редактировать задачу: Изменить режим планирования",
     exact: true,
   });
   await taskLink.click();
@@ -195,14 +207,20 @@ for (const width of [1440, 390]) {
     await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
     for (const priority of [1, 2, 3, 4]) {
       await page
-        .getByRole("link", { name: `Открыть задачу: План ${width} P${priority}`, exact: true })
+        .getByRole("button", {
+          name: `Редактировать задачу: План ${width} P${priority}`,
+          exact: true,
+        })
         .click();
       await expect(
         page.getByRole("button", { name: `Приоритет · ${labels[priority - 1]}`, exact: true }),
       ).toBeVisible();
       await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
     }
-    const task = page.getByRole("link", { name: `Открыть задачу: План ${width} P1`, exact: true });
+    const task = page.getByRole("button", {
+      name: `Редактировать задачу: План ${width} P1`,
+      exact: true,
+    });
     await task.click();
     // Pasting a complete command also works while editing an existing task.
     await title.fill(`План ${width} P1 !!4`);
@@ -238,8 +256,8 @@ test("recurrence editing preserves the series deadline independently of an occur
   await send(page);
   await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
   await page.getByRole("link", { name: "Предстоящие", exact: true }).click();
-  const task = page.getByRole("link", {
-    name: "Открыть задачу: Проверить план перед сном",
+  const task = page.getByRole("button", {
+    name: "Редактировать задачу: Проверить план перед сном",
     exact: true,
   });
   await task.click();
@@ -416,3 +434,78 @@ test.describe("first-visit navigation", () => {
     });
   }
 });
+
+test("task links open the inline editor in inbox and completed polyday lists", async ({
+  page,
+}, testInfo) => {
+  await openComposer(page);
+  const title = page.getByRole("textbox", { name: "Название задачи" });
+  for (const name of [
+    "Собрать идеи для выходных",
+    "Подготовить план следующего полидня",
+    "Заказать продукты",
+  ]) {
+    await title.fill(name);
+    await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
+    await expect(title).toHaveValue("");
+  }
+  await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+  const id = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("polydays", 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const stored = await new Promise<Array<{ state: import("@polydays/sync").LocalState }>>(
+      (resolve, reject) => {
+        const request = db.transaction("accounts").objectStore("accounts").getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      },
+    );
+    db.close();
+    return stored
+      .flatMap(({ state }) => [
+        ...state.records.map((record) => record.document),
+        ...state.pending.map((operation) => operation.entity),
+      ])
+      .find(
+        (document) =>
+          document.kind === "task" && document.data.title === "Подготовить план следующего полидня",
+      )?.data.id;
+  });
+  expect(id).toBeTruthy();
+  await page.goto(`/task/${id}`);
+  await expect(page).toHaveURL(/\/backlog\?taskId=/);
+  await expect(title).toHaveValue("Подготовить план следующего полидня");
+  await expect(task(page, "Заказать продукты")).toBeVisible();
+  await title.fill("Подготовить план следующего полидня !!2");
+  await page
+    .getByRole("textbox", { name: "Описание · необязательно" })
+    .fill("Выбрать главное и оставить время для отдыха.");
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await task(page, "Подготовить план следующего полидня").click();
+  await expect(
+    page.getByText("Синхронизировано", { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath(`inline-desktop-verified-${Date.now()}.png`) });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: testInfo.outputPath(`inline-mobile-verified-${Date.now()}.png`) });
+  await page
+    .getByRole("checkbox", { name: "Завершить: Подготовить план следующего полидня", exact: true })
+    .click();
+  await expect(title).not.toBeVisible();
+  await page.goto(`/task/${id}`);
+  await expect(page).toHaveURL(/\/day\/.*\?taskId=/);
+  await expect(title).toHaveValue("Подготовить план следующего полидня");
+  await expect(
+    page.getByRole("checkbox", {
+      name: "Вернуть в работу: Подготовить план следующего полидня",
+      exact: true,
+    }),
+  ).toBeChecked();
+});
+
+function task(page: Page, name: string) {
+  return page.getByRole("button", { name: `Редактировать задачу: ${name}`, exact: true });
+}

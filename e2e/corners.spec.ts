@@ -30,15 +30,17 @@ for (const width of [1440, 390]) {
     await expect(page.getByText("Задача сохранена. Можно добавить следующую.")).toBeVisible();
     await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
     await page
-      .getByRole("link", { name: "Открыть задачу: Проверить углы панелей", exact: true })
+      .getByRole("button", { name: "Редактировать задачу: Проверить углы панелей", exact: true })
       .click();
-    await expectSingleContour(title);
-    await expect(page.getByRole("button", { name: "Завершить задачу", exact: true })).toBeVisible();
+    await expectSingleContour(title, true);
+    await expect(
+      page.getByRole("checkbox", { name: "Завершить: Проверить углы панелей", exact: true }),
+    ).toBeVisible();
     // Wait for the modal's native fade to finish before recording the destination.
     await expect(page.locator('[aria-modal="true"]')).toHaveCount(0);
     const panel = await title.evaluate((element) => {
       let node = element.parentElement!;
-      while (getComputedStyle(node).boxShadow === "none") node = node.parentElement!;
+      while (parseFloat(getComputedStyle(node).borderRadius) === 0) node = node.parentElement!;
       const bounds = node.getBoundingClientRect();
       return {
         x: bounds.x - 16,
@@ -52,13 +54,13 @@ for (const width of [1440, 390]) {
       clip: panel,
     });
     await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
-    await expectSingleContour(page.getByRole("heading", { name: "Дата", exact: true }));
+    await expectSingleContour(page.getByRole("heading", { name: "Дата", exact: true }), true);
     await expectClippedCorner(page.getByRole("button", { name: "Добавить время", exact: true }));
     await page.screenshot({ path: testInfo.outputPath(`date-corners-${width}-${Date.now()}.png`) });
   });
 }
 
-async function expectSingleContour(content: Locator) {
+async function expectSingleContour(content: Locator, inline = false) {
   await expect
     .poll(() =>
       content.evaluate((element) => {
@@ -79,7 +81,7 @@ async function expectSingleContour(content: Locator) {
         return surfaces;
       }),
     )
-    .toEqual([{ radius: widthRadius(content), border: "1px", shadow: true }]);
+    .toEqual([{ radius: inline ? "12px" : widthRadius(content), border: "1px", shadow: !inline }]);
 }
 
 function widthRadius(content: Locator) {
