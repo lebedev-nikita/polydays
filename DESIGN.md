@@ -10,11 +10,12 @@ colors:
   accent: "#b9382e"
   selected: "#f9e9e4"
   priority-1: "#c73529"
-  priority-2: "#b96712"
+  priority-2: "#b85f00"
   priority-3: "#286db4"
-  priority-4: "#77736d"
+  priority-4: "#66645f"
   widget-priority-2: "#ae641c"
   widget-priority-3: "#3469b7"
+  widget-priority-4: "#77736d"
   error-surface: "#fff0ed"
   warning-surface: "#fff5df"
   warning-ink: "#76501b"
@@ -153,7 +154,7 @@ The palette is warm and quiet; color identifies action, selection, priority and 
 
 ### Priority and status
 
-- **P1 red, P2 orange, P3 blue:** the shared-client priority tokens; P4 is neutral. Native widget P1 uses `accent`, P2 and P3 use their explicit `widget-priority-*` tokens, and P4 shares `priority-4`.
+- **P1 red, P2 orange, P3 blue:** the shared-client priority tokens; P4 is neutral. Native widget P1 uses `accent`; P2–P4 use their explicit `widget-priority-*` tokens.
 - **Error surface:** pale red with tomato text. **Warning surface / ink:** pale amber conflict banner and brown sleep-gap text. **Success:** green saved feedback.
 
 **The Restrained Accent Rule.** Use tomato for action, selection and overdue cues; keep ordinary content surfaces white or warm neutral.
@@ -233,11 +234,11 @@ During a request, all buttons disable at 65% opacity with a wait cursor, and the
 
 ### Chips / Choices
 
-Small rectangular choices with fine borders, rather than pill tags. Interval and scheduling selection uses tomato border/text with pale tomato fill. The task composer uses small outlined toolbar controls within touch targets of at least 44 source units. Unset priority and secondary actions use icons with accessible names. Its priority menu retains the colored flag and P1–P4 name, with a check marking selection. Recurrence choices use tomato borders and pale fill; weekday checks switch warm fill to pale tomato.
+Small rectangular choices with fine borders, rather than pill tags. Interval and scheduling selection uses tomato border/text with pale tomato fill. The task composer uses small outlined toolbar controls within touch targets of at least 44 source units. Unset priority and secondary actions use icons with accessible names. Priority flags use filled red, orange and blue for P1–P3 and a neutral outline for P4 in both the toolbar and menu. The menu pairs each flag with its P1–P4 name and a check marking selection. Recurrence choices use tomato borders and pale fill; weekday checks switch warm fill to pale tomato.
 
 ### Cards / Containers
 
-Settings panels are white, bordered and flat, with `panel` padding and 1.25rem internal gaps. The task editor is a bordered container or the modal composer, not a card around every task. The composer is fluid up to 560 source units wide. Below 600 source units it floats above the keyboard with rounded corners, a small handle and safe-area padding. Borderless title and description inputs sit above a horizontally scrolling property toolbar; the submit arrow stays fixed beside it. Destination and priority open short vertical menus above the inputs. On web, these menus overlay the page without moving the form and adapt to the available viewport space. Inbox and configured polydays serve as destinations; existing deadlines lead to their date settings until explicitly removed. The date panel replaces the composer body with shortcuts, a Monday-first calendar and an optional time control. Its “Готово” action accepts the draft; Back or Escape restores the previous properties. Recurrence opens separately, with labelled series boundaries and contextual timezone information. Task dates allow historical corrections; schedule dates retain their minimum date. Modal entry uses the platform `fade` animation, with no authored duration/easing.
+Settings panels are white, bordered and flat, with `panel` padding and 1.25rem internal gaps. The task editor owns its border and matching corner radius in both task details and the modal composer. The composer is fluid up to 560 source units wide. Below 600 source units it floats above the keyboard with rounded corners, a small handle and safe-area padding. Borderless title and description inputs sit above a horizontally scrolling property toolbar; the submit arrow stays fixed beside it. Destination and priority open short vertical menus above the inputs. On web, these menus overlay the page without moving the form and adapt to the available viewport space. Inbox and configured polydays serve as destinations; existing deadlines lead to their date settings until explicitly removed. The date panel replaces the composer body with shortcuts, a Monday-first calendar and an optional time control. Its “Готово” action accepts the draft; Back or Escape restores the previous properties. Recurrence opens separately, with labelled series boundaries and contextual timezone information. Task dates allow historical corrections; schedule dates retain their minimum date. Modal entry uses the platform `fade` animation, with no authored duration/easing.
 
 ### Navigation
 
@@ -245,7 +246,7 @@ Desktop destinations have muted outline icons and dark labels; the active destin
 
 ### Task rows and quick entry
 
-Rows use a bottom separator, 0.5rem vertical padding and a source minimum height of 70. A 19-unit priority circle with a 1.7-unit stroke sits within a separate 3rem-square completion target. Completion fills the circle, adds a white check and mutes/strikes the title. The adjacent title target opens details. Descriptions truncate to one line; deadline, overdue/original-polyday, sleep-gap and recurrence metadata can wrap below the title.
+Rows use a bottom separator, 0.5rem vertical padding and a source minimum height of 70. A 19-unit priority circle with a 1.7-unit stroke sits within a separate 3rem-square completion target. Unfinished P1–P3 circles have a faint priority-colored fill; P4 remains unfilled. Completion fills the circle, adds a white check and mutes/strikes the title. The adjacent title target opens details. Descriptions truncate to one line; deadline, overdue/original-polyday, sleep-gap and recurrence metadata can wrap below the title.
 
 Preserve priority-first order and individual rows for recurring occurrences. Overdue metadata includes the original polyday date and name. Quick entry stays open after a new task saves, clears title/description, shows saved feedback and refocuses the title. Editing an existing task closes on save.
 

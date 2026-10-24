@@ -13,7 +13,7 @@ export const colors = {
   muted: "#66645f",
   accent: "#b9382e",
   line: "#e9e7e2",
-  priorities: ["", "#c73529", "#b96712", "#286db4", "#77736d"],
+  priorities: ["", "#c73529", "#b85f00", "#286db4", "#66645f"],
 };
 export function Button({
   children,

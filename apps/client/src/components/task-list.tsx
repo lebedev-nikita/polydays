@@ -49,7 +49,9 @@ export function TaskList({
                 borderColor: colors.priorities[view.task.priority],
                 backgroundColor: view.task.completed
                   ? colors.priorities[view.task.priority]
-                  : "transparent",
+                  : view.task.priority === 4
+                    ? "transparent"
+                    : `${colors.priorities[view.task.priority]}14`,
               }}
             >
               {view.task.completed && <Check size={12} color="white" strokeWidth={3} />}
