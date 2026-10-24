@@ -4,16 +4,17 @@ import { resolve, join } from "node:path";
 import { Effect, Schema } from "effect";
 
 const root = resolve(import.meta.dirname, "..");
-const run = Effect.fn("release.run")((command: string, args: string[], cwd = root) =>
-  Effect.tryPromise(async () => {
-    const child = Bun.spawn([command, ...args], {
-      cwd,
-      env: process.env,
-      stdout: "inherit",
-      stderr: "inherit",
-    });
-    if ((await child.exited) !== 0) throw new Error(`${command} failed`);
-  }),
+const run = Effect.fn("release.run")(
+  (command: string, args: string[], cwd = root, env: Record<string, string> = {}) =>
+    Effect.tryPromise(async () => {
+      const child = Bun.spawn([command, ...args], {
+        cwd,
+        env: { ...process.env, ...env },
+        stdout: "inherit",
+        stderr: "inherit",
+      });
+      if ((await child.exited) !== 0) throw new Error(`${command} failed`);
+    }),
 );
 const output = Effect.fn("release.output")((command: string, args: string[]) =>
   Effect.tryPromise(async () => {
@@ -99,6 +100,7 @@ const program = Effect.gen(function* () {
       "bun",
       ["run", "tauri", "build", "--bundles", "app,dmg", "--", "--locked"],
       join(root, "apps/macos"),
+      { CI: "true", TAURI_BUNDLER_DMG_IGNORE_CI: "false" },
     );
     yield* Effect.tryPromise(async () => {
       await mkdir(directory, { recursive: true });

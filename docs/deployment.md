@@ -44,6 +44,8 @@ just release
 
 Publish the Android APK, macOS DMG and `SHA256SUMS`. The DMG contains the macOS application, so no separate application ZIP is built. Keep `release.json` locally for publishing checks; it is not uploaded to GitHub.
 
+Release packaging disables Finder automation for macOS, so building the DMG does not open an installer window. The image retains the application and Applications link, without custom Finder icon positions.
+
 Set the version in the root, client and macOS package manifests, Expo `app.json`, and desktop Cargo/Tauri manifests. Increase Android's `versionCode` for each release. Add the release notes at `docs/releases/<version>.md`.
 
 The root `.env` supplies `EXPO_PUBLIC_API_URL` and four private signing settings: `POLYDAYS_ANDROID_KEYSTORE` (absolute path), `POLYDAYS_ANDROID_STORE_PASSWORD`, `POLYDAYS_ANDROID_KEY_ALIAS` and `POLYDAYS_ANDROID_KEY_PASSWORD`. Preserve the keystore in `.data/signing/` and its passwords for updates; copy them securely when changing build machines. The Gradle init script applies the release identity without editing generated Android code. Register that certificate's SHA-1 in the Google Android OAuth client.
