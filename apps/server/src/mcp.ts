@@ -15,6 +15,7 @@ import {
 import type { Versioned } from "@polydays/sync";
 import { decodeCommand, findTask, workspace, type AppCommand } from "./commands.ts";
 import type { Auth } from "./auth.ts";
+import type { AccountAccess } from "./account-access.ts";
 import manifest from "../../../package.json" with { type: "json" };
 
 export type AppAccess = {
@@ -360,7 +361,7 @@ export function protectAppMcp(
   auth: Auth,
   handler: ReturnType<typeof createAppMcp>,
   resource: string,
-  ownerEmail: string,
+  canAccess: AccountAccess,
   jwksUrl?: string,
 ) {
   return requireMcpAuth(
@@ -369,11 +370,7 @@ export function protectAppMcp(
       const { internalAdapter, adapter } = await auth.$context;
       const user =
         typeof claims.sub === "string" ? await internalAdapter.findUserById(claims.sub) : null;
-      if (
-        !user ||
-        !user.emailVerified ||
-        user.email.toLowerCase() !== ownerEmail.trim().toLowerCase()
-      )
+      if (!user || !canAccess(user))
         return Response.json({ error: "Доступ к этому аккаунту запрещён." }, { status: 403 });
       const scopes = typeof claims.scope === "string" ? claims.scope.split(" ") : [];
       const consent = await adapter.findOne<{ id: string; scopes: string[] }>({

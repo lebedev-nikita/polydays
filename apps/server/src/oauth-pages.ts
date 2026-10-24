@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { Schema } from "effect";
 import { verifyOAuthQueryParams } from "@better-auth/oauth-provider";
 import type { Auth } from "./auth.ts";
+import type { AccountAccess } from "./account-access.ts";
 
 const escape = (value: string) =>
   value.replace(
@@ -57,16 +58,16 @@ function page(title: string, body: string, query = "", status = 200) {
 export async function oauthPage(
   request: Request,
   auth: Auth,
-  ownerEmail: string,
+  canAccess: AccountAccess,
   baseURL: string,
 ): Promise<Response> {
   const url = new URL(request.url);
   const session = await auth.api.getSession({ headers: request.headers });
   const user = session?.user;
-  if (user && (!user.emailVerified || user.email.toLowerCase() !== ownerEmail.trim().toLowerCase()))
+  if (user && !canAccess(user))
     return page(
       "Доступ запрещён",
-      "<p>Этот сервер доступен только владельцу аккаунта.</p>",
+      "<p>Для этого сервера нужен подтверждённый Google-аккаунт с разрешённым доступом.</p>",
       "",
       403,
     );

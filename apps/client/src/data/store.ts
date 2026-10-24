@@ -18,7 +18,7 @@ import {
   resolveConflict,
   type LocalState,
 } from "@polydays/sync";
-import { createTRPCClient, httpLink } from "@trpc/client";
+import { createTRPCClient, httpLink, TRPCClientError } from "@trpc/client";
 import * as Crypto from "expo-crypto";
 import type { AppRouter } from "../../../server/src/api";
 import type { Account } from "./contract";
@@ -218,6 +218,7 @@ export class AppStore {
         const result = await executeMutation(["sync", apiURL, account.id], async () =>
           decodeSyncResponse(
             await this.client.sync.mutate({
+              accountId: account.id,
               cursor: local.cursor,
               operations: local.pending.slice(0, 100),
             }),
@@ -233,7 +234,9 @@ export class AppStore {
       });
     } catch (error) {
       const needsLogin =
-        message(error).includes("UNAUTHORIZED") || message(error).includes("Google");
+        (error instanceof TRPCClientError && error.data?.code === "UNAUTHORIZED") ||
+        message(error).includes("UNAUTHORIZED") ||
+        message(error).includes("Google");
       this.publish({
         status: needsLogin ? "needs-login" : "local",
         error: needsLogin

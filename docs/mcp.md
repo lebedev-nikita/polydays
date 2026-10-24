@@ -8,9 +8,11 @@ https://polydays.gibbon-parrotfish.ts.net/mcp
 
 Add this URL as a remote MCP server in your client. The client must support OAuth authorization code flow with PKCE and resource indicators. Discovery documents are served at the standard `/.well-known/` paths; the issuer and authorization endpoints are under `/api/auth`. Client ID metadata documents and dynamic client registration are supported. The HTTP transport supports the current MCP protocol and older Streamable HTTP clients without server-side sessions.
 
-Sign in with the server owner's Google account, check the application's name and requested permissions, then approve access. `polydays:read` reads tasks, recurring series, the schedule and history. `polydays:write` also permits task changes and schedule/timezone changes. `offline_access` allows refresh tokens. Access tokens expire after 15 minutes. An ordinary Polydays session token is not an MCP access token.
+Sign in with your own Google account, check the application's name and requested permissions, then approve access. `polydays:read` reads tasks, recurring series, the schedule and history. `polydays:write` also permits task changes and schedule/timezone changes. `offline_access` allows refresh tokens. Access tokens expire after 15 minutes. An ordinary Polydays session token is not an MCP access token.
 
-Open `${BETTER_AUTH_URL}/connect` to review connections or revoke one. Revocation removes the consent, refresh tokens, opaque access tokens and outstanding authorization codes for that user/client. Every MCP request checks its current consent; reconnecting does not reactivate JWTs from an older consent.
+One server can serve multiple people and multiple MCP clients. Every account has its own tasks, schedule and history. The same MCP client can be authorized by several users, with separate grants and tokens. Client-supplied account IDs cannot select another user’s data. See [account admission settings](deployment.md#account-access).
+
+Open `${BETTER_AUTH_URL}/connect` to review your connections or revoke one. Revocation removes the consent, refresh tokens, opaque access tokens and outstanding authorization codes for that user/client. Every MCP request checks its current consent; reconnecting does not reactivate JWTs from an older consent.
 
 ## Tools and synchronization
 
@@ -26,6 +28,6 @@ The service address is private to the tailnet. Local MCP clients need Tailscale 
 
 ChatGPT uses its subscription when it calls this MCP server from ChatGPT. MCP supplies access to Polydays; it does not give the Polydays backend a pool of ChatGPT subscription tokens or replace API billing for model calls initiated by the backend.
 
-For a local development client, start the loopback development server and send `x-polydays-dev: 1` to `/mcp`. This bypass is disabled in production and cannot be enabled on a non-loopback development host. Production MCP always requires an owner-scoped OAuth grant.
+For a local development client, start the loopback development server and send `x-polydays-dev: 1` to `/mcp`. This bypass is disabled in production and cannot be enabled on a non-loopback development host. Production MCP always requires an OAuth grant bound to the signed-in user.
 
 Protocol and authorization references: [MCP specification](https://modelcontextprotocol.io/specification/latest), [Better Auth MCP](https://better-auth.com/docs/plugins/mcp), [Tailscale Services](https://tailscale.com/docs/features/tailscale-services).

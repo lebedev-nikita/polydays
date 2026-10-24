@@ -9,21 +9,21 @@ import { expo } from "@better-auth/expo";
 import { betterAuthAdapter } from "@boxdb/better-auth-adapter";
 import type { BoxDB } from "@boxdb/client";
 import { Schema } from "effect";
+import { createAccountAccess, type AccountAccessConfig } from "./account-access.ts";
 
-export type AuthConfig = {
+export type AuthConfig = AccountAccessConfig & {
   readonly baseURL: string;
   readonly secret: string;
   readonly webOrigin: string;
   readonly googleClientId: string;
   readonly googleClientSecret: string;
-  readonly ownerEmail: string;
   readonly additionalOrigins?: ReadonlyArray<string>;
 };
 
 export const mcpScopes = ["polydays:read", "polydays:write"] as const;
 
 export function authOptions(db: BoxDB, config: AuthConfig) {
-  const allowed = config.ownerEmail.trim().toLowerCase();
+  const canAccess = createAccountAccess(config);
   const options = {
     appName: "Polydays",
     baseURL: config.baseURL,
@@ -71,8 +71,7 @@ export function authOptions(db: BoxDB, config: AuthConfig) {
       user: {
         create: {
           before: async (user: { email: string; emailVerified: boolean }) => {
-            if (!allowed || user.email.toLowerCase() !== allowed || !user.emailVerified)
-              return false as const;
+            if (!canAccess(user)) return false as const;
             return { data: user };
           },
         },

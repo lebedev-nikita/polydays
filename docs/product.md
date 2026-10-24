@@ -54,7 +54,7 @@ Display priorities with the familiar P1–P4 convention: high/red, medium/orange
 - Android widgets are required; macOS widgets are required in the future native macOS phase. Show the current polyday, its unfinished tasks and all overdue tasks individually, with priorities and deadlines. A checkbox completes a task, including offline; tapping its title opens it in the app.
 - Web, Android and future macOS must share an application codebase, except for platform-specific code. Platform shells must not become independent implementations of task, schedule or recurrence rules.
 - Google sign-in is required.
-- Initial deployment is for the owner on their own server, restricted to the owner's Google account, with a design that allows independent users later. Collaborative tasks are excluded.
+- One server supports independent Google accounts. Each account has its own tasks, schedule, history and MCP grants; each person can authorize multiple MCP clients. The server may admit all verified accounts or restrict access to an email allowlist. Collaborative tasks are excluded.
 - Expiry of a server session stops sync but preserves local offline work. Explicit logout with unsent changes offers synchronisation first or a separate confirmation before discarding those changes.
 
 ## Technology direction

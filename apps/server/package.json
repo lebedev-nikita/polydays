@@ -16,5 +16,8 @@
     "better-auth": "1.7.12",
     "effect": "4.0.0-rc.118",
     "zod": "4"
+  },
+  "devDependencies": {
+    "@trpc/client": "^11.19.0"
   }
 }

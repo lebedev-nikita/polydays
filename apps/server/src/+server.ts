@@ -25,6 +25,9 @@ const config = await Effect.runPromise(
       Config.withDefault(""),
     );
     const ownerEmail = yield* Config.String("OWNER_EMAIL").pipe(Config.withDefault(""));
+    const allowedEmails = yield* Config.String("ALLOWED_EMAILS").pipe(
+      Config.withDefault(ownerEmail.trim() || "*"),
+    );
     const secret = yield* Config.String("BETTER_AUTH_SECRET").pipe(Config.withDefault(""));
     const devAuth = yield* Config.Boolean("POLYDAYS_DEV_AUTH").pipe(Config.withDefault(false));
     const additionalOrigins = (yield* Config.String("ADDITIONAL_ORIGINS").pipe(
@@ -42,6 +45,7 @@ const config = await Effect.runPromise(
       googleClientId,
       googleClientSecret,
       ownerEmail,
+      allowedEmails,
       secret,
       devAuth,
       additionalOrigins,
@@ -56,10 +60,8 @@ if (
 )
   throw new Error("Локальный режим разрешён только на loopback в окружении разработки.");
 const googleReady = Boolean(config.googleClientId && config.googleClientSecret);
-if (googleReady && (!config.ownerEmail || config.secret.length < 32))
-  throw new Error(
-    "Для Google-входа задайте OWNER_EMAIL и BETTER_AUTH_SECRET длиной не менее 32 символов.",
-  );
+if (googleReady && config.secret.length < 32)
+  throw new Error("Для Google-входа задайте BETTER_AUTH_SECRET длиной не менее 32 символов.");
 if (!googleReady && !config.devAuth)
   throw new Error(
     "Настройте GOOGLE_CLIENT_ID и GOOGLE_CLIENT_SECRET. Для локальной разработки используйте just dev.",
