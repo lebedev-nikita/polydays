@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { CheckCheck, Plus, Trash2 } from "lucide-react-native";
 import * as Crypto from "expo-crypto";
 import {
@@ -25,6 +25,7 @@ import { TimeField } from "./time-field";
 import { normalizeTimeInput } from "./time-input";
 import { EffectiveDateControl, TimeZoneControl } from "./schedule-controls";
 import { calendarDateLabel } from "./schedule-options";
+import { FormScrollView } from "./keyboard";
 
 export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
   const { store, calendar, now } = useApp();
@@ -314,13 +315,13 @@ export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
   );
   if (initial)
     return (
-      <ScrollView
+      <FormScrollView
         className="flex-1 bg-white"
         contentContainerStyle={{ alignItems: "center", padding: 24, paddingVertical: 50 }}
         keyboardShouldPersistTaps="handled"
       >
         <View className="w-full max-w-[520px]">{body}</View>
-      </ScrollView>
+      </FormScrollView>
     );
   return body;
 }

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { CheckCheck } from "lucide-react-native";
 import { useApp } from "./provider";
 import { Button, ErrorMessage, colors } from "./primitives";
 import { message } from "../data/store";
 import { ServerSettings } from "./server-settings";
+import { FormScrollView } from "./keyboard";
 
 export function LoginScreen() {
   const { store, google, devAvailable, error: serverError } = useApp();
@@ -23,7 +24,7 @@ export function LoginScreen() {
     }
   };
   return (
-    <ScrollView
+    <FormScrollView
       className="flex-1 bg-sidebar"
       contentContainerStyle={{
         flexGrow: 1,
@@ -73,6 +74,6 @@ export function LoginScreen() {
         )}
         <ServerSettings disabled={busy} onDirtyChange={setServerDirty} />
       </View>
-    </ScrollView>
+    </FormScrollView>
   );
 }
