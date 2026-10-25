@@ -66,7 +66,8 @@ export function validateCalendar(calendar: Calendar): Calendar {
 }
 
 export function versionForDate(calendar: Calendar, date: string): CalendarVersion | undefined {
-  return orderedVersions(calendar).find((version) => version.from <= date);
+  const version = orderedVersions(calendar).find((version) => version.from <= date);
+  return version ? withSlotNames(calendar, version) : undefined;
 }
 
 const orderedVersions = (calendar: Calendar) =>
@@ -74,13 +75,31 @@ const orderedVersions = (calendar: Calendar) =>
     (a, b) => b.from.localeCompare(a.from) || (b.activatedAt ?? 0) - (a.activatedAt ?? 0),
   );
 
+// Names identify slots across the calendar; only their interval geometry is dated.
+// Reading the latest known names also repairs schedules saved by older clients.
+function slotNames(calendar: Calendar): ReadonlyMap<string, string> {
+  const names = new Map<string, string>();
+  for (const version of orderedVersions(calendar))
+    for (const slot of version.slots) if (!names.has(slot.id)) names.set(slot.id, slot.name);
+  return names;
+}
+
+function withSlotNames(calendar: Calendar, version: CalendarVersion): CalendarVersion {
+  const names = slotNames(calendar);
+  return {
+    ...version,
+    slots: version.slots.map((slot) => ({ ...slot, name: names.get(slot.id) ?? slot.name })),
+  };
+}
+
 export function activeVersion(calendar: Calendar, now: number): CalendarVersion {
   const first = calendar.versions[0];
   if (!first) throw new Error("Расписание ещё не настроено.");
-  return (
+  return withSlotNames(
+    calendar,
     orderedVersions(calendar).find(
       (v) => v.from <= dateAt(now, v.timeZone) && (v.activatedAt ?? -Infinity) <= now,
-    ) ?? first
+    ) ?? first,
   );
 }
 
@@ -101,7 +120,10 @@ export function makePolyday(slot: Slot, date: string, timeZone: string): Polyday
 
 export function polydaysOn(calendar: Calendar, date: string): ReadonlyArray<Polyday> {
   const version = versionForDate(calendar, date);
-  const saved = calendar.frozen.filter((p) => p.date === date);
+  const names = slotNames(calendar);
+  const saved = calendar.frozen
+    .filter((p) => p.date === date)
+    .map((p) => ({ ...p, name: names.get(p.slotId) ?? p.name }));
   const frozenIds = new Set(saved.map((p) => p.id));
   const generated =
     version?.slots
@@ -158,11 +180,18 @@ export function updateCalendar(
   if (version.from < today) throw new Error("Новое расписание не должно менять прошлые полидни.");
   const frozen = new Map(calendar.frozen.map((p) => [p.id, p]));
   for (const p of polydaysBetween(calendar, earliest, today)) if (p.end <= now) frozen.set(p.id, p);
+  const names = new Map(version.slots.map((slot) => [slot.id, slot.name]));
   return validateCalendar({
     ...calendar,
-    versions: [...calendar.versions.filter((v) => v.from !== version.from), version].sort((a, b) =>
-      a.from.localeCompare(b.from),
-    ),
+    versions: [
+      ...calendar.versions
+        .filter((v) => v.from !== version.from)
+        .map((v) => ({
+          ...v,
+          slots: v.slots.map((slot) => ({ ...slot, name: names.get(slot.id) ?? slot.name })),
+        })),
+      version,
+    ].sort((a, b) => a.from.localeCompare(b.from)),
     frozen: [...frozen.values()],
   });
 }

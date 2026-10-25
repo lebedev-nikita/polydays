@@ -124,10 +124,10 @@ export function EffectiveDateControl(props: {
   return (
     <DateControl
       {...props}
-      label="Когда применить"
+      label="Когда изменить интервалы"
       accessibilityLabel="Дата начала действия расписания"
       minDate={props.today}
-      hint="Прошлые полидни останутся без изменений."
+      hint="Названия обновляются сразу. Границы прошлых полидней сохранятся."
     />
   );
 }

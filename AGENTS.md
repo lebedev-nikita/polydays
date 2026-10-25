@@ -21,7 +21,7 @@ After each user UI correction, update this section with concise, reusable conclu
 - Open web property menus as overlays without changing the task form's position or size; keep the choices within the viewport on short and narrow screens.
 - Apply complete task-title shortcuts immediately to their property controls and remove the command from the title; support every priority, including P4 (none), during creation and editing.
 - Place contextual metadata beside the control it explains: show an overnight end beside the end time and the calculated polyday duration below the start/end pair. Update duration while editing and hide it for invalid or equal boundaries.
-- Reopen saved future schedule changes with their effective date; confirm when they take effect so delayed changes do not appear lost.
+- Apply polyday renames immediately across headings, selectors, history and widgets; effective dates govern interval changes. Reopen saved future intervals with their effective date and confirm when they take effect.
 - Use searchable choices for timezones and a calendar for dates. Display human-readable names and localized dates instead of requiring technical identifiers or format syntax.
 - Use a compact switch for automatic timezone detection, with the effective timezone visible.
 - Infer the underlying usability issue from annotated screenshots and fix every marked area coherently.

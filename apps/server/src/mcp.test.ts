@@ -3,6 +3,7 @@ import { defaultSlots, expandedTasks } from "@polydays/core";
 import type { BoxDB } from "@boxdb/client";
 import { commandDatabase, exchangeDatabase, openDatabase, snapshotDatabase } from "./database.ts";
 import { createAppMcp, taskRevision } from "./mcp.ts";
+import { prepareCommand } from "./commands.ts";
 
 const clients: BoxDB[] = [];
 afterEach(async () => {
@@ -21,6 +22,23 @@ async function setup() {
   });
   return db;
 }
+
+it("requires a task destination when removing a slot from the active schedule", async () => {
+  const db = await setup();
+  const records = await snapshotDatabase(db, "owner");
+  const revision = records.find((row) => row.document.kind === "calendar")!.revision;
+  const command = {
+    kind: "set_schedule" as const,
+    requestId: "remove-morning",
+    revision,
+    effectiveDate: "2026-10-26",
+    timeZone: "Asia/Tbilisi",
+    slots: defaultSlots.filter((slot) => slot.id !== "morning"),
+  };
+  const now = Date.parse("2026-10-25T08:00:00+04:00");
+  expect(() => prepareCommand(records, command, now)).toThrow("transferTo");
+  expect(() => prepareCommand(records, { ...command, transferTo: "afternoon" }, now)).not.toThrow();
+});
 
 it("persists MCP commands in sync, deduplicates retries and rejects stale revisions atomically", async () => {
   const db = await setup();

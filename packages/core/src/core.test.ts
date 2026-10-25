@@ -43,6 +43,86 @@ const task: Task = {
 };
 
 describe("polyday boundaries", () => {
+  it("shows saved future names immediately in polydays and the widget", () => {
+    const now = at("2026-10-22", "08:00");
+    // A schedule already saved by 0.3.5 must also show its new name after upgrading.
+    const saved: Calendar = {
+      ...calendar,
+      frozen: polydaysOn(calendar, "2026-10-21"),
+      versions: [
+        ...calendar.versions,
+        {
+          id: "future",
+          from: "2026-10-23",
+          timeZone: "Asia/Tbilisi",
+          slots: defaultSlots.map((slot) =>
+            slot.id === "morning" ? { ...slot, name: "Утром", start: "07:00" } : slot,
+          ),
+        },
+      ],
+    };
+    expect(currentPolyday(saved, now)).toMatchObject({ name: "Утром", startTime: "06:00" });
+    expect(activeVersion(saved, now).slots[0]?.name).toBe("Утром");
+    expect(polydaysOn(saved, "2026-10-21")[0]).toEqual({
+      ...saved.frozen[0],
+      name: "Утром",
+    });
+    const projection = buildWidgetProjection([{ kind: "calendar", data: saved }], now);
+    expect(projection?.views.find((view) => view.id === "2026-10-22/morning")?.title).toBe("Утром");
+  });
+
+  it("renames across existing schedules while keeping dated boundaries and task placement", () => {
+    const now = at("2026-10-22", "08:00");
+    const later: Calendar = {
+      ...calendar,
+      versions: [
+        ...calendar.versions,
+        {
+          ...calendar.versions[0]!,
+          id: "later",
+          from: "2026-10-25",
+          slots: defaultSlots.map((slot) =>
+            slot.id === "morning" ? { ...slot, start: "08:00" } : slot,
+          ),
+        },
+      ],
+    };
+    const past = polydaysOn(later, "2026-10-21");
+    const changed = updateCalendar(
+      later,
+      {
+        id: "rename-and-reschedule",
+        from: "2026-10-23",
+        timeZone: "Asia/Tbilisi",
+        slots: defaultSlots.map((slot) =>
+          slot.id === "morning" ? { ...slot, name: "Утром", start: "07:00" } : slot,
+        ),
+      },
+      now,
+    );
+    expect(currentPolyday(changed, now)).toMatchObject({
+      id: "2026-10-22/morning",
+      name: "Утром",
+      startTime: "06:00",
+    });
+    expect(polydaysOn(changed, "2026-10-21")).toEqual(
+      past.map((day) => (day.slotId === "morning" ? { ...day, name: "Утром" } : day)),
+    );
+    expect(polydaysOn(changed, "2026-10-23")[0]).toMatchObject({
+      name: "Утром",
+      startTime: "07:00",
+    });
+    expect(polydaysOn(changed, "2026-10-25")[0]).toMatchObject({
+      name: "Утром",
+      startTime: "08:00",
+    });
+    expect(taskView(task, changed, now).polyday).toMatchObject({
+      id: "2026-10-22/morning",
+      name: "Утром",
+      start: at("2026-10-22", "06:00"),
+    });
+  });
+
   it("prepares overdue visibility without expiring gap deadlines early", () => {
     const timed: Task = {
       ...task,
