@@ -2,6 +2,58 @@ import { expect, test, type Page } from "@playwright/test";
 
 test.use({ serviceWorkers: "block" });
 
+for (const [today, month, nextMonth, firstDay, lastDay] of [
+  ["2026-10-25", "октябрь 2026", "ноябрь 2026", "26 октября", "1 ноября"],
+  ["2026-12-27", "декабрь 2026", "январь 2027", "28 декабря", "3 января 2027 г."],
+  ["2028-02-27", "февраль 2028", "март 2028", "28 февраля", "5 марта"],
+] as const) {
+  test(`week navigation keeps the month of Monday across ${today}`, async ({ page }, testInfo) => {
+    await page.clock.setFixedTime(new Date(`${today}T08:00:00+04:00`));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setup(page);
+    await expect(page.getByRole("progressbar")).not.toBeVisible();
+    await page.getByRole("button", { name: "Добавить задачу", exact: true }).first().click();
+    await page.getByRole("textbox", { name: "Название задачи" }).fill("Проверить неделю");
+    const trigger = page.getByRole("button", { name: /^Когда выполнить ·/ });
+    const originalSelection = await trigger.innerText();
+    await trigger.click();
+    const heading = page.getByRole("button", { name: "Открыть календарь", exact: true });
+    const next = page.getByRole("button", { name: "Следующая неделя", exact: true });
+    const previous = page.getByRole("button", { name: "Предыдущая неделя", exact: true });
+    await next.click();
+    await expect(
+      page.getByRole("button", { name: `Завтра, ${firstDay}`, exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: lastDay, exact: true })).toBeVisible();
+    await expect(heading).toContainText(month);
+    await next.click();
+    await expect(heading).toContainText(nextMonth);
+    await previous.click();
+    await expect(heading).toContainText(month);
+    await previous.click();
+    await expect(heading).toContainText(month);
+    await next.click();
+    if (today === "2026-10-25") {
+      const capture = crypto.randomUUID();
+      await page.screenshot({ path: `.data/ui-qa/week-october-mobile-${capture}.png` });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.screenshot({ path: testInfo.outputPath(`week-october-desktop-${capture}.png`) });
+    }
+    await page.getByRole("button", { name: "Готово", exact: true }).click();
+    await expect(trigger).toHaveText(originalSelection);
+    await trigger.click();
+    await next.click();
+    await page.getByRole("button", { name: lastDay, exact: true }).click();
+    await expect(heading).toContainText(month);
+    await heading.click();
+    await expect(
+      page.getByRole("button", { name: "Свернуть календарь", exact: true }),
+    ).toContainText(nextMonth);
+    await page.getByRole("button", { name: "Следующий месяц", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Предыдущий месяц", exact: true })).toBeVisible();
+  });
+}
+
 for (const [width, height] of [
   [1440, 1000],
   [1440, 400],

@@ -24,6 +24,7 @@ After each user UI correction, update this section with concise, reusable conclu
 - Place contextual metadata beside the control it explains: show an overnight end beside the end time and the calculated polyday duration below the start/end pair. Update duration while editing and hide it for invalid or equal boundaries.
 - Apply polyday renames immediately across headings, selectors, history and widgets; effective dates govern interval changes. Reopen saved future intervals with their effective date and confirm when they take effect.
 - Use searchable choices for timezones and a calendar for dates. Display human-readable names and localized dates instead of requiring technical identifiers or format syntax.
+- In week calendars, derive the month heading and adjacent-month styling from Monday so they stay consistent across month and year boundaries; browsing preserves the selected task date.
 - Use a compact switch for automatic timezone detection, with the effective timezone visible.
 - Infer the underlying usability issue from annotated screenshots and fix every marked area coherently.
 - Keep browser navigation free of blank frames, including first visits to a page; route loading must preserve the visible interface.
