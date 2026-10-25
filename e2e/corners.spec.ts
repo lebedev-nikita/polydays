@@ -27,8 +27,7 @@ for (const width of [1440, 390]) {
     await expectSingleContour(page.getByRole("heading", { name: "Повторение", exact: true }));
     await page.getByRole("button", { name: "Отменить настройки", exact: true }).click();
     await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
-    await expect(page.getByText("Задача сохранена. Можно добавить следующую.")).toBeVisible();
-    await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+    await expect(title).not.toBeVisible();
     await page
       .getByRole("button", { name: "Редактировать задачу: Проверить углы панелей", exact: true })
       .click();

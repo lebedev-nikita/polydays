@@ -61,8 +61,7 @@ for (const [width, height] of [
     });
     await page.getByRole("button", { name: "Готово", exact: true }).click();
     await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
-    await expect(page.getByText("Задача сохранена. Можно добавить следующую.")).toBeVisible();
-    await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+    await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
     await page.getByRole("link", { name: "Предстоящие", exact: true }).click();
     await expect(page.getByRole("progressbar")).not.toBeVisible();
     await page

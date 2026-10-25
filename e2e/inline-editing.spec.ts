@@ -18,7 +18,8 @@ for (const width of [1440, 390]) {
     ]) {
       await title.fill(name);
       await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
-      await expect(title).toHaveValue("");
+      await expect(title).not.toBeVisible();
+      await page.getByRole("button", { name: "Добавить задачу", exact: true }).first().click();
     }
     await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
     const url = page.url();

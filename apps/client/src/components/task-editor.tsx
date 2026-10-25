@@ -107,6 +107,12 @@ export function TaskComposer({
           paddingBottom: mobile ? insets.bottom + 8 : 32,
         }}
       >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Закрыть добавление задачи"
+          onPress={() => closeRequest.current?.()}
+          style={{ position: "absolute", inset: 0 }}
+        />
         <View
           className="w-full max-w-[560px]"
           style={{
@@ -190,7 +196,6 @@ export function TaskForm({
   const [endDate, setEndDate] = useState(seriesRule?.endDate ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [openProperty, setOpenProperty] = useState<"schedule" | "priority" | "repeat" | null>(null);
   const propertySnapshot = useRef({
     kind,
@@ -379,7 +384,6 @@ export function TaskForm({
     saving.current = true;
     setBusy(true);
     setError(null);
-    setSaved(false);
     try {
       if (!title.trim()) throw new Error("Введите название задачи.");
       if (normalizedTime !== null) setTime(normalizedTime);
@@ -441,16 +445,7 @@ export function TaskForm({
           task ? { kind: "task", data: task } : undefined,
         );
       }
-      if (task) onClose();
-      else {
-        setTitle("");
-        setTitleHeight(40);
-        setDescription("");
-        setTouched([]);
-        setConfirmClose(false);
-        setSaved(true);
-        titleRef.current?.focus();
-      }
+      onClose();
     } catch (cause) {
       setError(message(cause));
     } finally {
@@ -839,11 +834,6 @@ export function TaskForm({
               />
               {task?.seriesId && !editSeries && (
                 <Text className="text-xs text-muted">Только это повторение</Text>
-              )}
-              {saved && !title && (
-                <Text accessibilityLiveRegion="polite" className="text-sm text-[#317043]">
-                  Задача сохранена. Можно добавить следующую.
-                </Text>
               )}
             </ScrollView>
             <ErrorMessage>
