@@ -303,17 +303,12 @@ function TimelineDays({ from, until, history }: { from: string; until: string; h
                 <ChevronRight size={18} color={colors.muted} />
               </Pressable>
             </Link>
-            {rows.length ? (
-              <TaskList
-                rows={rows}
-                scheduling={{ kind: "polyday", date: day.date, slotId: day.slotId }}
-                includeCompleted={history}
-              />
-            ) : (
-              <Text className="py-3 text-sm text-muted">
-                {history ? "Нет выполненных задач" : "Задачи ещё не запланированы"}
-              </Text>
-            )}
+            <TaskList
+              rows={rows}
+              scheduling={{ kind: "polyday", date: day.date, slotId: day.slotId }}
+              includeCompleted={history}
+              emptyLabel={history ? "Нет выполненных задач" : "Задачи ещё не запланированы"}
+            />
           </View>
         );
       })}

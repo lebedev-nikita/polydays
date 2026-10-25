@@ -31,6 +31,7 @@ import {
   Trash2,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { documents } from "@polydays/sync";
 import * as Crypto from "expo-crypto";
 import {
   activeVersion,
@@ -156,7 +157,9 @@ export function TaskForm({
   const zone = calendar ? activeVersion(calendar, now).timeZone : "UTC";
   const today = dateAt(now, zone);
   const sourceSeries = editSeries ? series.find((item) => item.id === task?.seriesId) : undefined;
-  const seriesRule = sourceSeries ? ruleForDate(sourceSeries, addDays(today, 1)) : undefined;
+  const seriesRule = sourceSeries
+    ? (ruleForDate(sourceSeries, addDays(today, 1)) ?? sourceSeries.rules[0])
+    : undefined;
   const [title, setTitle] = useState(seriesRule?.title ?? task?.title ?? "");
   const [description, setDescription] = useState(
     seriesRule?.description ?? task?.description ?? "",
@@ -271,18 +274,11 @@ export function TaskForm({
   const [confirmSwitch, setConfirmSwitch] = useState(false);
   const [touched, setTouched] = useState<ReadonlyArray<string>>([]);
   const saving = useRef(false);
+  const propertyWrites = useRef(Promise.resolve());
+  const pendingProperties = useRef(0);
   const snapshot = JSON.stringify({
     title,
     description,
-    priority,
-    kind,
-    date,
-    slotId,
-    time,
-    repeat,
-    weekdays,
-    startDate,
-    endDate,
   });
   const original = useRef(snapshot);
   const dirty = task ? original.current !== snapshot : !!(title || description);
@@ -333,6 +329,85 @@ export function TaskForm({
       setBusy(false);
     }
   };
+  // Property commands preserve the saved text; the text fields remain a separate draft.
+  const saveProperties = (
+    patch: {
+      priority?: Task["priority"];
+      scheduling?: Scheduling;
+      recurrence?: Recurrence;
+      startDate?: string;
+      endDate?: string | null;
+    },
+    apply: () => void,
+  ) => {
+    if (!task) {
+      apply();
+      return;
+    }
+    pendingProperties.current++;
+    saving.current = true;
+    setBusy(true);
+    setError(null);
+    propertyWrites.current = propertyWrites.current.then(async () => {
+      try {
+        const local = store.getSnapshot().local;
+        const all = local ? documents(local) : [];
+        const currentSeries =
+          all
+            .filter((item) => item.kind === "series")
+            .find((item) => item.data.id === sourceSeries?.id)?.data ?? sourceSeries;
+        const currentRule = currentSeries
+          ? (ruleForDate(currentSeries, addDays(today, 1)) ?? currentSeries.rules[0])
+          : undefined;
+        if (currentSeries && currentRule) {
+          const { scheduling: _, ...properties } = patch;
+          const rule = { ...currentRule, ...properties, effectiveDate: addDays(today, 1) };
+          await store.save(
+            {
+              kind: "series",
+              data: {
+                ...currentSeries,
+                rules: [
+                  ...currentSeries.rules.filter((item) => item.effectiveDate < rule.effectiveDate),
+                  rule,
+                ],
+              },
+            },
+            { kind: "series", data: currentSeries },
+          );
+        } else {
+          const currentTask =
+            all.filter((item) => item.kind === "task").find((item) => item.data.id === task.id)
+              ?.data ?? task;
+          await store.save(
+            {
+              kind: "task",
+              data: {
+                ...currentTask,
+                priority: patch.priority ?? currentTask.priority,
+                scheduling: patch.scheduling ?? currentTask.scheduling,
+              },
+            },
+            { kind: "task", data: currentTask },
+          );
+        }
+        apply();
+      } catch (cause) {
+        setError(message(cause));
+      } finally {
+        pendingProperties.current--;
+        if (!pendingProperties.current) {
+          saving.current = false;
+          setBusy(false);
+        }
+      }
+    });
+  };
+  const choosePriority = (value: Task["priority"]) =>
+    saveProperties({ priority: value }, () => {
+      setPriority(value);
+      finishChoice();
+    });
   const errors: Record<string, string> = {};
   if (!title.trim()) errors.title = "Введите название задачи.";
   const checkDate = (key: string, value: string) => {
@@ -373,10 +448,11 @@ export function TaskForm({
   const fieldError = (key: string) => (touched.includes(key) ? errors[key] : undefined);
   const submit = async () => {
     if (!calendar || saving.current) return;
-    if (Object.keys(errors).length) {
-      setTouched(Object.keys(errors));
+    const invalid = Object.keys(errors).filter((key) => !task || key === "title");
+    if (invalid.length) {
+      setTouched(invalid);
       setError("Проверьте отмеченные поля.");
-      if (Object.keys(errors).some((key) => key !== "title"))
+      if (invalid.some((key) => key !== "title"))
         openPanel(repeat !== "none" ? "repeat" : "schedule");
       if (errors.title) titleRef.current?.focus();
       return;
@@ -394,7 +470,7 @@ export function TaskForm({
             ? { kind, date, slotId }
             : { kind, date, time: normalizedTime ?? time };
       if (repeat !== "none") {
-        if (endDate && endDate < startDate)
+        if (!task && endDate && endDate < startDate)
           throw new Error("Окончание серии должно быть не раньше начала.");
         const recurrence: Recurrence =
           repeat === "every-polyday"
@@ -403,13 +479,14 @@ export function TaskForm({
               ? { kind: repeat, slotId, weekdays }
               : { kind: repeat, time: normalizedTime ?? time, weekdays };
         const rule = {
-          effectiveDate: sourceSeries ? addDays(today, 1) : startDate,
-          title: title.trim(),
-          description,
           priority,
           recurrence,
           startDate,
           endDate: endDate || null,
+          ...(sourceSeries ? seriesRule : {}),
+          effectiveDate: sourceSeries ? addDays(today, 1) : startDate,
+          title: title.trim(),
+          description,
         };
         const next: Series = {
           id: sourceSeries?.id ?? Crypto.randomUUID(),
@@ -428,8 +505,6 @@ export function TaskForm({
       } else {
         const next: Task = {
           id: task?.id ?? Crypto.randomUUID(),
-          title: title.trim(),
-          description,
           priority,
           order: task?.order ?? systemNow(),
           scheduling: when,
@@ -439,6 +514,9 @@ export function TaskForm({
           createdAt: task?.createdAt ?? systemNow(),
           seriesId: task?.seriesId ?? null,
           occurrenceDate: task?.occurrenceDate ?? null,
+          ...task,
+          title: title.trim(),
+          description,
         };
         await store.save(
           { kind: "task", data: next },
@@ -482,8 +560,24 @@ export function TaskForm({
       return;
     }
     if (normalizedTime !== null) setTime(normalizedTime);
-    setOpenProperty(null);
-    titleRef.current?.focus();
+    saveProperties(
+      repeat === "none"
+        ? {}
+        : {
+            recurrence:
+              repeat === "every-polyday"
+                ? { kind: repeat }
+                : repeat === "polyday"
+                  ? { kind: repeat, slotId, weekdays }
+                  : { kind: repeat, time: normalizedTime ?? time, weekdays },
+            startDate,
+            endDate: endDate || null,
+          },
+      () => {
+        setOpenProperty(null);
+        titleRef.current?.focus();
+      },
+    );
   };
   const applyScheduling = (next: Scheduling) => {
     setKind(next.kind);
@@ -654,7 +748,10 @@ export function TaskForm({
             </View>
           </ScrollView>
           <View className="items-end px-5 pb-5 pt-2">
-            <Button onPress={acceptPanel}>Готово</Button>
+            <ErrorMessage>{error}</ErrorMessage>
+            <Button disabled={busy} onPress={acceptPanel}>
+              Готово
+            </Button>
           </View>
         </>
       ) : (
@@ -677,8 +774,10 @@ export function TaskForm({
               maxHeight={maxHeight ?? 640}
               onDismiss={dismissPanel}
               onConfirm={(next) => {
-                applyScheduling(next);
-                finishChoice();
+                saveProperties({ scheduling: next }, () => {
+                  applyScheduling(next);
+                  finishChoice();
+                });
               }}
               onRepeat={
                 !task || editSeries
@@ -708,10 +807,7 @@ export function TaskForm({
                     color={colors.priorities[value]}
                     filled={value !== 4}
                     selected={value === priority}
-                    onPress={() => {
-                      setPriority(value);
-                      finishChoice();
-                    }}
+                    onPress={() => choosePriority(value)}
                     radio
                   />
                 ))}
@@ -764,7 +860,7 @@ export function TaskForm({
                     const parsed = parseTaskTitle(value);
                     if (parsed.priority !== null) {
                       setTitle(parsed.title);
-                      setPriority(parsed.priority);
+                      choosePriority(parsed.priority);
                       shortcut.current = null;
                       setOpenProperty(null);
                       return;
@@ -951,18 +1047,18 @@ export function TaskForm({
                           ? "Сохранить"
                           : "Добавить задачу"
                   }
-                  accessibilityState={{ disabled: busy || !title.trim() }}
-                  disabled={busy || !title.trim()}
+                  accessibilityState={{ disabled: busy || !title.trim() || (!!task && !dirty) }}
+                  disabled={busy || !title.trim() || (!!task && !dirty)}
                   onPress={() => {
                     void submit();
                   }}
-                  className={`h-11 w-11 items-center justify-center rounded-lg ${busy || !title.trim() ? "bg-selected" : "bg-accent active:opacity-80"}`}
+                  className={`h-11 w-11 items-center justify-center rounded-lg ${busy || !title.trim() || (!!task && !dirty) ? "bg-selected" : "bg-accent active:opacity-80"}`}
                 >
                   <View>
                     {task ? (
                       <Check
                         size={22}
-                        color={busy || !title.trim() ? colors.accent : "white"}
+                        color={busy || !title.trim() || !dirty ? colors.accent : "white"}
                         strokeWidth={2.2}
                       />
                     ) : (

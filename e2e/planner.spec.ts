@@ -97,11 +97,11 @@ test("a deadline is explicitly removed before selecting an untimed polyday or in
   await page.getByRole("button", { name: "Убрать дедлайн", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Время дедлайна" })).not.toBeVisible();
   await done(page);
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
   await taskLink.click();
   await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
   await page.getByRole("button", { name: "Во входящие", exact: true }).click();
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
   await page.getByRole("link", { name: "Входящие", exact: true }).click();
   await expect(taskLink).toBeVisible();
@@ -226,7 +226,8 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByRole("button", { name: "Приоритет · P4 · Без приоритета", exact: true }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Сохранить", exact: true })).toBeDisabled();
+    await page.getByRole("button", { name: "Закрыть", exact: true }).click();
     await task.click();
     await expect(
       page.getByRole("button", { name: "Приоритет · P4 · Без приоритета", exact: true }),
@@ -261,7 +262,7 @@ test("recurrence editing preserves the series deadline independently of an occur
   await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
   await time.fill("22:30");
   await done(page);
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
   await task.click();
   await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
   await expect(time).toHaveValue("22:30");
@@ -270,13 +271,25 @@ test("recurrence editing preserves the series deadline independently of an occur
   await page.getByRole("button", { name: /^Повторение ·/ }).click();
   await expect(time).toHaveValue("21:15");
   await expect(page.getByText(/Изменения применятся к будущим повторениям/)).toBeVisible();
+  await time.fill("20:45");
   await done(page);
+  await page.getByRole("textbox", { name: "Название задачи" }).fill("Черновик названия серии");
   await page.getByRole("button", { name: /^Приоритет ·/ }).click();
   await page.getByRole("radio", { name: "P1 · Высокий", exact: true }).click();
   await page.getByRole("button", { name: "Вернуться к повторению", exact: true }).click();
   await expect(page.getByText("Перейти без сохранения изменений?")).toBeVisible();
-  await page.getByRole("button", { name: "Продолжить", exact: true }).click();
-  await page.getByRole("button", { name: "Сохранить серию", exact: true }).click();
+  await page.getByRole("button", { name: "Не сохранять", exact: true }).click();
+  await page.getByRole("button", { name: "Изменить всю серию", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "Название задачи" })).toHaveValue(
+    "Проверить план перед сном",
+  );
+  await expect(
+    page.getByRole("button", { name: "Приоритет · P1 · Высокий", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /^Повторение ·/ }).click();
+  await expect(time).toHaveValue("20:45");
+  await done(page);
+  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
 });
 
