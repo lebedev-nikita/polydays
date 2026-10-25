@@ -28,7 +28,7 @@ On the Android or macOS sign-in screen, enter your public HTTPS server origin in
 
 Set `ALLOWED_EMAILS=*` to admit any verified Google account, or use a comma-separated allowlist such as `ALLOWED_EMAILS=alice@example.com,bob@example.com`. Each account has independent tasks, schedule, history and MCP connections. This policy applies to registration, application sessions, MCP requests and connection management, including existing sessions and tokens after a server restart.
 
-For existing installations, `OWNER_EMAIL` remains a fallback when `ALLOWED_EMAILS` is absent. An explicit `ALLOWED_EMAILS` overrides it. Without either setting, verified Google accounts are admitted. Network access is separate: users of the private Pi service still need Tailscale access.
+For existing installations, `OWNER_EMAIL` remains a fallback when `ALLOWED_EMAILS` is absent. An explicit `ALLOWED_EMAILS` overrides it. Without either setting, verified Google accounts are admitted. Network access is separate: users of the private Pi service still need access to the WireGuard network.
 
 ## Android distribution
 
@@ -74,74 +74,36 @@ The application merges device operations through its API. Database file replicat
 
 ## Raspberry Pi service and CI/CD
 
-The production server and bundled web client run at <https://polydays.gibbon-parrotfish.ts.net>, reachable from the tailnet. The stable Tailscale Service `svc:polydays` forwards HTTPS on port 443 to `127.0.0.1:3000` on the Pi. The device keeps its separate name `pi`; <https://pi.gibbon-parrotfish.ts.net> remains available for existing clients. Funnel is disabled. Google OAuth permits the service origin and its exact `/api/auth/callback/google` URI, alongside the existing device entries. See [MCP setup](mcp.md) for `/mcp` authorization and `/connect` connection management.
+The production server and bundled web client run at <https://polydays.home.arpa>, reachable through the personal WireGuard network. Nginx on the Pi listens on `10.77.0.4:443` and forwards to `127.0.0.1:3000`. Private DNS resolves the name to `10.77.0.4`. Google OAuth permits `https://polydays.home.arpa` and the exact `https://polydays.home.arpa/api/auth/callback/google` URI. See [MCP setup](mcp.md) for `/mcp` authorization and `/connect` connection management.
 
-To provision another host, define the service `polydays` with `tcp:443` in the Tailscale admin console. Give the host a server tag owned by your administrator, advertise the service with the command below, then approve the host under Services. Services require a tagged host; keep SSH access valid when replacing user ownership with a tag. The configured Pi uses `tag:server` and ordinary SSH key authentication.
+The deployment requires an existing HTTPS reverse proxy, DNS and trusted certificate. Bootstrap manages only the application service; provision networking separately. On the configured Pi these are `/etc/nginx/sites-available/personal-services`, `wg-quick@wg-personal`, and the private CA under `/etc/wireguard/pki/`. The daily `home-arpa-cert.timer` renews the leaf before expiry. The CA private key stays on the Pi. Install only its public certificate on client devices. Cloud clients require their own route into the private network.
 
-```sh
-sudo tailscale serve --service=svc:polydays --https=443 http://127.0.0.1:3000
-```
+Android's `polydays-storage` module declares `@xml/polydays_network_security_config`. Release builds require HTTPS and permit system and user-installed CA roots specifically for `home.arpa` and its subdomains; other hosts retain system trust. The debug resource preserves development HTTP outside that domain. Install the private root through Android's **CA certificate** installer, then verify connection, Google sign-in and synchronization in the signed release build. Preserve these resource files in future releases. macOS uses the user's SSL trust settings.
 
-Tailscale provides the service DNS name, virtual addresses and TLS certificate. More services can share the Pi using distinct `svc:` names and backend ports. Their names do not require renaming the device or buying a domain. The address remains private; cloud clients need a separate network tunnel or public entry point.
-
-The 64-bit Bookworm host uses Node.js from [.node-version](../.node-version), Bun 1.4.3, and BoxDB 0.5.1 with its bundled Linux ARM64 addon. The `polydays` system account owns application releases under `/opt/polydays/releases` and persistent data under `/var/lib/polydays`. `/opt/polydays/current` points to the active commit. The root-only `/etc/polydays/server.env` supplies Google credentials, account admission settings, session secret, the database path and the service HTTPS origin; development authentication is disabled. `BETTER_AUTH_URL` and `WEB_ORIGIN` use the service origin. `ADDITIONAL_ORIGINS=https://pi.gibbon-parrotfish.ts.net,https://pi.gibbon-parrotfish.ts.net:8443` keeps the previous web origins trusted during migration.
+The 64-bit Bookworm host uses Node.js from [.node-version](../.node-version), Bun 1.4.3, and BoxDB 0.5.1 with its bundled Linux ARM64 addon. The `polydays` system account owns application releases under `/opt/polydays/releases` and persistent data under `/var/lib/polydays`. `/opt/polydays/current` points to the active commit. The root-only `/etc/polydays/server.env` supplies Google credentials, account admission settings, session secret, the database path and the service HTTPS origin; development authentication is disabled. `BETTER_AUTH_URL` and `WEB_ORIGIN` use the service origin. Legacy origins may remain in `ADDITIONAL_ORIGINS` for existing clients; the active origin is `https://polydays.home.arpa`.
 
 [The workflow](../.github/workflows/deploy-pi.yml) checks formatting and types, runs unit and browser tests on a GitHub-hosted Linux runner, builds the production web client, and uploads a source-and-web artifact. Only successful `main` runs deploy. A repository-specific ARM64 runner named `polydays-pi` downloads that artifact on the Pi; pull requests run checks on GitHub and never enter this deployment job. The runner uses GitHub's outbound connection, so CI needs no SSH key or separate Tailscale credential.
 
 [The deployment script](../deploy/raspberry-pi/deploy.sh) serialises deployments, installs locked production dependencies, verifies the native BoxDB addon, stops the service for a consistent database snapshot, switches the release symlink, and checks readiness. Failed startups restore the previous code and database snapshot. The current and previous releases remain available, while database snapshots accumulate in `/var/lib/polydays/backups`; copy these to separate storage and review retention as data grows. Deployments preserve the database and private environment outside the release directory.
 
-The systemd unit and privileged deployment helper are installed by `sudo bash deploy/raspberry-pi/bootstrap.sh`. This assumes Node.js and Bun are already installed at `/usr/local/bin` and Tailscale is connected. Bootstrap enables Tailscale DNS acceptance so the Pi can resolve MagicDNS names during deployment, and configures the persistent device HTTPS proxy. After defining and approving the service, run bootstrap with `sudo TAILSCALE_SERVICE=svc:polydays bash deploy/raspberry-pi/bootstrap.sh` to configure its proxy too. The GitHub runner is installed in `/opt/polydays/runner` as `polydays`, registered only to this repository, and managed by its `actions.runner.*` systemd service. The account may restart or stop only `polydays.service` through sudo. Changes to the privileged unit or deployment helper must be installed explicitly with the bootstrap script; application deployments cannot replace them.
+The systemd unit and privileged deployment helper are installed by `sudo bash deploy/raspberry-pi/bootstrap.sh`. This assumes Node.js and Bun are already installed at `/usr/local/bin`. Configure DNS and HTTPS separately before connecting clients. The GitHub runner is installed in `/opt/polydays/runner` as `polydays`, registered only to this repository, and managed by its `actions.runner.*` systemd service. The account may restart or stop only `polydays.service` through sudo. Changes to the privileged unit or deployment helper must be installed explicitly with the bootstrap script; application deployments cannot replace them.
 
 ```sh
-ssh pi 'sudo systemctl status polydays --no-pager'
-ssh pi 'sudo journalctl -u polydays -n 100 --no-pager'
-ssh pi 'sudo systemctl restart polydays'
-curl --fail https://polydays.gibbon-parrotfish.ts.net/api/health
+ssh pibox 'sudo systemctl status polydays --no-pager'
+ssh pibox 'sudo journalctl -u polydays -n 100 --no-pager'
+ssh pibox 'sudo systemctl restart polydays'
+curl --fail --cacert /path/to/home-arpa-ca.crt https://polydays.home.arpa/api/health
 ```
 
 Push to `main` to deploy automatically, or rerun **Check and deploy Raspberry Pi** on `main` from GitHub Actions. The Pi starts with its own database; moving MacBook data requires a separate consistent transfer.
 
-## Local MacBook service
+## Local MacBook development
 
-The configured server and exported web app use <https://macbook.gibbon-parrotfish.ts.net>. `gibbon-parrotfish.ts.net` is the tailnet suffix; the MacBook's device name is required. Android and the MacBook must be connected to the same tailnet, and the MacBook must be awake for sign-in and sync. Existing local data remains usable offline when the server is unavailable.
+The current production backend is the Pi; the previous MacBook Tailscale HTTPS endpoint is retired. For local development use the repository's loopback configuration with the matching Google localhost callback. Do not restore a Tailscale Serve dependency when deploying to the Pi.
 
-The private root `.env` uses:
+The root `.env` supplies the native build default `EXPO_PUBLIC_API_URL=https://polydays.home.arpa`. A saved device server address takes precedence. Rebuild to change the bundled default, or select another server on the sign-in screen after synchronizing pending changes and signing out. The root `.env` remains private and also contains signing and OAuth settings.
 
-```dotenv
-HOST=127.0.0.1
-PORT=3000
-BETTER_AUTH_URL=https://macbook.gibbon-parrotfish.ts.net
-WEB_ORIGIN=https://macbook.gibbon-parrotfish.ts.net:8443
-EXPO_PUBLIC_API_URL=https://macbook.gibbon-parrotfish.ts.net
-```
-
-Tailscale Serve terminates HTTPS and proxies the API/export on port 443 and the Expo frontend on port 8443. These are tailnet-only endpoints; Funnel is not enabled. Both proxies are persistent:
-
-```sh
-tailscale serve --bg --https=443 http://127.0.0.1:3000
-tailscale serve --bg --https=8443 http://127.0.0.1:8081
-```
-
-Run `just dev` for the Expo frontend, then open <https://macbook.gibbon-parrotfish.ts.net:8443>. Using the same hostname as the API allows the browser session to work across ports. The port-8443 frontend is available only while Expo is running. The root client commands explicitly load `.env`; rebuild to change the bundled default `EXPO_PUBLIC_API_URL`, or select another server on the sign-in screen without rebuilding.
-
-The Google web client permits both HTTPS origins and the exact redirect `https://macbook.gibbon-parrotfish.ts.net/api/auth/callback/google`. Its existing localhost entries remain available for an independently configured loopback environment.
-
-On the configured MacBook, `~/Library/LaunchAgents/app.polydays.server.plist` runs the production Node process at login and restarts it after an unexpected exit. It loads the root `.env`; development authentication is disabled. Logs are in `.data/logs/`. After editing `.env`, restart it with:
-
-```sh
-launchctl kickstart -k "gui/$(id -u)/app.polydays.server"
-curl --fail https://macbook.gibbon-parrotfish.ts.net/api/health
-```
-
-Stop the service before starting a separate foreground server on the same port:
-
-```sh
-launchctl bootout "gui/$(id -u)/app.polydays.server"
-```
-
-To restore the login service, run `launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/app.polydays.server.plist"`. Rebuild the web export with `just build` after client changes.
-
-Google Cloud project `polydays-20261023` has an external testing audience with basic identity scopes, a Polydays name and logo, the web client described above, and separate Android clients for the local development and permanent release signing certificates. The native request uses `GOOGLE_CLIENT_ID` as its server audience; `GOOGLE_ANDROID_CLIENT_ID`, `GOOGLE_ANDROID_RELEASE_CLIENT_ID` and `GOOGLE_CLOUD_PROJECT` in `.env` record the matching Cloud resources. Users also need network access through Tailscale. Configuring a public domain or a cloud MCP tunnel is a separate deployment step.
+Google Cloud project `polydays-20261023` has an external testing audience with basic identity scopes, the web client described above, and separate Android clients for the local development and permanent release signing certificates. The native request uses `GOOGLE_CLIENT_ID` as its server audience; private environment settings record the matching Cloud resources.
 
 ## T3 worktrees
 
