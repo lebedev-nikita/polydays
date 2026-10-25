@@ -4,7 +4,7 @@ import { useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
 import { enqueue } from "@polydays/sync";
 import { Check, CircleCheck, Plus, Repeat2 } from "lucide-react-native";
-import type { Scheduling, TaskView } from "@polydays/core";
+import { taskView, type Scheduling, type TaskView } from "@polydays/core";
 import { useApp } from "./provider";
 import { colors, ErrorMessage } from "./primitives";
 import { TaskComposer, TaskForm } from "./task-editor";
@@ -15,13 +15,15 @@ export function TaskList({
   scheduling,
   includeCompleted = false,
   showOrigin = false,
+  emptyLabel,
 }: {
   rows: ReadonlyArray<TaskView>;
   scheduling: Scheduling;
   includeCompleted?: boolean;
   showOrigin?: boolean;
+  emptyLabel?: string;
 }) {
-  const { store, now } = useApp();
+  const { store, now, tasks, calendar } = useApp();
   const { taskId } = useLocalSearchParams<{ taskId?: string }>();
   const [editing, setEditing] = useState(taskId ?? null);
   const [editingSeries, setEditingSeries] = useState(false);
@@ -63,6 +65,14 @@ export function TaskList({
   const [composer, setComposer] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const shown = rows.filter((row) => includeCompleted || !row.task.completed);
+  const editingView = useRef<TaskView | null>(null);
+  const visibleEditor = shown.find((row) => row.task.id === editing);
+  if (visibleEditor) editingView.current = visibleEditor;
+  // A reschedule can remove this row from its list while its text draft is still open.
+  if (!visibleEditor && editingView.current?.task.id === editing && calendar) {
+    const latest = tasks.find((task) => task.id === editing) ?? editingView.current.task;
+    if (!latest.deleted) shown.push(taskView(latest, calendar, now));
+  }
   return (
     <View>
       <ErrorMessage>{error}</ErrorMessage>
@@ -172,20 +182,23 @@ export function TaskList({
           )}
         </View>
       ))}
-      {!shown.length && (
-        <View className="items-center gap-3 py-12">
-          <CircleCheck size={34} color="#a69b89" strokeWidth={1.2} />
-          <Text className="text-base font-semibold text-ink">
-            {includeCompleted ? "Пока нет выполненных задач" : "Здесь пока нет задач"}
-          </Text>
-          <Text className="max-w-[300px] text-center text-sm leading-5 text-muted">
-            {includeCompleted
-              ? "Сделанное останется в истории этого полидня."
-              : "Добавьте задачу или запланируйте её из входящих."}
-          </Text>
-        </View>
-      )}
-      {!includeCompleted && (
+      {!shown.length &&
+        (emptyLabel ? (
+          <Text className="py-3 text-sm text-muted">{emptyLabel}</Text>
+        ) : (
+          <View className="items-center gap-3 py-12">
+            <CircleCheck size={34} color="#a69b89" strokeWidth={1.2} />
+            <Text className="text-base font-semibold text-ink">
+              {includeCompleted ? "Пока нет выполненных задач" : "Здесь пока нет задач"}
+            </Text>
+            <Text className="max-w-[300px] text-center text-sm leading-5 text-muted">
+              {includeCompleted
+                ? "Сделанное останется в истории этого полидня."
+                : "Добавьте задачу или запланируйте её из входящих."}
+            </Text>
+          </View>
+        ))}
+      {!includeCompleted && (!emptyLabel || shown.length > 0) && (
         <Pressable
           accessibilityRole="button"
           onPress={() => setComposer(true)}
