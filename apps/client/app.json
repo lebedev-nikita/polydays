@@ -30,7 +30,19 @@
     "plugins": [
       ["expo-router", { "asyncRoutes": { "web": false } }],
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "useLegacyPackaging": true,
+            "gifEnabled": false,
+            "webpEnabled": false
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

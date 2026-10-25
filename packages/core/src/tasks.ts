@@ -16,7 +16,7 @@ import {
   type Task,
   type TaskView,
 } from "./model.ts";
-import { Schema } from "effect";
+import * as Schema from "effect/Schema";
 
 export function parseTaskTitle(input: string): {
   readonly title: string;

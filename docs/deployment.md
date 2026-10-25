@@ -36,6 +36,8 @@ Development builds use `just android`. Use [EAS Build](https://docs.expo.dev/bui
 
 The custom module is in `apps/client/modules/polydays-storage`; Expo autolinking includes its SQLite repository, Credential Manager integration, WorkManager sender and RemoteViews widget. Generate Android code with Expo prebuild. Do not edit the generated `apps/client/android` directory.
 
+Release size settings live in the `expo-build-properties` plugin in `apps/client/app.json` and the Cargo release profile in `apps/macos/src-tauri/Cargo.toml`. Android removes unused code/resources and omits GIF/WebP codecs; enable those codecs before adding images in those formats. Native libraries are compressed to reduce the distributed APK and extracted during installation; this can increase installed disk usage. Hermes bytecode remains uncompressed for direct loading at startup. Client and shared packages import Effect modules through `effect/<Module>` to avoid bundling the entire entry point with Metro.
+
 ## Application releases
 
 Always publish Android and macOS together from the same commit and version. On the configured Apple Silicon MacBook:

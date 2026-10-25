@@ -1,5 +1,5 @@
 import { openDB } from "idb";
-import { Schema } from "effect";
+import * as Schema from "effect/Schema";
 import { decodeLocalState } from "@polydays/sync";
 import type { PersistenceAdapter, Stored } from "./contract";
 
