@@ -593,8 +593,10 @@ export function TaskForm({
     if (next.kind === "polyday") setSlotId(next.slotId);
     if (next.kind === "deadline") setTime(next.time);
   };
+  // Mount each shell with its final NativeWind styles when changing panels.
   return (
     <View
+      key={panel ? "recurrence" : "task"}
       ref={formRef}
       className={
         panel ? `overflow-hidden border border-line bg-white ${inline ? "" : "shadow-xl"}` : ""
