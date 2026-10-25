@@ -234,11 +234,12 @@ function TaskDatePicker({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [visibleDate, setVisibleDate] = useState(date);
-  const month = visibleDate.slice(0, 7);
   const weekStart = addDays(
     visibleDate,
     -((new Date(`${visibleDate}T12:00:00Z`).getUTCDay() + 6) % 7),
   );
+  const headingDate = expanded ? visibleDate : weekStart;
+  const month = headingDate.slice(0, 7);
   const dates = expanded
     ? calendarDays(month)
     : Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
@@ -246,7 +247,7 @@ function TaskDatePicker({
     month: "long",
     year: "numeric",
     timeZone: "UTC",
-  }).format(new Date(`${visibleDate}T12:00:00Z`));
+  }).format(new Date(`${headingDate}T12:00:00Z`));
   const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
   return (
     <View className="gap-1">
