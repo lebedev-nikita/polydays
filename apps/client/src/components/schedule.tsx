@@ -12,6 +12,7 @@ import {
   systemNow,
   updateCalendar,
   validateCalendar,
+  versionForDate,
   type Calendar,
   type Slot,
 } from "@polydays/core";
@@ -23,22 +24,32 @@ import { message } from "../data/store";
 import { TimeField } from "./time-field";
 import { normalizeTimeInput } from "./time-input";
 import { EffectiveDateControl, TimeZoneControl } from "./schedule-controls";
+import { calendarDateLabel } from "./schedule-options";
 
 export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
   const { store, calendar, now } = useApp();
   const current = calendar ? activeVersion(calendar, now) : null;
-  const [slots, setSlots] = useState<ReadonlyArray<Slot>>(current?.slots ?? defaultSlots);
+  const today = dateAt(now, current?.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone);
+  // Reopen the next saved schedule, even before it becomes active.
+  const upcomingDate = calendar?.versions
+    .map((version) => version.from)
+    .filter((from) => from > today)
+    .sort()[0];
+  const editable = calendar && upcomingDate ? versionForDate(calendar, upcomingDate) : current;
+  const [slots, setSlots] = useState<ReadonlyArray<Slot>>(editable?.slots ?? defaultSlots);
   const [zone, setZone] = useState(
-    current?.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+    editable?.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
   );
   const [mode, setMode] = useState<"fixed" | "local">(calendar?.mode ?? "fixed");
-  const [date, setDate] = useState(addDays(dateAt(now, zone), initial ? 0 : 1));
+  const [date, setDate] = useState(upcomingDate ?? addDays(today, initial ? 0 : 1));
   const [destination, setDestination] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const removed = current?.slots.filter((slot) => !slots.some((item) => item.id === slot.id)) ?? [];
+  const original = calendar ? versionForDate(calendar, date) : null;
+  const removed =
+    original?.slots.filter((slot) => !slots.some((item) => item.id === slot.id)) ?? [];
   const edit = (id: string, patch: Partial<Slot>) => {
     setSaved(false);
     setError(null);
@@ -272,9 +283,12 @@ export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
       )}
       <ErrorMessage>{error}</ErrorMessage>
       {saved && (
-        <Text accessibilityLiveRegion="polite" className="text-sm text-[#317043]">
-          Расписание сохранено.
-        </Text>
+        <View accessibilityLiveRegion="polite" className="gap-1">
+          <Text className="text-sm text-[#317043]">Расписание сохранено.</Text>
+          <Text className="text-sm text-muted">
+            Начало действия: {calendarDateLabel(date, today).toLocaleLowerCase("ru")}.
+          </Text>
+        </View>
       )}
       <Button
         disabled={busy || !slots.length}
