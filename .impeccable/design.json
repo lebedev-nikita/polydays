@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-24T10:19:30.740Z",
+  "generatedAt": "2026-10-25T04:21:44.921Z",
   "title": "Design System: Polydays",
   "extensions": {
     "colorMeta": {
@@ -48,14 +48,6 @@
         "role": "neutral",
         "displayName": "P4 / placeholder neutral"
       },
-      "widget-priority-2": {
-        "role": "semantic",
-        "displayName": "Widget P2 orange"
-      },
-      "widget-priority-3": {
-        "role": "semantic",
-        "displayName": "Widget P3 blue"
-      },
       "error-surface": {
         "role": "semantic",
         "displayName": "Error surface"
@@ -71,6 +63,10 @@
       "success": {
         "role": "semantic",
         "displayName": "Saved success"
+      },
+      "widget-priority-4": {
+        "role": "neutral",
+        "displayName": "Widget P4 outline"
       }
     },
     "typographyMeta": {
@@ -191,6 +187,13 @@
       "css": ".ds-task-row{box-sizing:border-box;display:flex;align-items:flex-start;gap:0.5rem;min-height:70px;border-bottom:1px solid #e9e7e2;padding:0.5rem 0;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif}.ds-task-check{display:flex;align-items:center;justify-content:center;flex-shrink:0;height:3rem;width:3rem;border:0;padding:0;background:transparent;cursor:pointer}.ds-task-circle{display:flex;align-items:center;justify-content:center;height:19px;width:19px;box-sizing:border-box;border:1.7px solid #c73529;border-radius:9999px}.ds-task-text{box-sizing:border-box;display:flex;flex:1;flex-direction:column;justify-content:center;min-height:3rem;padding:0.5rem 0;text-decoration:none;color:#252421}.ds-task-title{font-size:15px;line-height:22px}.ds-task-meta{display:flex;flex-wrap:wrap;column-gap:0.75rem;row-gap:0.25rem;margin-top:0.25rem;font-size:0.75rem;line-height:1rem;color:#b9382e}.ds-task-check:hover{background:transparent}.ds-task-text:hover{color:#252421}.ds-task-check:focus-visible{outline:2px solid #b9382e;outline-offset:3px}.ds-task-text:focus-visible{outline:2px solid #b9382e;outline-offset:3px}.ds-task-checkmark{display:none}.ds-task-check[aria-checked=\"true\"] .ds-task-circle{background:#c73529}.ds-task-check[aria-checked=\"true\"] .ds-task-checkmark{display:block}.ds-task-check[aria-checked=\"true\"]+.ds-task-text .ds-task-title{color:#66645f;text-decoration:line-through}"
     },
     {
+      "name": "Android current-polyday widget",
+      "kind": "custom",
+      "description": "Todoist-reference native widget: flat white panel, clipped 24dp corners, no border or outer padding; warm 48dp header with a medium-weight 16sp accent title, Lucide RefreshCw and Lucide Plus on a circular tomato action surface (24-unit geometry, two-unit strokes and rounded caps/joins; native vectors from lucide-react-native 0.577.0 with bundled ISC license), refresh and add in separate 48dp targets. Full-width rows have a 54dp minimum height, 1dp separators, separate 48dp completion targets and two-line 14sp titles. Lucide Circle completion vectors use a 24dp size/24-unit viewport and 20-unit circles: shared P1–P3 colors with faint fills and two-unit strokes; transparent widget P4 with a 1.3-unit outline. Right-aligned 11sp overdue/deadline metadata hides when empty. The 10sp footer pairs localized date/range and projection freshness; separate 11sp tomato status hides when empty and never replaces freshness. Title/empty state open the current polyday; add opens polydays://current?addTask=1 with current-polyday scheduling. Task text opens the inline editor in its list; completion persists locally and schedules sync, including offline. Refresh updates the local widget and schedules sync. Prepared projections retain represented-polyday, order and origin authority. Static synthetic HTML preview translates dp/sp to CSS px for inspection; native text scaling, focus and launcher footprint remain platform-owned. Preview shows P3 and P4, with empty metadata/status hidden.",
+      "html": "<section class=\"ds-widget\" aria-label=\"Текущий полидень\"><header class=\"ds-widget-header\"><button class=\"ds-widget-heading ds-widget-press\" type=\"button\" aria-label=\"Открыть текущий полидень: Утренний\">Утренний</button><button class=\"ds-widget-refresh ds-widget-press\" type=\"button\" aria-label=\"Обновить виджет\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#b9382e\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8 M21 3v5h-5 M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16 M8 16H3v5\"/></svg></button><button class=\"ds-widget-add ds-widget-press\" type=\"button\" aria-label=\"Добавить задачу в текущий полидень\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"12\" fill=\"#b9382e\"/><path d=\"M5 12h14 M12 5v14\" stroke=\"#fff\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg></button></header><div class=\"ds-widget-row\"><button class=\"ds-widget-check ds-widget-press\" type=\"button\" aria-label=\"Завершить: Разметить анкету\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\" fill=\"#eaf1fa\" stroke=\"#286db4\" stroke-width=\"2\"/></svg></button><button class=\"ds-widget-task ds-widget-press\" type=\"button\"><span class=\"ds-widget-task-title\">Разметить анкету</span><span class=\"ds-widget-meta\"></span></button></div><div class=\"ds-widget-row\"><button class=\"ds-widget-check ds-widget-press\" type=\"button\" aria-label=\"Завершить: Читать книжки по архитектуре\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\" fill=\"none\" stroke=\"#949494\" stroke-width=\"1.3\"/></svg></button><button class=\"ds-widget-task ds-widget-press\" type=\"button\"><span class=\"ds-widget-task-title\">Читать книжки по архитектуре</span><span class=\"ds-widget-meta\"></span></button></div><footer class=\"ds-widget-footer\"><span class=\"ds-widget-range\">25 окт. · 07:00–14:30</span><span class=\"ds-widget-updated\">Обновлено 08:10</span></footer><p class=\"ds-widget-status\"></p></section>",
+      "css": ".ds-widget{display:flex;flex-direction:column;overflow:hidden;border:0;border-radius:24px;background:#fff;color:#252421;font-family:Roboto,Arial,sans-serif}.ds-widget-header{display:flex;align-items:center;height:48px;flex:none;background:#faf9f6}.ds-widget-press{display:flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;font-family:inherit}.ds-widget-press:hover{background:transparent}.ds-widget-press:focus-visible{outline:revert}.ds-widget-press:active{background:rgba(185,56,46,.102)}.ds-widget-heading{flex:1;min-width:0;height:48px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px 0 14px;color:#b9382e;font-size:16px;font-weight:500;text-align:left}.ds-widget-refresh,.ds-widget-add,.ds-widget-check{width:48px;height:48px;flex:none;padding:0}.ds-widget-row{display:flex;align-items:center;min-height:54px;border-bottom:1px solid #eee}.ds-widget-task{box-sizing:border-box;flex:1;min-width:0;min-height:54px;flex-direction:column;align-items:stretch;padding:10px 14px 10px 0;text-align:left;color:#252421}.ds-widget-task-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:14px;font-weight:400}.ds-widget-meta{padding-top:3px;text-align:right;font-size:11px;color:#66645f}.ds-widget-meta:empty,.ds-widget-status:empty{display:none}.ds-widget-footer{display:flex;align-items:center;gap:8px;margin-top:auto;padding:5px 14px 9px;color:#66645f;font-size:10px}.ds-widget-range{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.ds-widget-updated{flex:none;white-space:nowrap}.ds-widget-status{margin:0;padding:0 14px 9px;color:#b9382e;font-size:11px}"
+    },
+    {
       "name": "Composer container",
       "kind": "custom",
       "refersTo": "composer",
@@ -243,7 +246,7 @@
       "Do preserve the pinned Todoist density, familiar destinations and separate completion circles.",
       "Do keep P1–P4 visually distinct and task order priority-first.",
       "Do let interval and metadata rows wrap, and retain compact mobile captions.",
-      "Do retain original polyday context for overdue work and widget freshness beside sync state.",
+      "Do retain original polyday context for overdue work; keep widget freshness in the quiet footer and actionable status separately visible.",
       "Do keep the interface light when the system switches to dark mode."
     ],
     "donts": [

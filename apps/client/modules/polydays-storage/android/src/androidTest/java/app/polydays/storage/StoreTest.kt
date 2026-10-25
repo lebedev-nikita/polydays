@@ -38,6 +38,23 @@ class StoreTest {
     store.clear(account)
     store.setProfile(null)
   }
+  @Test fun widgetRowsTolerateStalePositionsAfterCompletion() {
+    val (store, account) = seed()
+    try {
+      val rows = PolydayRows.Rows(context)
+      rows.onCreate()
+      assertEquals(1, rows.getCount())
+      store.complete(account, "widget-task")
+      rows.onDataSetChanged()
+      assertEquals(0, rows.getCount())
+      // A launcher can still request a position from the list before notifyDataSetChanged.
+      assertNull(rows.getViewAt(0))
+      rows.getItemId(0)
+    } finally {
+      store.clear(account)
+      store.setProfile(null)
+    }
+  }
   @Test fun acknowledgementPreservesEditsCreatedDuringTheRequest() {
     val (store, account) = seed()
     store.complete(account, "widget-task")

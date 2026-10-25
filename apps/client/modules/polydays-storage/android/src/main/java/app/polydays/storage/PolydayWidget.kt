@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
+import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import org.json.JSONObject
@@ -20,6 +21,7 @@ class PolydayWidget : AppWidgetProvider() {
   override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) { refresh(context); SyncWorker.schedule(context) }
   override fun onReceive(context: Context, intent: Intent) {
     super.onReceive(context, intent)
+    if (intent.action == REFRESH) { refresh(context); SyncWorker.schedule(context); return }
     if (intent.action != ACTION) return
     val account = intent.getStringExtra("account") ?: return
     if (Store(context).profile()?.getString("id") != account) return
@@ -40,7 +42,14 @@ class PolydayWidget : AppWidgetProvider() {
   }
   companion object {
     const val ACTION = "app.polydays.storage.WIDGET_TASK"
+    const val REFRESH = "app.polydays.storage.WIDGET_REFRESH"
     private val executor = Executors.newSingleThreadExecutor()
+    private fun subtitle(value: String): String {
+      val parts = value.split(" · ", limit = 2)
+      if (parts.size != 2) return value
+      val date = runCatching { SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).apply { isLenient = false }.parse(parts[0]) }.getOrNull() ?: return value
+      return SimpleDateFormat("d MMM", Locale("ru")).format(date) + " · " + parts[1]
+    }
     fun view(store: Store, account: String): JSONObject? {
       val projection = store.projection(account) ?: return null
       val now = System.currentTimeMillis()
@@ -55,7 +64,7 @@ class PolydayWidget : AppWidgetProvider() {
       for (id in manager.getAppWidgetIds(ComponentName(context, PolydayWidget::class.java))) {
         val root = RemoteViews(context.packageName, R.layout.polydays_widget)
         root.setTextViewText(R.id.polyday_title, view?.getString("title") ?: "Polydays")
-        root.setTextViewText(R.id.polyday_subtitle, view?.getString("subtitle") ?: "Откройте приложение и настройте расписание")
+        root.setTextViewText(R.id.polyday_subtitle, view?.getString("subtitle")?.let(::subtitle) ?: "Откройте приложение")
         val state = account?.let { store.load(it)?.getJSONObject("state") }
         val projection = account?.let { store.projection(it) }
         val updated = projection?.optLong("generatedAt") ?: 0
@@ -68,9 +77,24 @@ class PolydayWidget : AppWidgetProvider() {
           else -> "Войдите в приложение"
         }
         val freshness = if (updated > 0) "Обновлено " + SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(updated)) else ""
-        root.setTextViewText(R.id.polyday_status, listOf(status, freshness).filter { it.isNotEmpty() }.joinToString(" · "))
+        root.setTextViewText(R.id.polyday_updated, freshness)
+        root.setViewVisibility(R.id.polyday_updated, if (freshness.isEmpty()) View.GONE else View.VISIBLE)
+        root.setTextViewText(R.id.polyday_status, status)
+        root.setViewVisibility(R.id.polyday_status, if (status.isEmpty()) View.GONE else View.VISIBLE)
+        root.setContentDescription(R.id.polyday_title, "Открыть текущий полидень: " + (view?.getString("title") ?: "Polydays"))
         val open = context.packageManager.getLaunchIntentForPackage(context.packageName)
-        if (open != null) root.setOnClickPendingIntent(R.id.polyday_header, PendingIntent.getActivity(context, id, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+        if (open != null) {
+          fun launch(uri: String) = PendingIntent.getActivity(context, id, Intent(open).apply {
+            action = Intent.ACTION_VIEW
+            data = Uri.parse(uri)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+          }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+          root.setOnClickPendingIntent(R.id.polyday_title, launch("polydays://current"))
+          root.setOnClickPendingIntent(R.id.polyday_empty, launch("polydays://current"))
+          root.setOnClickPendingIntent(R.id.polyday_add, launch("polydays://current?addTask=1"))
+        }
+        val refresh = Intent(context, PolydayWidget::class.java).setAction(REFRESH)
+        root.setOnClickPendingIntent(R.id.polyday_refresh, PendingIntent.getBroadcast(context, id, refresh, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
         val service = Intent(context, PolydayRows::class.java).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id).apply { data = Uri.parse("polydays-widget://rows/$id") }
         root.setRemoteAdapter(R.id.polyday_list, service)
         root.setEmptyView(R.id.polyday_list, R.id.polyday_empty)
@@ -85,7 +109,7 @@ class PolydayWidget : AppWidgetProvider() {
 
 class PolydayRows : RemoteViewsService() {
   override fun onGetViewFactory(intent: Intent): RemoteViewsFactory = Rows(applicationContext)
-  private class Rows(private val context: Context) : RemoteViewsFactory {
+  internal class Rows(private val context: Context) : RemoteViewsFactory {
     private var tasks = emptyList<JSONObject>()
     override fun onCreate() { onDataSetChanged() }
     override fun onDestroy() {}
@@ -94,14 +118,15 @@ class PolydayRows : RemoteViewsService() {
       tasks = store.profile()?.getString("id")?.let { PolydayWidget.view(store, it)?.getJSONArray("tasks")?.objects()?.filter { task -> task.optLong("visibleFrom", 0) <= System.currentTimeMillis() } } ?: emptyList()
     }
     override fun getCount() = tasks.size
-    override fun getViewAt(position: Int): RemoteViews {
-      val task = tasks[position]
+    override fun getViewAt(position: Int): RemoteViews? {
+      val task = tasks.getOrNull(position) ?: return null
       val row = RemoteViews(context.packageName, R.layout.polydays_widget_row)
       val deadline = if (task.isNull("deadline")) "" else task.getString("deadline")
       val overdue = task.optBoolean("overdue") || (!task.isNull("expiresAt") && task.getLong("expiresAt") < System.currentTimeMillis())
       row.setTextViewText(R.id.task_title, task.getString("title"))
       val origin = task.optString("origin", task.getJSONObject("task").getJSONObject("scheduling").optString("date", ""))
       row.setTextViewText(R.id.task_meta, listOf(if (overdue) "Просрочено" else "", if (overdue) origin else "", deadline).filter { it.isNotEmpty() }.joinToString(" · "))
+      row.setViewVisibility(R.id.task_meta, if (overdue || deadline.isNotEmpty()) View.VISIBLE else View.GONE)
       row.setTextColor(R.id.task_meta, Color.parseColor(if (overdue) "#b9382e" else "#66645f"))
       row.setImageViewResource(R.id.task_check, when(task.getInt("priority")) { 1 -> R.drawable.polydays_priority_1; 2 -> R.drawable.polydays_priority_2; 3 -> R.drawable.polydays_priority_3; else -> R.drawable.polydays_priority_4 })
       val base = Intent().putExtra("task", task.getString("id"))
@@ -112,7 +137,7 @@ class PolydayRows : RemoteViewsService() {
     }
     override fun getLoadingView(): RemoteViews? = null
     override fun getViewTypeCount() = 1
-    override fun getItemId(position: Int) = tasks[position].getString("id").hashCode().toLong()
+    override fun getItemId(position: Int) = tasks.getOrNull(position)?.getString("id")?.hashCode()?.toLong() ?: 0L
     override fun hasStableIds() = true
   }
 }
