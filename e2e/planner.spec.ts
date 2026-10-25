@@ -14,8 +14,7 @@ test("durable offline capture, reconnect, second device and completion history",
   await expect(page.getByRole("textbox", { name: "Название задачи" })).toHaveValue("q");
   await page.getByRole("textbox", { name: "Название задачи" }).fill("Отправить план полидня");
   await page.getByRole("textbox", { name: "Название задачи" }).press("Enter");
-  await expect(page.getByText("Задача сохранена. Можно добавить следующую.")).toBeVisible();
-  await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+  await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
   await expect(
     page.getByRole("button", { name: "Редактировать задачу: Отправить план полидня", exact: true }),
   ).toBeVisible();
@@ -33,8 +32,7 @@ test("durable offline capture, reconnect, second device and completion history",
   await page.getByRole("button", { name: "Добавить задачу", exact: true }).first().click();
   await page.getByRole("textbox", { name: "Название задачи" }).fill("Сохранить задачу без сети");
   await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
-  await expect(page.getByText("Задача сохранена. Можно добавить следующую.")).toBeVisible();
-  await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+  await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
   await page.reload();
   await expect(
     page.getByRole("button", {
@@ -88,7 +86,6 @@ test("a deadline is explicitly removed before selecting an untimed polyday or in
   await page.getByRole("textbox", { name: "Время дедлайна" }).fill("12:00");
   await done(page);
   await send(page);
-  await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
   await page.getByRole("link", { name: "Предстоящие", exact: true }).click();
   const taskLink = page.getByRole("button", {
     name: "Редактировать задачу: Изменить режим планирования",
@@ -174,7 +171,7 @@ test("compact capture supports shortcut menus, transactional dates and narrow sc
   await expect(page.getByText("Закрыть и удалить черновик?")).toBeVisible();
   await page.getByRole("button", { name: "Продолжить", exact: true }).click();
   await send(page);
-  await expect(title).toBeFocused();
+  await expect(title).not.toBeVisible();
 });
 
 for (const width of [1440, 390]) {
@@ -203,8 +200,9 @@ for (const width of [1440, 390]) {
         });
       }
       await send(page);
+      if (priority < 4)
+        await page.getByRole("button", { name: "Добавить задачу", exact: true }).first().click();
     }
-    await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
     for (const priority of [1, 2, 3, 4]) {
       await page
         .getByRole("button", {
@@ -254,7 +252,6 @@ test("recurrence editing preserves the series deadline independently of an occur
   await chooseDate(page, "Окончание серии · необязательно", "Завтра");
   await done(page);
   await send(page);
-  await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
   await page.getByRole("link", { name: "Предстоящие", exact: true }).click();
   const task = page.getByRole("button", {
     name: "Редактировать задачу: Проверить план перед сном",
@@ -357,7 +354,7 @@ async function done(page: Page) {
 }
 async function send(page: Page) {
   await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
-  await expect(page.getByText("Задача сохранена. Можно добавить следующую.")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
 }
 async function chooseDate(page: Page, label: string, shortcut: "Сегодня" | "Завтра") {
   await page.getByRole("button", { name: new RegExp(`^${label}:`) }).click();
@@ -447,7 +444,8 @@ test("task links open the inline editor in inbox and completed polyday lists", a
   ]) {
     await title.fill(name);
     await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
-    await expect(title).toHaveValue("");
+    await expect(title).not.toBeVisible();
+    await page.getByRole("button", { name: "Добавить задачу", exact: true }).first().click();
   }
   await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
   const id = await page.evaluate(async () => {

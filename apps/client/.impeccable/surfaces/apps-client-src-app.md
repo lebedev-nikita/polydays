@@ -19,6 +19,6 @@ STORY: Identify the current polyday, see unfinished work, capture a task, comple
 
 FIRST VIEWPORT: Desktop sidebar at left, centred task column with date and polyday title, compact interval selector and task rows. Mobile uses a top title, horizontal interval strip and bottom navigation; the add action stays reachable.
 
-FORM: User-pinned Todoist canon; code-led implementation. Seed is inapplicable to the explicitly chosen reference. Signature interaction: quick entry stays open for repeated capture; completion updates the list and sync state immediately after durable storage.
+FORM: User-pinned Todoist canon; code-led implementation. Seed is inapplicable to the explicitly chosen reference. Signature interaction: quick entry closes after saving and supports backdrop dismissal with draft protection; completion updates the list and sync state immediately after durable storage.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
