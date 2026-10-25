@@ -7,7 +7,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { Link, useFocusEffect, usePathname } from "expo-router";
+import { Link, router, useFocusEffect, useLocalSearchParams, usePathname } from "expo-router";
 import {
   CalendarDays,
   CheckCheck,
@@ -44,10 +44,18 @@ export function AppShell({
 }) {
   const app = useApp();
   const pathname = usePathname();
+  const { addTask } = useLocalSearchParams<{ addTask?: string }>();
   const { width } = useWindowDimensions();
   const desktop = width >= 850;
   const [composer, setComposer] = useState(false);
   const canQuickAdd = app.loaded && !!app.account && !!app.calendar && !composer;
+  useFocusEffect(
+    useCallback(() => {
+      if (addTask !== "1" || !app.loaded || !app.account || !app.calendar) return;
+      setComposer(true);
+      router.setParams({ addTask: undefined });
+    }, [addTask, app.loaded, app.account, app.calendar]),
+  );
   useFocusEffect(
     useCallback(() => {
       if (Platform.OS !== "web" || !canQuickAdd) return;

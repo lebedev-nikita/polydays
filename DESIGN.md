@@ -13,9 +13,7 @@ colors:
   priority-2: "#b85f00"
   priority-3: "#286db4"
   priority-4: "#66645f"
-  widget-priority-2: "#ae641c"
-  widget-priority-3: "#3469b7"
-  widget-priority-4: "#77736d"
+  widget-priority-4: "#949494"
   error-surface: "#fff0ed"
   warning-surface: "#fff5df"
   warning-ink: "#76501b"
@@ -154,7 +152,7 @@ The palette is warm and quiet; color identifies action, selection, priority and 
 
 ### Priority and status
 
-- **P1 red, P2 orange, P3 blue:** the shared-client priority tokens; P4 is neutral. Native widget P1 uses `accent`; P2–P4 use their explicit `widget-priority-*` tokens.
+- **P1 red, P2 orange, P3 blue:** shared-client and native widget completion circles use the same priority tokens. Widget P1–P3 have faint tinted fills; widget P4 uses the unfilled `widget-priority-4` outline.
 - **Error surface:** pale red with tomato text. **Warning surface / ink:** pale amber conflict banner and brown sleep-gap text. **Success:** green saved feedback.
 
 **The Restrained Accent Rule.** Use tomato for action, selection and overdue cues; keep ordinary content surfaces white or warm neutral.
@@ -258,9 +256,13 @@ On web, unmodified **Q** opens quick entry only for the focused screen when it i
 
 The shell pairs cloud-state icons with synced, syncing, saved-on-device, conflict or sign-in-needed state; desktop shows text, while mobile exposes the state through the sync control's accessible label. Conflicts also appear in a pale amber banner.
 
-The native widget is a white rounded panel (20dp corners, 1dp border, 16dp padding) with represented polyday name, date and interval. Its title is 18sp bold, task text 14sp, subtitle 12sp, metadata/status 11sp. Rows have a 52dp minimum height and a separate 48dp completion control. Overdue metadata uses tomato and includes the original polyday date/name plus any deadline. Tapping task text opens details.
+The native widget follows the Todoist reference: a flat white panel with clipped corners (24dp), no border and no outer padding. Its warm `sidebar` header (48dp high) holds the represented polyday name in medium-weight system sans (16sp), Lucide `RefreshCw` and a white Lucide `Plus` on a circular tomato action surface. Refresh and add each have a separate 48dp-square target. Native vector drawables retain Lucide's 24-unit geometry, two-unit strokes and rounded caps/joins; completion controls use Lucide `Circle` geometry with the priority treatments below. The source is the installed `lucide-react-native` 0.577.0 package, with its license bundled in `res/raw/lucide_license.txt`. The panel clips edge-to-edge content and tomato pressed ripples to its contour.
 
-Widget status combines the applicable sync/sign-in/conflict/stale message with **“Обновлено HH:mm”** whenever a projection timestamp exists. Freshness remains visible alongside offline state. The shared projection prepares row order and origin labels; native resources present them. These source dimensions do not promise a launcher footprint, exact refresh cadence or future macOS behavior.
+Full-width rows have a minimum height (54dp), thin edge-to-edge separators (1dp) and a separate completion target (48dp square). Task titles use dark ink (14sp), with up to two lines before truncation. Completion vectors have a 24dp size and 24-unit viewport, with 20-unit-diameter circles; P1–P3 use a two-unit stroke and faint priority fills, while P4 remains transparent with a thinner outline (1.3 units). Overdue/deadline metadata is subordinate (11sp), right-aligned and hidden when empty. Overdue metadata uses tomato and retains the original polyday date/name plus any deadline; ordinary deadline text is muted.
+
+The quiet footer pairs a localized date and interval with **“Обновлено HH:mm”** (both 10sp); freshness appears whenever a projection timestamp exists. Sign-in, conflict, saved-on-device or stale-projection status appears separately below it in tomato (11sp), hidden when empty, so status never replaces freshness. The title and empty state open the current polyday; add opens its composer through `polydays://current?addTask=1`, preserving current-polyday scheduling. Refresh updates the local widget and schedules sync. Task text routes to the inline editor in its task list; the separate completion action persists locally and schedules sync, including offline.
+
+The shared projection remains authoritative for the represented polyday, row order and origin labels; native resources present the prepared view. These source dimensions do not promise a launcher footprint, exact refresh cadence or future macOS behavior.
 
 ## Do's and Don'ts
 
@@ -269,7 +271,7 @@ Widget status combines the applicable sync/sign-in/conflict/stale message with *
 - **Do** preserve the pinned Todoist density, familiar destinations and separate completion circles.
 - **Do** keep P1–P4 visually distinct and task order priority-first.
 - **Do** let interval and metadata rows wrap, and retain compact mobile captions.
-- **Do** retain original polyday context for overdue work and widget freshness beside sync state.
+- **Do** retain original polyday context for overdue work; keep widget freshness in the quiet footer and actionable status separately visible.
 - **Do** keep the interface light when the system switches to dark mode.
 
 ### Don't:

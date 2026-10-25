@@ -1,0 +1,6 @@
+<!-- Lucide Plus, lucide-react-native 0.577.0 (ISC); see res/raw/lucide_license.txt. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+  <path android:pathData="M12,0 A12,12 0,1 0,12,24 A12,12 0,1 0,12,0" android:fillColor="#B9382E" />
+  <path android:pathData="M5 12h14" android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round" />
+  <path android:pathData="M12 5v14" android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>
