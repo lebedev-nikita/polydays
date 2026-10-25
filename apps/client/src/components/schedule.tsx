@@ -50,6 +50,16 @@ export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
   const original = calendar ? versionForDate(calendar, date) : null;
   const removed =
     original?.slots.filter((slot) => !slots.some((item) => item.id === slot.id)) ?? [];
+  const changedIntervals =
+    current &&
+    (current.slots.length !== slots.length ||
+      slots.some(
+        (slot) =>
+          !current.slots.some(
+            (previous) =>
+              previous.id === slot.id && previous.start === slot.start && previous.end === slot.end,
+          ),
+      ));
   const edit = (id: string, patch: Partial<Slot>) => {
     setSaved(false);
     setError(null);
@@ -285,9 +295,11 @@ export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
       {saved && (
         <View accessibilityLiveRegion="polite" className="gap-1">
           <Text className="text-sm text-[#317043]">Расписание сохранено.</Text>
-          <Text className="text-sm text-muted">
-            Начало действия: {calendarDateLabel(date, today).toLocaleLowerCase("ru")}.
-          </Text>
+          {changedIntervals && (
+            <Text className="text-sm text-muted">
+              Изменения интервалов: {calendarDateLabel(date, today).toLocaleLowerCase("ru")}.
+            </Text>
+          )}
         </View>
       )}
       <Button

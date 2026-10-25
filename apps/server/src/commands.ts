@@ -155,7 +155,7 @@ export function prepareCommand(
     const next = updateCalendar(calendar, version, now);
     const removed = new Set(
       calendar.versions
-        .filter((v) => v.from >= command.effectiveDate || v === activeVersion(calendar, now))
+        .filter((v) => v.from >= command.effectiveDate || v.id === activeVersion(calendar, now).id)
         .flatMap((v) => v.slots)
         .filter((slot) => !command.slots.some((next) => next.id === slot.id))
         .map((slot) => slot.id),

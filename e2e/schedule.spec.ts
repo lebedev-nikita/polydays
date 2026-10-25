@@ -22,22 +22,12 @@ for (const futureDate of [false, true]) {
     await name.fill("Рассвет");
     await page.getByRole("button", { name: "Сохранить расписание", exact: true }).click();
     await expect(page.getByText("Расписание сохранено.", { exact: true })).toBeVisible();
-    await expect(page.getByText(/^Начало действия:/)).toContainText(
-      selectedDate.toLocaleLowerCase("ru"),
-    );
     await page.reload();
     await expect(name).toHaveValue("Рассвет");
     await expect(date).toHaveText(selectedDate);
     await name.fill("Ранний");
     await page.getByRole("button", { name: "Сохранить расписание", exact: true }).click();
     await expect(page.getByText("Расписание сохранено.", { exact: true })).toBeVisible();
-    if (!futureDate) {
-      await page.screenshot({ path: testInfo.outputPath("rename-verified-desktop-20261025.png") });
-      await page.setViewportSize({ width: 390, height: 1000 });
-      await name.scrollIntoViewIfNeeded();
-      await page.screenshot({ path: testInfo.outputPath("rename-verified-mobile-20261025.png") });
-      await page.setViewportSize({ width: 1440, height: 1000 });
-    }
     await page.getByRole("link", { name: "Входящие", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Входящие", exact: true })).toBeVisible();
     await expect(page.getByRole("progressbar")).not.toBeVisible();
@@ -45,11 +35,26 @@ for (const futureDate of [false, true]) {
     await expect(name).toHaveValue("Ранний");
     await expect(date).toHaveText(selectedDate);
     await page.goto("/current");
-    await expect(page.getByRole("heading", { name: "Утренний", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ранний", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Ранний · 06:00/ })).toBeVisible();
+    if (!futureDate) {
+      const capture = crypto.randomUUID();
+      await page.screenshot({
+        path: testInfo.outputPath(`renamed-current-desktop-${capture}.png`),
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.screenshot({ path: `.data/ui-qa/renamed-current-mobile-${capture}.png` });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+    }
+    await page.getByRole("button", { name: "Добавить задачу", exact: true }).first().click();
+    await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
+    await expect(page.getByRole("radio", { name: "Ранний", exact: true })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "Утренний", exact: true })).not.toBeVisible();
+    await page.keyboard.press("Escape");
     await page.clock.setFixedTime(
       new Date(`${futureDate ? "2026-11-15" : "2026-10-26"}T08:00:00+04:00`),
     );
-    await page.reload();
+    await page.goto("/current");
     await expect(page.getByRole("heading", { name: "Ранний", exact: true })).toBeVisible();
   });
 }
