@@ -1,4 +1,5 @@
-import { DateTime, Schema } from "effect";
+import * as DateTime from "effect/DateTime";
+import * as Schema from "effect/Schema";
 import { activeVersion, addDays, dateAt, polydaysBetween } from "./calendar.ts";
 import { expandedTasks, sortTasks, taskView } from "./tasks.ts";
 import { Task, type Document } from "./model.ts";

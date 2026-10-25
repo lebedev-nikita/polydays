@@ -4,7 +4,7 @@ import {
   decodeDocument,
   type Document as DomainDocument,
 } from "@polydays/core";
-import { Schema } from "effect";
+import * as Schema from "effect/Schema";
 
 export const Operation = Schema.Struct({
   id: Schema.NonEmptyString,

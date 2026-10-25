@@ -1,5 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { Schema } from "effect";
+import * as Schema from "effect/Schema";
 import { apiURL } from "./server";
 
 export const isDesktop = isTauri;

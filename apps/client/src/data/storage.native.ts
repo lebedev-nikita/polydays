@@ -1,6 +1,6 @@
 import { requireNativeModule } from "expo";
 import { decodeLocalState } from "@polydays/sync";
-import { Schema } from "effect";
+import * as Schema from "effect/Schema";
 import type { Account, PersistenceAdapter } from "./contract";
 
 type NativeStore = {

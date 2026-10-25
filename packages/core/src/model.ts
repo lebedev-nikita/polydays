@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import * as Schema from "effect/Schema";
 
 export const DateText = Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/));
 export const TimeText = Schema.String.check(Schema.isPattern(/^([01]\d|2[0-3]):[0-5]\d$/));
