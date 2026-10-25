@@ -1,10 +1,68 @@
 import { test, expect } from "@playwright/test";
 
+for (const futureDate of [false, true]) {
+  test(`keeps renamed polydays after reopening settings (${futureDate ? "selected future date" : "tomorrow"})`, async ({
+    page,
+  }, testInfo) => {
+    await page.clock.setFixedTime(new Date("2026-10-25T08:00:00+04:00"));
+    await page.route("**/trpc/**", (route) => route.abort());
+    await page.goto("/current");
+    await page.getByRole("button", { name: "Открыть пространство разработки" }).click();
+    await page.getByRole("button", { name: "Начать планирование" }).click();
+    await expect(page.getByRole("link", { name: "Входящие", exact: true })).toBeVisible();
+    await page.goto("/settings");
+    const name = page.getByRole("textbox", { name: "Полидень 1", exact: true });
+    const date = page.getByRole("button", { name: /^Дата начала действия расписания:/ });
+    if (futureDate) {
+      await date.click();
+      await page.getByRole("button", { name: "Следующий месяц", exact: true }).click();
+      await page.getByRole("button", { name: /^15 / }).click();
+    }
+    const selectedDate = await date.innerText();
+    await name.fill("Рассвет");
+    await page.getByRole("button", { name: "Сохранить расписание", exact: true }).click();
+    await expect(page.getByText("Расписание сохранено.", { exact: true })).toBeVisible();
+    await expect(page.getByText(/^Начало действия:/)).toContainText(
+      selectedDate.toLocaleLowerCase("ru"),
+    );
+    await page.reload();
+    await expect(name).toHaveValue("Рассвет");
+    await expect(date).toHaveText(selectedDate);
+    await name.fill("Ранний");
+    await page.getByRole("button", { name: "Сохранить расписание", exact: true }).click();
+    await expect(page.getByText("Расписание сохранено.", { exact: true })).toBeVisible();
+    if (!futureDate) {
+      await page.screenshot({ path: testInfo.outputPath("rename-verified-desktop-20261025.png") });
+      await page.setViewportSize({ width: 390, height: 1000 });
+      await name.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: testInfo.outputPath("rename-verified-mobile-20261025.png") });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+    }
+    await page.getByRole("link", { name: "Входящие", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Входящие", exact: true })).toBeVisible();
+    await expect(page.getByRole("progressbar")).not.toBeVisible();
+    await page.getByRole("link", { name: "Настройки", exact: true }).click();
+    await expect(name).toHaveValue("Ранний");
+    await expect(date).toHaveText(selectedDate);
+    await page.goto("/current");
+    await expect(page.getByRole("heading", { name: "Утренний", exact: true })).toBeVisible();
+    await page.clock.setFixedTime(
+      new Date(`${futureDate ? "2026-11-15" : "2026-10-26"}T08:00:00+04:00`),
+    );
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Ранний", exact: true })).toBeVisible();
+  });
+}
+
 test("schedule accepts quick time entry, explains errors and keeps each wide row together", async ({
   page,
 }, testInfo) => {
-  await page.goto("/settings");
+  await page.route("**/trpc/**", (route) => route.abort());
+  await page.goto("/current");
   await page.getByRole("button", { name: "Открыть пространство разработки" }).click();
+  await page.getByRole("button", { name: "Начать планирование" }).click();
+  await expect(page.getByRole("link", { name: "Входящие", exact: true })).toBeVisible();
+  await page.goto("/settings");
   const save = page.getByRole("button", { name: "Сохранить расписание", exact: true });
   await expect(save).toBeVisible();
 
