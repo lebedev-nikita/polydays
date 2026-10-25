@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocalSearchParams } from "expo-router";
-import { ScrollView, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useApp } from "../components/provider";
 import { LoginScreen } from "../components/login";
 import { Button, ErrorMessage, Field } from "../components/primitives";
@@ -8,6 +8,7 @@ import { apiURL } from "../data/auth";
 import { deviceAuthorizationMutation } from "../data/requests";
 import { useMutation } from "@tanstack/react-query";
 import { message } from "../data/store";
+import { FormScrollView } from "../components/keyboard";
 
 export default function DeviceAuthorization() {
   const { account, loaded } = useApp();
@@ -34,7 +35,7 @@ export default function DeviceAuthorization() {
   if (!loaded) return null;
   if (!account) return <LoginScreen />;
   return (
-    <ScrollView
+    <FormScrollView
       className="flex-1 bg-sidebar"
       contentContainerStyle={{
         flexGrow: 1,
@@ -86,6 +87,6 @@ export default function DeviceAuthorization() {
           </>
         )}
       </View>
-    </ScrollView>
+    </FormScrollView>
   );
 }

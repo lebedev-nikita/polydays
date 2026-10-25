@@ -11,6 +11,19 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
   return <NativeKeyboardProvider preload={false}>{children}</NativeKeyboardProvider>;
 }
 
+export function FormScrollView({
+  bottomOffset = 24,
+  ...props
+}: ScrollViewProps & { bottomOffset?: number }) {
+  return (
+    <KeyboardAwareScrollView
+      keyboardShouldPersistTaps="handled"
+      {...props}
+      bottomOffset={bottomOffset}
+    />
+  );
+}
+
 export function TaskScrollView(props: ScrollViewProps) {
-  return <KeyboardAwareScrollView {...props} bottomOffset={160} />;
+  return <FormScrollView {...props} bottomOffset={160} />;
 }

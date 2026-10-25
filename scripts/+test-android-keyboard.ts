@@ -1,14 +1,20 @@
-// Run against an emulator with a signed-in Polydays workspace:
+// Run against an Android device with a signed-in Polydays workspace:
 // bun scripts/+test-android-keyboard.ts emulator-5554
 // Opens quick entry without saving a task; verifies real IME and UI bounds.
+// For any other form, open it first and pass its input accessibility labels:
+// bun scripts/+test-android-keyboard.ts SERIAL --fields "Сервер"
+// bun scripts/+test-android-keyboard.ts SERIAL --fields "Полидень 1" "Начало полидня 1"
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { setTimeout } from "node:timers/promises";
 
 const serial = process.argv[2];
-assert(serial, "Pass the emulator serial explicitly.");
+const fieldsOnly = process.argv[3] === "--fields";
+const fields = fieldsOnly ? process.argv.slice(4) : ["Название задачи", "Описание · необязательно"];
+assert(fields.length, "Pass at least one input accessibility label.");
+assert(serial, "Pass the Android device serial explicitly.");
 const adb = (...args: string[]) =>
-  execFileSync("adb", ["-s", serial, ...args], { encoding: "utf8", timeout: 10000 });
+  execFileSync("adb", ["-s", serial, ...args], { encoding: "utf8", timeout: 30000 });
 const dump = () => {
   adb("shell", "rm", "-f", "/sdcard/polydays-keyboard-test.xml");
   adb("shell", "uiautomator", "dump", "/sdcard/polydays-keyboard-test.xml");
@@ -32,30 +38,55 @@ const keyboardTop = () => {
 };
 
 adb("shell", "am", "start", "-n", "app.polydays.mobile/.MainActivity");
+await setTimeout(700);
 let xml = dump();
-if (!xml.includes('content-desc="Название задачи"')) {
+if (!fieldsOnly && !xml.includes('content-desc="Название задачи"')) {
   tap(bounds(xml, "Добавить задачу"));
   await setTimeout(500);
   xml = dump();
 }
 for (let attempt = 0; attempt < 2; attempt++) {
-  tap(bounds(xml, "Название задачи"));
-  await setTimeout(500);
-  const top = keyboardTop();
-  xml = dump();
-  for (const label of ["Название задачи", "Описание · необязательно", "Добавить задачу"]) {
-    const rect = bounds(xml, label);
-    assert(rect[3] > rect[1], `${label} must have visible height.`);
-    assert(
-      rect[1] >= 0 && rect[3] <= top,
-      `${label} ends at ${rect[3]}, keyboard starts at ${top}.`,
-    );
+  for (const field of fields) {
+    // Hiding the IME may restore the form's earlier scroll position. Reveal
+    // lower fields again before focusing them, as a user would by scrolling.
+    for (
+      let scroll = 0;
+      fieldsOnly && !xml.includes(`content-desc="${field}"`) && scroll < 5;
+      scroll++
+    ) {
+      const screen = xml.match(/bounds="\[0,0\]\[(\d+),(\d+)\]"/);
+      assert(screen, "Missing screen bounds.");
+      const x = String(Math.round(Number(screen[1]) / 2));
+      adb(
+        "shell",
+        "input",
+        "swipe",
+        x,
+        String(Math.round(Number(screen[2]) * 0.8)),
+        x,
+        String(Math.round(Number(screen[2]) * 0.35)),
+        "350",
+      );
+      xml = dump();
+    }
+    tap(bounds(xml, field));
+    await setTimeout(700);
+    // Dump after focus settles so the check measures the final IME/layout state.
+    xml = dump();
+    const top = keyboardTop();
+    const labels = fieldsOnly ? [field] : [...fields, "Добавить задачу"];
+    for (const label of labels) {
+      const rect = bounds(xml, label);
+      assert(rect[3] > rect[1], `${label} must have visible height.`);
+      assert(
+        rect[1] >= 0 && rect[3] <= top,
+        `${label} ends at ${rect[3]}, keyboard starts at ${top}.`,
+      );
+    }
+    console.info(`PASS: ${field} above the keyboard (cycle ${attempt + 1}).`);
   }
-  console.info(
-    `PASS: title, description and submit are above the keyboard (cycle ${attempt + 1}).`,
-  );
   adb("shell", "input", "keyevent", "KEYCODE_BACK");
   await setTimeout(300);
   xml = dump();
 }
-tap(bounds(xml, "Закрыть"));
+if (!fieldsOnly) tap(bounds(xml, "Закрыть"));

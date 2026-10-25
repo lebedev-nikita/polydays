@@ -12,6 +12,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  type ScrollViewProps,
   Text,
   TextInput,
   View,
@@ -136,6 +137,12 @@ export function TaskComposer({
   );
 }
 
+// Inline fields belong to the list's keyboard-aware scroll view. A nested
+// ScrollView would hide them from its focused-input tracking.
+function InlineFormContent({ children, contentContainerStyle }: ScrollViewProps) {
+  return <View style={contentContainerStyle}>{children}</View>;
+}
+
 export function TaskForm({
   scheduling,
   task,
@@ -150,6 +157,7 @@ export function TaskForm({
   onReorder,
 }: FormProps) {
   const { store, calendar, series, now } = useApp();
+  const FormContent = inline ? InlineFormContent : ScrollView;
   const titleRef = useRef<ComponentRef<typeof TextInput>>(null);
   const formRef = useRef<ComponentRef<typeof View>>(null);
   const descriptionRef = useRef<ComponentRef<typeof TextInput>>(null);
@@ -616,7 +624,7 @@ export function TaskForm({
               Повторение
             </Text>
           </View>
-          <ScrollView
+          <FormContent
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12, gap: 12 }}
           >
@@ -746,7 +754,7 @@ export function TaskForm({
                 </Text>
               )}
             </View>
-          </ScrollView>
+          </FormContent>
           <View className="items-end px-5 pb-5 pt-2">
             <ErrorMessage>{error}</ErrorMessage>
             <Button disabled={busy} onPress={acceptPanel}>
@@ -831,7 +839,7 @@ export function TaskForm({
             >
               <X size={19} color={colors.muted} />
             </Pressable>
-            <ScrollView
+            <FormContent
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{
                 paddingHorizontal: 20,
@@ -931,7 +939,7 @@ export function TaskForm({
               {task?.seriesId && !editSeries && (
                 <Text className="text-xs text-muted">Только это повторение</Text>
               )}
-            </ScrollView>
+            </FormContent>
             <ErrorMessage>
               {error === "Проверьте отмеченные поля." && !Object.keys(errors).length ? null : error}
             </ErrorMessage>
