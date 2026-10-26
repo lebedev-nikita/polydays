@@ -6,6 +6,7 @@ import {
   Text,
   View,
   useWindowDimensions,
+  type ScrollViewProps,
 } from "react-native";
 import { Link, router, useFocusEffect, useLocalSearchParams, usePathname } from "expo-router";
 import {
@@ -38,9 +39,11 @@ const destinations = [
 export function AppShell({
   children,
   defaultScheduling = { kind: "backlog" },
+  onScroll,
 }: {
   children: ReactNode;
   defaultScheduling?: Scheduling;
+  onScroll?: ScrollViewProps["onScroll"];
 }) {
   const app = useApp();
   const pathname = usePathname();
@@ -230,9 +233,12 @@ export function AppShell({
           </Link>
         ) : null}
         <TaskScrollView
+          testID="task-scroll"
           className="flex-1"
           contentContainerStyle={{ alignItems: "center", paddingBottom: desktop ? 70 : 100 }}
           keyboardShouldPersistTaps="handled"
+          onScroll={onScroll}
+          scrollEventThrottle={100}
         >
           <View className={`w-full max-w-[850px] ${desktop ? "px-14 pt-12" : "px-5 pt-7"}`}>
             {children}

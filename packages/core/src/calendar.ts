@@ -16,6 +16,15 @@ export const dateAt = (instant: number, timeZone: string): string =>
     .toString();
 export const weekday = (date: string): number => Temporal.PlainDate.from(date).dayOfWeek;
 export const polydayId = (date: string, slotId: string): string => `${date}/${slotId}`;
+export function groupPolydaysByDate<T extends Pick<Polyday, "date">>(days: ReadonlyArray<T>) {
+  const groups = new Map<string, T[]>();
+  for (const day of days) {
+    const group = groups.get(day.date);
+    if (group) group.push(day);
+    else groups.set(day.date, [day]);
+  }
+  return [...groups].map(([date, polydays]) => ({ date, polydays }));
+}
 export const minutes = (time: string): number => {
   const value = Temporal.PlainTime.from(time);
   return value.hour * 60 + value.minute;
