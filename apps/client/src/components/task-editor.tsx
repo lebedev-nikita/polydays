@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   Modal,
+  Keyboard,
   Platform,
   Pressable,
   ScrollView,
@@ -30,6 +31,9 @@ import {
   Check,
   ArrowDown,
   Trash2,
+  MoreVertical,
+  ChevronRight,
+  AlignLeft,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { documents } from "@polydays/sync";
@@ -57,9 +61,10 @@ import { timeZoneLabel } from "./schedule-options";
 import { KeyboardAvoidingView } from "./keyboard";
 import { PropertyMenu } from "./property-menu";
 import { TaskScheduleMenu } from "./task-schedule-menu";
+import { TaskCompletion } from "./task-completion";
 
 const days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-type FormProps = {
+export type TaskFormProps = {
   readonly scheduling: Scheduling;
   readonly task?: Task;
   readonly onClose: () => void;
@@ -68,6 +73,8 @@ type FormProps = {
   readonly maxHeight?: number;
   readonly onSwitchSeries?: () => void;
   readonly inline?: boolean;
+  readonly sheet?: boolean;
+  readonly onComplete?: () => Promise<void>;
   readonly changeRequest?: RefObject<((action: () => void) => void) | null>;
   readonly onDelete?: () => Promise<void>;
   readonly onReorder?: (direction: -1 | 1) => Promise<void>;
@@ -152,10 +159,12 @@ export function TaskForm({
   maxHeight,
   onSwitchSeries,
   inline = false,
+  sheet = false,
+  onComplete,
   changeRequest,
   onDelete,
   onReorder,
-}: FormProps) {
+}: TaskFormProps) {
   const { store, calendar, series, now } = useApp();
   const FormContent = inline ? InlineFormContent : ScrollView;
   const titleRef = useRef<ComponentRef<typeof TextInput>>(null);
@@ -207,7 +216,10 @@ export function TaskForm({
   const [endDate, setEndDate] = useState(seriesRule?.endDate ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [openProperty, setOpenProperty] = useState<"schedule" | "priority" | "repeat" | null>(null);
+  const [showDescription, setShowDescription] = useState(!!task?.description);
+  const [openProperty, setOpenProperty] = useState<
+    "schedule" | "priority" | "repeat" | "actions" | null
+  >(null);
   const propertySnapshot = useRef({
     kind,
     date,
@@ -220,6 +232,7 @@ export function TaskForm({
   });
   const shortcut = useRef<"priority" | "schedule" | null>(null);
   const openPanel = (panel: typeof openProperty) => {
+    if (sheet) Keyboard.dismiss();
     if (openProperty === panel) {
       setOpenProperty(null);
       return;
@@ -242,13 +255,13 @@ export function TaskForm({
     }
     setOpenProperty(null);
     shortcut.current = null;
-    titleRef.current?.focus();
+    if (!sheet) titleRef.current?.focus();
   };
   const finishChoice = () => {
     if (shortcut.current) setTitle((value) => value.replace(/(?:!!|#)$/, "").trimEnd());
     shortcut.current = null;
     setOpenProperty(null);
-    titleRef.current?.focus();
+    if (!sheet) titleRef.current?.focus();
   };
   useEffect(() => {
     if (!inline) return;
@@ -314,7 +327,7 @@ export function TaskForm({
     };
   });
   useEffect(() => {
-    if (!inline || Platform.OS !== "web") return;
+    if ((!inline && !sheet) || Platform.OS !== "web") return;
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
@@ -587,7 +600,7 @@ export function TaskForm({
           },
       () => {
         setOpenProperty(null);
-        titleRef.current?.focus();
+        if (!sheet) titleRef.current?.focus();
       },
     );
   };
@@ -597,19 +610,126 @@ export function TaskForm({
     if (next.kind === "polyday") setSlotId(next.slotId);
     if (next.kind === "deadline") setTime(next.time);
   };
+  const completion =
+    task && onComplete && !editSeries ? (
+      <TaskCompletion
+        task={{ ...task, priority }}
+        large={sheet}
+        disabled={busy}
+        onPress={() =>
+          requestLeave(() => {
+            void runAction(onComplete);
+          })
+        }
+      />
+    ) : null;
+  const titleFields = (
+    <View className={`min-w-0 flex-1 gap-1.5 ${sheet ? "" : "pr-9"}`}>
+      <TextInput
+        ref={titleRef}
+        accessibilityLabel="Название задачи"
+        aria-invalid={!!fieldError("title")}
+        aria-describedby={fieldError("title") ? `${titleId}-error` : undefined}
+        placeholder="Название задачи"
+        placeholderTextColor="#77736d"
+        underlineColorAndroid="transparent"
+        autoFocus={!sheet}
+        multiline
+        submitBehavior="submit"
+        blurOnSubmit={Platform.OS === "web" ? true : undefined}
+        returnKeyType="done"
+        value={title}
+        maxLength={1000}
+        onChangeText={(value) => {
+          const parsed = parseTaskTitle(value);
+          if (parsed.priority !== null) {
+            setTitle(parsed.title);
+            choosePriority(parsed.priority);
+            shortcut.current = null;
+            setOpenProperty(null);
+            return;
+          }
+          setTitle(value);
+          const trigger = /(?:^|\s)!!$/.test(value)
+            ? "priority"
+            : /(?:^|\s)#$/.test(value)
+              ? "schedule"
+              : null;
+          if (trigger) {
+            shortcut.current = trigger;
+            setOpenProperty(trigger);
+          } else if (shortcut.current) {
+            shortcut.current = null;
+            setOpenProperty(null);
+          }
+        }}
+        onSubmitEditing={() => {
+          void submit();
+        }}
+        numberOfLines={1}
+        onContentSizeChange={
+          Platform.OS === "web"
+            ? undefined
+            : (event) =>
+                setTitleHeight(Math.min(140, Math.max(40, event.nativeEvent.contentSize.height)))
+        }
+        style={{ height: titleHeight }}
+        className="composer-field min-h-10 py-1 text-lg font-semibold leading-6 text-ink"
+      />
+      {fieldError("title") && (
+        <Text
+          nativeID={`${titleId}-error`}
+          accessibilityRole="alert"
+          className="text-sm text-accent"
+        >
+          {errors.title}
+        </Text>
+      )}
+    </View>
+  );
+  const descriptionField = (
+    <TextInput
+      ref={descriptionRef}
+      accessibilityLabel="Описание · необязательно"
+      placeholder="Описание"
+      placeholderTextColor={colors.muted}
+      underlineColorAndroid="transparent"
+      multiline
+      numberOfLines={1}
+      maxLength={20000}
+      textAlignVertical="top"
+      value={description}
+      onChangeText={setDescription}
+      onContentSizeChange={
+        Platform.OS === "web"
+          ? undefined
+          : (event) =>
+              setDescriptionHeight(
+                Math.min(112, Math.max(36, event.nativeEvent.contentSize.height)),
+              )
+      }
+      style={{ height: descriptionHeight }}
+      className="composer-field min-h-9 max-h-28 py-1 text-sm leading-5 text-ink"
+    />
+  );
   // Mount each shell with its final NativeWind styles when changing panels.
   return (
     <View
       key={panel ? "recurrence" : "task"}
       ref={formRef}
+      testID={task ? "task-editor" : undefined}
       className={
-        panel ? `overflow-hidden border border-line bg-white ${inline ? "" : "shadow-xl"}` : ""
+        sheet
+          ? "flex-1 min-h-0"
+          : panel
+            ? `overflow-hidden border border-line bg-white ${inline ? "" : "shadow-xl"}`
+            : ""
       }
       style={{
         flexShrink: 1,
         minHeight: 0,
         maxHeight,
-        borderRadius: inline ? 12 : formWidth < 600 ? 24 : 16,
+        borderRadius: sheet ? 0 : inline ? 12 : formWidth < 600 ? 24 : 16,
       }}
     >
       {panel && !inline && formWidth < 600 && (
@@ -811,6 +931,9 @@ export function TaskForm({
               anchor={formRef}
               width={Math.min(320, formWidth - 40)}
               maxHeight={Math.min(288, (maxHeight ?? 640) / 2)}
+              onDismiss={sheet ? dismissPanel : undefined}
+              label="Приоритет"
+              dismissLabel="Закрыть выбор приоритета"
             >
               <View accessibilityRole="radiogroup" accessibilityLabel="Приоритет">
                 {([1, 2, 3, 4] as const).map((value) => (
@@ -828,124 +951,207 @@ export function TaskForm({
               </View>
             </PropertyMenu>
           )}
+          {openProperty === "actions" && (
+            <PropertyMenu
+              anchor={formRef}
+              width={Math.min(320, formWidth - 32)}
+              maxHeight={360}
+              onDismiss={dismissPanel}
+              label="Действия с задачей"
+              dismissLabel="Закрыть действия с задачей"
+            >
+              {onReorder &&
+                !editSeries &&
+                ([-1, 1] as const).map((direction) => (
+                  <PickerRow
+                    key={direction}
+                    icon={direction === -1 ? ArrowUp : ArrowDown}
+                    label={
+                      direction === -1
+                        ? "Поднять задачу внутри приоритета"
+                        : "Опустить задачу внутри приоритета"
+                    }
+                    onPress={() => {
+                      void runAction(() => onReorder(direction));
+                      setOpenProperty(null);
+                    }}
+                  />
+                ))}
+              {onSwitchSeries && (
+                <PickerRow
+                  icon={Repeat2}
+                  label={editSeries ? "Вернуться к повторению" : "Изменить всю серию"}
+                  onPress={() => {
+                    setOpenProperty(null);
+                    requestLeave(onSwitchSeries, true);
+                  }}
+                />
+              )}
+              {onDelete && !editSeries && (
+                <PickerRow
+                  icon={Trash2}
+                  label="Удалить задачу"
+                  color={colors.accent}
+                  onPress={() => {
+                    setOpenProperty(null);
+                    requestLeave(() => {
+                      void runAction(onDelete);
+                    });
+                  }}
+                />
+              )}
+            </PropertyMenu>
+          )}
           <View
-            className={`overflow-hidden border border-line bg-white ${inline ? "" : "shadow-xl"}`}
-            style={{ flexShrink: 1, borderRadius: inline ? 12 : formWidth < 600 ? 24 : 16 }}
+            className={
+              sheet
+                ? "min-h-0 flex-1"
+                : `overflow-hidden border border-line bg-white ${inline ? "" : "shadow-xl"}`
+            }
+            style={{
+              flexShrink: 1,
+              borderRadius: sheet ? 0 : inline ? 12 : formWidth < 600 ? 24 : 16,
+            }}
           >
-            {!inline && formWidth < 600 && (
+            {!sheet && !inline && formWidth < 600 && (
               <View className="mt-2 h-1 w-9 self-center rounded-full bg-line" />
             )}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Закрыть"
-              onPress={requestClose}
-              disabled={busy}
-              className="absolute right-2 top-2 z-10 h-12 w-12 items-center justify-center rounded-full"
-              style={openProperty ? { display: "none" } : undefined}
-            >
-              <X size={19} color={colors.muted} />
-            </Pressable>
-            <FormContent
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{
-                paddingHorizontal: 20,
-                paddingTop: 16,
-                paddingBottom: 8,
-                gap: 4,
-              }}
-            >
-              <View className="gap-1.5 pr-9">
-                <TextInput
-                  ref={titleRef}
-                  accessibilityLabel="Название задачи"
-                  aria-invalid={!!fieldError("title")}
-                  aria-describedby={fieldError("title") ? `${titleId}-error` : undefined}
-                  placeholder="Название задачи"
-                  placeholderTextColor="#77736d"
-                  underlineColorAndroid="transparent"
-                  autoFocus
-                  multiline
-                  submitBehavior="submit"
-                  blurOnSubmit={Platform.OS === "web" ? true : undefined}
-                  returnKeyType="done"
-                  value={title}
-                  maxLength={1000}
-                  onChangeText={(value) => {
-                    const parsed = parseTaskTitle(value);
-                    if (parsed.priority !== null) {
-                      setTitle(parsed.title);
-                      choosePriority(parsed.priority);
-                      shortcut.current = null;
-                      setOpenProperty(null);
-                      return;
-                    }
-                    setTitle(value);
-                    const trigger = /(?:^|\s)!!$/.test(value)
-                      ? "priority"
-                      : /(?:^|\s)#$/.test(value)
-                        ? "schedule"
-                        : null;
-                    if (trigger) {
-                      shortcut.current = trigger;
-                      setOpenProperty(trigger);
-                    } else if (shortcut.current) {
-                      shortcut.current = null;
-                      setOpenProperty(null);
-                    }
-                  }}
-                  onSubmitEditing={() => {
-                    void submit();
-                  }}
-                  numberOfLines={1}
-                  onContentSizeChange={
-                    Platform.OS === "web"
-                      ? undefined
-                      : (event) =>
-                          setTitleHeight(
-                            Math.min(140, Math.max(40, event.nativeEvent.contentSize.height)),
-                          )
-                  }
-                  style={{ height: titleHeight }}
-                  className="composer-field min-h-10 py-1 text-lg font-semibold leading-6 text-ink"
-                />
-                {fieldError("title") && (
-                  <Text
-                    nativeID={`${titleId}-error`}
-                    accessibilityRole="alert"
-                    className="text-sm text-accent"
+            {!sheet && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Закрыть"
+                onPress={requestClose}
+                disabled={busy}
+                className="absolute right-2 top-2 z-10 h-12 w-12 items-center justify-center rounded-full"
+                style={openProperty ? { display: "none" } : undefined}
+              >
+                <X size={19} color={colors.muted} />
+              </Pressable>
+            )}
+            {sheet ? (
+              <>
+                <View className="mt-2 h-1 w-6 self-center rounded-full bg-line" />
+                <View className="min-h-14 flex-row items-center justify-between px-3">
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Место задачи · ${scheduleLabel}`}
+                    disabled={busy || editSeries}
+                    onPress={() => openPanel("schedule")}
+                    className="min-h-12 min-w-0 flex-1 flex-row items-center gap-2 px-2"
                   >
-                    {errors.title}
-                  </Text>
+                    {kind === "backlog" ? (
+                      <Inbox size={18} color={colors.accent} />
+                    ) : (
+                      <CalendarDays size={18} color={colors.accent} />
+                    )}
+                    <Text
+                      numberOfLines={1}
+                      className="min-w-0 shrink text-sm font-semibold text-muted"
+                    >
+                      {editSeries
+                        ? "Серия задач"
+                        : kind === "backlog"
+                          ? "Входящие"
+                          : (slots.find((slot) => slot.id === slotId)?.name ?? "Полидень")}
+                    </Text>
+                    {!editSeries && <ChevronRight size={17} color={colors.muted} />}
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Действия с задачей"
+                    onPress={() => openPanel("actions")}
+                    disabled={busy}
+                    className="h-12 w-12 shrink-0 items-center justify-center rounded-full active:bg-selected"
+                  >
+                    <MoreVertical size={21} color={colors.muted} />
+                  </Pressable>
+                </View>
+                <FormContent
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 16 }}
+                >
+                  <View className="overflow-hidden rounded-xl" style={{ gap: 2 }}>
+                    <View className="flex-row items-start bg-white px-2 py-2">
+                      {completion}
+                      {titleFields}
+                    </View>
+                    {showDescription && (
+                      <View className="bg-white py-2 pl-14 pr-4">{descriptionField}</View>
+                    )}
+                    {!editSeries && repeat === "none" && (
+                      <DetailRow
+                        icon={CalendarDays}
+                        label={kind === "backlog" ? "Когда выполнить" : scheduleLabel}
+                        accessibilityLabel={`Когда выполнить · ${scheduleLabel}`}
+                        color={kind === "backlog" ? colors.muted : colors.accent}
+                        onPress={() => openPanel("schedule")}
+                      />
+                    )}
+                    <DetailRow
+                      icon={Flag}
+                      label={priority === 4 ? "Без приоритета" : `Приоритет ${priority}`}
+                      accessibilityLabel={`Приоритет · ${priorityName(priority)}`}
+                      color={colors.priorities[priority]}
+                      filled={priority !== 4}
+                      onPress={() => openPanel("priority")}
+                    />
+                    {(!showDescription || repeat !== "none" || editSeries || onSwitchSeries) && (
+                      <View className="flex-row flex-wrap gap-2 bg-white p-3">
+                        {!showDescription && (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Добавить описание"
+                            onPress={() => {
+                              setShowDescription(true);
+                              requestAnimationFrame(() => descriptionRef.current?.focus());
+                            }}
+                            className="min-h-11 flex-row items-center gap-2 rounded-xl bg-sidebar px-3"
+                          >
+                            <AlignLeft size={19} color={colors.muted} />
+                            <Text className="text-sm text-muted">Описание</Text>
+                          </Pressable>
+                        )}
+                        {(repeat !== "none" || editSeries) && (
+                          <Chip
+                            icon={Repeat2}
+                            label={repeatLabel}
+                            accessibilityLabel={`Повторение · ${repeatLabel}`}
+                            onPress={() => openPanel("repeat")}
+                          />
+                        )}
+                        {onSwitchSeries && !editSeries && (
+                          <Chip
+                            icon={Repeat2}
+                            label="Вся серия"
+                            accessibilityLabel="Изменить всю серию"
+                            onPress={() => requestLeave(onSwitchSeries, true)}
+                          />
+                        )}
+                      </View>
+                    )}
+                  </View>
+                </FormContent>
+              </>
+            ) : (
+              <FormContent
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{
+                  paddingHorizontal: 20,
+                  paddingTop: 16,
+                  paddingBottom: 8,
+                  gap: 4,
+                }}
+              >
+                <View className="flex-row items-start">
+                  {completion}
+                  {titleFields}
+                </View>
+                <View style={completion ? { paddingLeft: 48 } : undefined}>{descriptionField}</View>
+                {task?.seriesId && !editSeries && (
+                  <Text className="text-xs text-muted">Только это повторение</Text>
                 )}
-              </View>
-
-              <TextInput
-                ref={descriptionRef}
-                accessibilityLabel="Описание · необязательно"
-                placeholder="Описание"
-                placeholderTextColor={colors.muted}
-                underlineColorAndroid="transparent"
-                multiline
-                numberOfLines={1}
-                maxLength={20000}
-                textAlignVertical="top"
-                value={description}
-                onChangeText={setDescription}
-                onContentSizeChange={
-                  Platform.OS === "web"
-                    ? undefined
-                    : (event) =>
-                        setDescriptionHeight(
-                          Math.min(112, Math.max(36, event.nativeEvent.contentSize.height)),
-                        )
-                }
-                style={{ height: descriptionHeight }}
-                className="composer-field min-h-9 max-h-28 py-1 text-sm leading-5 text-ink"
-              />
-              {task?.seriesId && !editSeries && (
-                <Text className="text-xs text-muted">Только это повторение</Text>
-              )}
-            </FormContent>
+              </FormContent>
+            )}
             <ErrorMessage>
               {error === "Проверьте отмеченные поля." && !Object.keys(errors).length ? null : error}
             </ErrorMessage>
@@ -976,7 +1182,7 @@ export function TaskForm({
                   style={{ flex: 1 }}
                   contentContainerStyle={{ gap: 4, alignItems: "center", paddingVertical: 4 }}
                 >
-                  {!editSeries && repeat === "none" && (
+                  {!sheet && !editSeries && repeat === "none" && (
                     <Chip
                       icon={kind === "backlog" ? Inbox : CalendarDays}
                       label={scheduleLabel}
@@ -986,68 +1192,83 @@ export function TaskForm({
                       wide
                     />
                   )}
-                  <Chip
-                    icon={Flag}
-                    label={priority === 4 ? "" : `P${priority}`}
-                    accessibilityLabel={`Приоритет · ${priorityName(priority)}`}
-                    color={colors.priorities[priority]}
-                    filled={priority !== 4}
-                    onPress={() => openPanel("priority")}
-                  />
-                  {repeat !== "none" && (
-                    <Chip
-                      icon={Repeat2}
-                      label={repeatLabel}
-                      accessibilityLabel={`Повторение · ${repeatLabel}`}
-                      onPress={() => openPanel("repeat")}
-                    />
-                  )}
-                  {(!task || editSeries) && repeat === "none" && (
-                    <Chip
-                      icon={Plus}
-                      label=""
-                      accessibilityLabel="Настроить повторение"
-                      onPress={() => openPanel("repeat")}
-                    />
-                  )}
-                  {onReorder &&
-                    !editSeries &&
-                    ([-1, 1] as const).map((direction) => (
+                  {!sheet && (
+                    <>
                       <Chip
-                        key={direction}
-                        icon={direction === -1 ? ArrowUp : ArrowDown}
-                        label=""
-                        accessibilityLabel={
-                          direction === -1
-                            ? "Поднять задачу внутри приоритета"
-                            : "Опустить задачу внутри приоритета"
-                        }
-                        onPress={() => {
-                          void runAction(() => onReorder(direction));
-                        }}
+                        icon={Flag}
+                        label={priority === 4 ? "" : `P${priority}`}
+                        accessibilityLabel={`Приоритет · ${priorityName(priority)}`}
+                        color={colors.priorities[priority]}
+                        filled={priority !== 4}
+                        onPress={() => openPanel("priority")}
                       />
-                    ))}
-                  {onDelete && !editSeries && (
-                    <Chip
-                      icon={Trash2}
-                      label=""
-                      accessibilityLabel="Удалить задачу"
-                      onPress={() =>
-                        requestLeave(() => {
-                          void runAction(onDelete);
-                        })
-                      }
-                    />
+                      {repeat !== "none" && (
+                        <Chip
+                          icon={Repeat2}
+                          label={repeatLabel}
+                          accessibilityLabel={`Повторение · ${repeatLabel}`}
+                          onPress={() => openPanel("repeat")}
+                        />
+                      )}
+                      {(!task || editSeries) && repeat === "none" && (
+                        <Chip
+                          icon={Plus}
+                          label=""
+                          accessibilityLabel="Настроить повторение"
+                          onPress={() => openPanel("repeat")}
+                        />
+                      )}
+                      {onReorder &&
+                        !editSeries &&
+                        ([-1, 1] as const).map((direction) => (
+                          <Chip
+                            key={direction}
+                            icon={direction === -1 ? ArrowUp : ArrowDown}
+                            label=""
+                            accessibilityLabel={
+                              direction === -1
+                                ? "Поднять задачу внутри приоритета"
+                                : "Опустить задачу внутри приоритета"
+                            }
+                            onPress={() => {
+                              void runAction(() => onReorder(direction));
+                            }}
+                          />
+                        ))}
+                      {onDelete && !editSeries && (
+                        <Chip
+                          icon={Trash2}
+                          label=""
+                          accessibilityLabel="Удалить задачу"
+                          onPress={() =>
+                            requestLeave(() => {
+                              void runAction(onDelete);
+                            })
+                          }
+                        />
+                      )}
+                      {onSwitchSeries && (
+                        <Chip
+                          icon={Repeat2}
+                          label={editSeries ? "К повторению" : "Вся серия"}
+                          accessibilityLabel={
+                            editSeries ? "Вернуться к повторению" : "Изменить всю серию"
+                          }
+                          onPress={() => requestLeave(onSwitchSeries, true)}
+                        />
+                      )}
+                    </>
                   )}
-                  {onSwitchSeries && (
-                    <Chip
-                      icon={Repeat2}
-                      label={editSeries ? "К повторению" : "Вся серия"}
-                      accessibilityLabel={
-                        editSeries ? "Вернуться к повторению" : "Изменить всю серию"
-                      }
-                      onPress={() => requestLeave(onSwitchSeries, true)}
-                    />
+                  {sheet && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Закрыть"
+                      disabled={busy}
+                      onPress={requestClose}
+                      className="h-11 w-11 items-center justify-center rounded-lg active:bg-selected"
+                    >
+                      <X size={21} color={colors.muted} />
+                    </Pressable>
                   )}
                 </ScrollView>
                 <Pressable
@@ -1090,6 +1311,34 @@ export function TaskForm({
         </>
       )}
     </View>
+  );
+}
+
+function DetailRow({
+  icon: Icon,
+  label,
+  accessibilityLabel,
+  color = colors.muted,
+  filled = false,
+  onPress,
+}: {
+  icon: typeof Flag;
+  label: string;
+  accessibilityLabel: string;
+  color?: string;
+  filled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      className="min-h-14 flex-row items-center gap-4 bg-white px-6 py-3 active:bg-sidebar"
+    >
+      <Icon size={22} color={color} fill={filled ? color : "none"} strokeWidth={1.8} />
+      <Text className="min-w-0 flex-1 text-base text-ink">{label}</Text>
+    </Pressable>
   );
 }
 

@@ -10,6 +10,7 @@ export function PropertyMenu({
   children,
   onDismiss,
   footer,
+  label = "Дата и полидень",
 }: PropertyMenuProps) {
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
   const [bounds, setBounds] = useState<DOMRect | null>(null);
@@ -57,7 +58,7 @@ export function PropertyMenu({
       <div
         ref={menuRef}
         role={onDismiss ? "dialog" : undefined}
-        aria-label={onDismiss ? "Дата и полидень" : undefined}
+        aria-label={onDismiss ? label : undefined}
         onKeyUp={(event) => {
           if (onDismiss && event.key === "Escape") {
             event.stopPropagation();

@@ -125,7 +125,8 @@ for (const [width, height] of [
     await page.getByRole("radio", { name: "Дневной", exact: true }).click();
     await page.keyboard.press("Escape");
     await expect(trigger).toHaveText("Завтра · Вечерний");
-    await expect(title).toBeFocused();
+    if (width >= 600) await expect(title).toBeFocused();
+    else await expect(title).not.toBeFocused();
     await expect(
       page.getByText("Закрыть без сохранения изменений?", { exact: true }),
     ).not.toBeVisible();

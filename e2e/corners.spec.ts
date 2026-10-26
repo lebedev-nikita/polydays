@@ -31,12 +31,14 @@ for (const width of [1440, 390]) {
     await page
       .getByRole("button", { name: "Редактировать задачу: Проверить углы панелей", exact: true })
       .click();
-    await expectSingleContour(title, true);
+    if (width >= 600) await expectSingleContour(title, true);
     await expect(
-      page.getByRole("checkbox", { name: "Завершить: Проверить углы панелей", exact: true }),
+      page
+        .getByTestId("task-editor")
+        .getByRole("checkbox", { name: "Завершить: Проверить углы панелей", exact: true }),
     ).toBeVisible();
     // Wait for the modal's native fade to finish before recording the destination.
-    await expect(page.locator('[aria-modal="true"]')).toHaveCount(0);
+    await expect(page.locator('[aria-modal="true"]')).toHaveCount(width < 600 ? 1 : 0);
     const panel = await title.evaluate((element) => {
       let node = element.parentElement!;
       while (parseFloat(getComputedStyle(node).borderRadius) === 0) node = node.parentElement!;
@@ -50,7 +52,7 @@ for (const width of [1440, 390]) {
     });
     await page.screenshot({
       path: testInfo.outputPath(`task-corners-${width}-${Date.now()}.png`),
-      clip: panel,
+      ...(width >= 600 ? { clip: panel } : {}),
     });
     await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
     await expectSingleContour(page.getByRole("radiogroup", { name: "Полидень", exact: true }));

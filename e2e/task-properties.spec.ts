@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { Document, Task } from "@polydays/core";
+import { revealDescription } from "./task-editor.helpers";
 
 test.use({ serviceWorkers: "block" });
 
@@ -98,6 +99,7 @@ for (const width of [1440, 390]) {
     const save = page.getByRole("button", { name: "Сохранить", exact: true });
     await expect(save).toBeEnabled();
     await title.fill("Несохранённый заголовок");
+    await revealDescription(page);
     await description.fill("Несохранённое описание");
     await page.getByRole("button", { name: /^Приоритет ·/ }).click();
     await page.getByRole("radio", { name: "P1 · Высокий", exact: true }).click();
@@ -125,6 +127,7 @@ for (const width of [1440, 390]) {
     await page.getByRole("link", { name: "Предстоящие", exact: true }).click();
     await page.getByRole("button", { name: "Редактировать задачу: Подготовить поездку" }).click();
     await expect(title).toHaveValue("Подготовить поездку");
+    await revealDescription(page);
     await expect(description).toHaveValue("");
     await expect(
       page.getByRole("button", { name: "Приоритет · P1 · Высокий", exact: true }),
@@ -143,6 +146,7 @@ for (const width of [1440, 390]) {
     await expect(title).not.toBeVisible();
     await page.getByRole("button", { name: "Редактировать задачу: Подготовить поездку" }).click();
     await title.fill("Собрать чемодан");
+    await revealDescription(page);
     await description.fill("Проверить билеты");
     await save.click();
     await expect(title).not.toBeVisible();

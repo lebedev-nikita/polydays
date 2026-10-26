@@ -2,6 +2,7 @@ import type { ComponentRef, ReactNode, RefObject } from "react";
 import { Modal, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAvoidingView } from "./keyboard";
+import { colors } from "./primitives";
 
 export type PropertyMenuProps = {
   readonly anchor: RefObject<ComponentRef<typeof View> | null>;
@@ -10,19 +11,35 @@ export type PropertyMenuProps = {
   readonly children: ReactNode;
   readonly onDismiss?: () => void;
   readonly footer?: ReactNode;
+  readonly label?: string;
+  readonly dismissLabel?: string;
 };
 
-export function PropertyMenu({ width, maxHeight, children, onDismiss, footer }: PropertyMenuProps) {
+export function PropertyMenu({
+  width,
+  maxHeight,
+  children,
+  onDismiss,
+  footer,
+  label = "Дата и полидень",
+  dismissLabel = "Отменить выбор даты и полидня",
+}: PropertyMenuProps) {
   const insets = useSafeAreaInsets();
   if (onDismiss) {
     return (
-      <Modal transparent visible animationType="fade" onRequestClose={onDismiss}>
+      <Modal
+        transparent
+        visible
+        animationType="fade"
+        accessibilityLabel={label}
+        onRequestClose={onDismiss}
+      >
         <KeyboardAvoidingView behavior="height" style={{ flex: 1, justifyContent: "flex-end" }}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Отменить выбор даты и полидня"
+            accessibilityLabel={dismissLabel}
             onPress={onDismiss}
-            style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0, 0, 0, 0.3)" }}
+            style={{ position: "absolute", inset: 0, backgroundColor: colors.overlay }}
           />
           <View
             className="mx-2 overflow-hidden rounded-3xl border border-line bg-white shadow-lg"

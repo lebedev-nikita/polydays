@@ -13,6 +13,8 @@ export const colors = {
   muted: "#66645f",
   accent: "#b9382e",
   line: "#e9e7e2",
+  sheet: "#f6f4ef",
+  overlay: "rgba(0, 0, 0, 0.3)",
   priorities: ["", "#c73529", "#b85f00", "#286db4", "#66645f"],
 };
 export function Button({

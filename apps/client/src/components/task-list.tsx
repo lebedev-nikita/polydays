@@ -3,12 +3,14 @@ import { Pressable, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
 import { enqueue } from "@polydays/sync";
-import { Check, CircleCheck, Plus, Repeat2 } from "lucide-react-native";
+import { CircleCheck, Plus, Repeat2 } from "lucide-react-native";
 import { taskView, type Scheduling, type TaskView } from "@polydays/core";
 import { useApp } from "./provider";
 import { colors, ErrorMessage } from "./primitives";
-import { TaskComposer, TaskForm } from "./task-editor";
+import { TaskComposer } from "./task-editor";
+import { TaskEditor, useTaskEditorSheet } from "./task-editor-sheet";
 import { message } from "../data/store";
+import { TaskCompletion } from "./task-completion";
 
 export function TaskList({
   rows,
@@ -24,6 +26,7 @@ export function TaskList({
   emptyLabel?: string;
 }) {
   const { store, now, tasks, calendar } = useApp();
+  const sheet = useTaskEditorSheet();
   const { taskId } = useLocalSearchParams<{ taskId?: string }>();
   const [editing, setEditing] = useState(taskId ?? null);
   const [editingSeries, setEditingSeries] = useState(false);
@@ -73,6 +76,30 @@ export function TaskList({
     const latest = tasks.find((task) => task.id === editing) ?? editingView.current.task;
     if (!latest.deleted) shown.push(taskView(latest, calendar, now));
   }
+  const selected = shown.find((view) => view.task.id === editing);
+  const renderEditor = (view: TaskView) => (
+    <TaskEditor
+      key={view.task.id}
+      task={view.task}
+      scheduling={view.task.scheduling}
+      editSeries={editingSeries}
+      changeRequest={changeRequest}
+      onSwitchSeries={view.task.seriesId ? () => setEditingSeries(!editingSeries) : undefined}
+      onClose={() => setEditing(null)}
+      onComplete={async () => {
+        await store.complete(view.task, !view.task.completed);
+        setEditing(null);
+      }}
+      onReorder={view.task.completed ? undefined : (direction) => reorder(view, direction)}
+      onDelete={async () => {
+        await store.save(
+          { kind: "task", data: { ...view.task, deleted: true } },
+          { kind: "task", data: view.task },
+        );
+        setEditing(null);
+      }}
+    />
+  );
   return (
     <View>
       <ErrorMessage>{error}</ErrorMessage>
@@ -81,107 +108,60 @@ export function TaskList({
           key={view.task.id}
           className="min-h-[70px] flex-row items-start gap-2 border-b border-line py-2"
         >
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: view.task.completed }}
-            aria-checked={view.task.completed}
-            accessibilityLabel={`${view.task.completed ? "Вернуть в работу" : "Завершить"}: ${view.task.title}`}
-            onPress={() => {
-              const complete = () => {
-                void store
-                  .complete(view.task, !view.task.completed)
-                  .then(() => {
-                    if (editing === view.task.id) setEditing(null);
-                  })
-                  .catch((cause) => setError(message(cause)));
-              };
-              if (editing === view.task.id && changeRequest.current)
-                changeRequest.current(complete);
-              else complete();
-            }}
-            className="h-12 w-12 items-center justify-center"
-          >
-            <View
-              className="h-[19px] w-[19px] items-center justify-center rounded-full"
-              style={{
-                borderWidth: 1.7,
-                borderColor: colors.priorities[view.task.priority],
-                backgroundColor: view.task.completed
-                  ? colors.priorities[view.task.priority]
-                  : view.task.priority === 4
-                    ? "transparent"
-                    : `${colors.priorities[view.task.priority]}14`,
-              }}
-            >
-              {view.task.completed && <Check size={12} color="white" strokeWidth={3} />}
-            </View>
-          </Pressable>
-          {editing === view.task.id ? (
-            <View className="min-w-0 flex-1">
-              <TaskForm
-                key={`${view.task.id}:${editingSeries}`}
-                inline
+          {editing === view.task.id && !sheet ? (
+            <View className="min-w-0 flex-1">{renderEditor(view)}</View>
+          ) : (
+            <>
+              <TaskCompletion
                 task={view.task}
-                scheduling={view.task.scheduling}
-                editSeries={editingSeries}
-                changeRequest={changeRequest}
-                onSwitchSeries={
-                  view.task.seriesId ? () => setEditingSeries(!editingSeries) : undefined
-                }
-                onClose={() => setEditing(null)}
-                onReorder={
-                  view.task.completed ? undefined : (direction) => reorder(view, direction)
-                }
-                onDelete={async () => {
-                  await store.save(
-                    { kind: "task", data: { ...view.task, deleted: true } },
-                    { kind: "task", data: view.task },
-                  );
-                  setEditing(null);
+                onPress={() => {
+                  void store
+                    .complete(view.task, !view.task.completed)
+                    .catch((cause) => setError(message(cause)));
                 }}
               />
-            </View>
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Редактировать задачу: ${view.task.title}`}
-              onPress={() => openTask(view.task.id)}
-              className="min-h-12 flex-1 justify-center py-2"
-            >
-              <Text
-                className={`text-[15px] leading-[22px] ${view.task.completed ? "text-muted line-through" : "text-ink"}`}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Редактировать задачу: ${view.task.title}`}
+                onPress={() => openTask(view.task.id)}
+                className="min-h-12 flex-1 justify-center py-2"
               >
-                {view.task.title}
-              </Text>
-              {view.task.description ? (
-                <Text numberOfLines={1} className="mt-1 text-xs leading-5 text-muted">
-                  {view.task.description}
+                <Text
+                  className={`text-[15px] leading-[22px] ${view.task.completed ? "text-muted line-through" : "text-ink"}`}
+                >
+                  {view.task.title}
                 </Text>
-              ) : null}
-              <View className="mt-1 flex-row flex-wrap items-center gap-x-3 gap-y-1">
-                {view.task.scheduling.kind === "deadline" && (
-                  <Text className={`text-xs ${view.overdue ? "text-accent" : "text-muted"}`}>
-                    {view.task.scheduling.time}
+                {view.task.description ? (
+                  <Text numberOfLines={1} className="mt-1 text-xs leading-5 text-muted">
+                    {view.task.description}
                   </Text>
-                )}
-                {view.overdue && (
-                  <Text className="text-xs text-accent">
-                    Просрочено
-                    {view.polyday ? ` · ${view.polyday.date}, ${view.polyday.name}` : ""}
-                  </Text>
-                )}
-                {showOrigin && !view.overdue && view.polyday && (
-                  <Text className="text-xs text-muted">
-                    {view.polyday.name} · {view.polyday.date}
-                  </Text>
-                )}
-                {view.inSleepGap && <Text className="text-xs text-[#76501b]">Во время сна</Text>}
-                {view.task.seriesId && <Repeat2 size={12} color={colors.muted} />}
-              </View>
-            </Pressable>
+                ) : null}
+                <View className="mt-1 flex-row flex-wrap items-center gap-x-3 gap-y-1">
+                  {view.task.scheduling.kind === "deadline" && (
+                    <Text className={`text-xs ${view.overdue ? "text-accent" : "text-muted"}`}>
+                      {view.task.scheduling.time}
+                    </Text>
+                  )}
+                  {view.overdue && (
+                    <Text className="text-xs text-accent">
+                      Просрочено
+                      {view.polyday ? ` · ${view.polyday.date}, ${view.polyday.name}` : ""}
+                    </Text>
+                  )}
+                  {showOrigin && !view.overdue && view.polyday && (
+                    <Text className="text-xs text-muted">
+                      {view.polyday.name} · {view.polyday.date}
+                    </Text>
+                  )}
+                  {view.inSleepGap && <Text className="text-xs text-[#76501b]">Во время сна</Text>}
+                  {view.task.seriesId && <Repeat2 size={12} color={colors.muted} />}
+                </View>
+              </Pressable>
+            </>
           )}
         </View>
       ))}
+      {sheet && selected && renderEditor(selected)}
       {!shown.length &&
         (emptyLabel ? (
           <Text className="py-3 text-sm text-muted">{emptyLabel}</Text>

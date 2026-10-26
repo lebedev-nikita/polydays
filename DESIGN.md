@@ -7,6 +7,8 @@ colors:
   ink: "#252421"
   muted: "#66645f"
   line: "#e9e7e2"
+  sheet: "#f6f4ef"
+  overlay: "rgba(0, 0, 0, 0.3)"
   accent: "#b9382e"
   selected: "#f9e9e4"
   priority-1: "#c73529"
@@ -246,9 +248,9 @@ Desktop destinations have muted outline icons and dark labels; the active destin
 
 ### Task rows and quick entry
 
-Rows use a bottom separator, 0.5rem vertical padding and a source minimum height of 70. A 19-unit priority circle with a 1.7-unit stroke sits within a separate 3rem-square completion target. Unfinished P1–P3 circles have a faint priority-colored fill; P4 remains unfilled. Completion fills the circle, adds a white check and mutes/strikes the title. The adjacent title target opens a compact inline editor in the same row, keeping surrounding tasks and navigation visible. Descriptions truncate to one line; deadline, overdue/original-polyday, sleep-gap and recurrence metadata can wrap below the title.
+Rows use a bottom separator, 0.5rem vertical padding and a source minimum height of 70. A 19-unit priority circle with a 1.7-unit stroke sits within a separate 3rem-square completion target. Unfinished P1–P3 circles have a faint priority-colored fill; P4 remains unfilled. Completion fills the circle, adds a white check and mutes/strikes the title. On desktop, the adjacent title target opens a compact inline editor in the same row, keeping surrounding tasks and navigation visible. Its completion circle sits beside the title inside the editor border, with the description aligned below the title. On phones, the title opens a bottom sheet over the dimmed list without focusing an input. The warm sheet has 28-unit top corners, a handle, destination header and overflow actions; white title, scheduling and priority rows sit beneath it. The title row owns a 23-unit completion circle. An empty description appears on request; reorder, delete and series actions live in the overflow menu. A fixed footer keeps close and save reachable above the keyboard. Descriptions truncate to one line; deadline, overdue/original-polyday, sleep-gap and recurrence metadata can wrap below the title.
 
-Preserve priority-first order and individual rows for recurring occurrences. Overdue metadata includes the original polyday date and name. Quick entry closes after a successful save. Pressing its backdrop requests dismissal with the same unsaved-draft confirmation as the close button; failed saves leave the form open. Editing an existing task collapses its editor on save. Inline editors use a flat border and 12-unit corners, keep the completion circle beside the form, and expose reorder and delete as compact toolbar actions. Switching tasks or closing with unsaved edits asks before discarding the draft. Existing task links reveal this editor in the corresponding list.
+Preserve priority-first order and individual rows for recurring occurrences. Overdue metadata includes the original polyday date and name. Quick entry closes after a successful save. Pressing its backdrop requests dismissal with the same unsaved-draft confirmation as the close button; failed saves leave the form open. Editing an existing task collapses its editor on save. Desktop inline editors use a flat border and 12-unit corners and expose reorder and delete as compact toolbar actions. Switching tasks or closing with unsaved edits asks before discarding the draft. Existing task links reveal the editor from the corresponding list using the same platform layout.
 
 On web, unmodified **Q** opens quick entry only for the focused screen when it is ready and its composer is closed. The handler ignores handled/repeated keys, Ctrl/Meta/Alt combinations, inputs, textareas, selects, editable content and dialog descendants. Typing `!!` or `#` at the end of a title opens priority or scheduling choices; selecting a choice removes the trigger. An existing deadline task initially exposes only date/time scheduling; **“Убрать дедлайн”** explicitly clears it before inbox or an untimed polyday can be selected.
 

@@ -4,7 +4,7 @@
 
 Todoist is the user's current application and the reference for Polydays' visual language, task-list interactions, quick entry, priorities, editing, navigation and widgets. Use its familiar conventions to resolve ordinary product and UX choices within the agreed scope. Apply the explicit Polydays requirements below when polyday scheduling, history, recurrence or other agreed behaviour differs from Todoist. This reference guides the design; it does not add all Todoist features or authorise changes to the user's Todoist data.
 
-[Todoist reference research](research/todoist-reference.md) records verified behaviour and the Polydays mapping. Use inbox, current polyday, upcoming polydays and history as the primary destinations. Reuse compact task rows with a separate completion control, title-to-inline-editor interaction, contextual quick entry and familiar in-app keyboard controls. Additional projects, labels, subtasks, boards, a full natural-language parser and external Todoist integration are outside the agreed first-version scope.
+[Todoist reference research](research/todoist-reference.md) records verified behaviour and the Polydays mapping. Use inbox, current polyday, upcoming polydays and history as the primary destinations. Reuse compact task rows with a separate completion control, mobile task details in a bottom sheet and in-place desktop editing with completion inside the form, contextual quick entry and familiar in-app keyboard controls. Additional projects, labels, subtasks, boards, a full natural-language parser and external Todoist integration are outside the agreed first-version scope.
 
 Display priorities with the familiar P1–P4 convention: high/red, medium/orange, low/blue and none/neutral, defaulting to none. Current and overdue work obey the agreed priority-first order, with manual order within each priority, visible overdue state and the original polyday label; the same task appears only once in a given list. Preserve the agreed independent recurring occurrences, assigned-polyday history and exact deadline semantics even where Todoist behaves differently.
 
@@ -36,7 +36,7 @@ Display priorities with the familiar P1–P4 convention: high/red, medium/orange
 - Show every missed occurrence individually, without grouping or collapsing the series.
 - Editing a recurring task changes the series and future occurrences; past occurrences keep their parameters and may be corrected separately. Completing a task completes one occurrence only.
 - Task fields are a title, optional description, completion state, scheduling choice and priority. Scheduling is either inbox, a selected polyday or an exact deadline, as defined above. Priorities are none, low, medium and high.
-- When editing an existing task or series, confirmed property choices save immediately without submitting the text draft. Only title and description require explicit saving; discarding their changes preserves saved properties. Rescheduling keeps the inline editor open until dismissed.
+- When editing an existing task or series, confirmed property choices save immediately without submitting the text draft. Only title and description require explicit saving; discarding their changes preserves saved properties. Rescheduling keeps the editor open until dismissed.
 - Priority changes task order automatically; users manually reorder tasks within the same priority.
 - Completing a task directly from the inbox assigns it to the current polyday so it appears in that polyday's history.
 - Notifications are excluded from version one.

@@ -503,6 +503,7 @@ test("task links open the inline editor in inbox and completed polyday lists", a
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: testInfo.outputPath(`inline-mobile-verified-${Date.now()}.png`) });
   await page
+    .getByTestId("task-editor")
     .getByRole("checkbox", { name: "Завершить: Подготовить план следующего полидня", exact: true })
     .click();
   await expect(title).not.toBeVisible();
@@ -510,7 +511,7 @@ test("task links open the inline editor in inbox and completed polyday lists", a
   await expect(page).toHaveURL(/\/day\/.*\?taskId=/);
   await expect(title).toHaveValue("Подготовить план следующего полидня");
   await expect(
-    page.getByRole("checkbox", {
+    page.getByTestId("task-editor").getByRole("checkbox", {
       name: "Вернуть в работу: Подготовить план следующего полидня",
       exact: true,
     }),
