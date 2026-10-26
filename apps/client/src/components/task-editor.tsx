@@ -456,6 +456,10 @@ export function TaskForm({
   const fieldError = (key: string) => (touched.includes(key) ? errors[key] : undefined);
   const submit = async () => {
     if (!calendar || saving.current) return;
+    if (task && !dirty) {
+      onClose();
+      return;
+    }
     const invalid = Object.keys(errors).filter((key) => !task || key === "title");
     if (invalid.length) {
       setTouched(invalid);
@@ -1057,18 +1061,18 @@ export function TaskForm({
                           ? "Сохранить"
                           : "Добавить задачу"
                   }
-                  accessibilityState={{ disabled: busy || !title.trim() || (!!task && !dirty) }}
-                  disabled={busy || !title.trim() || (!!task && !dirty)}
+                  accessibilityState={{ disabled: busy || !title.trim() }}
+                  disabled={busy || !title.trim()}
                   onPress={() => {
                     void submit();
                   }}
-                  className={`h-11 w-11 items-center justify-center rounded-lg ${busy || !title.trim() || (!!task && !dirty) ? "bg-selected" : "bg-accent active:opacity-80"}`}
+                  className={`h-11 w-11 items-center justify-center rounded-lg ${busy || !title.trim() ? "bg-selected" : "bg-accent active:opacity-80"}`}
                 >
                   <View>
                     {task ? (
                       <Check
                         size={22}
-                        color={busy || !title.trim() || !dirty ? colors.accent : "white"}
+                        color={busy || !title.trim() ? colors.accent : "white"}
                         strokeWidth={2.2}
                       />
                     ) : (

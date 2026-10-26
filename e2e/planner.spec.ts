@@ -226,8 +226,8 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByRole("button", { name: "Приоритет · P4 · Без приоритета", exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Сохранить", exact: true })).toBeDisabled();
-    await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+    await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+    await expect(title).not.toBeVisible();
     await task.click();
     await expect(
       page.getByRole("button", { name: "Приоритет · P4 · Без приоритета", exact: true }),

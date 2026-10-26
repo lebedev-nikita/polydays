@@ -41,13 +41,62 @@ async function savedTask(page: Page): Promise<Task | undefined> {
 }
 
 for (const width of [1440, 390]) {
+  test(`unchanged task text closes with the checkmark without a write at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await setup(page);
+    const title = page.getByRole("textbox", { name: "Название задачи" });
+    const save = page.getByRole("button", { name: "Сохранить", exact: true });
+    await expect(save).toBeEnabled();
+    await page.screenshot({
+      path: testInfo.outputPath(`unchanged-editor-open-${width}-${Date.now()}.png`),
+    });
+    // A clean editor must close even when local storage cannot accept another write.
+    await page.evaluate(() => {
+      const put: IDBObjectStore["put"] = Object.getOwnPropertyDescriptor(
+        IDBObjectStore.prototype,
+        "put",
+      )!.value;
+      IDBObjectStore.prototype.put = function (...args) {
+        if (this.name === "accounts") throw new Error("Unexpected write from unchanged editor");
+        return put.apply(this, args);
+      };
+    });
+    await save.click();
+    await expect(title).not.toBeVisible();
+    await expect(
+      page.getByText("Закрыть без сохранения изменений?", { exact: true }),
+    ).not.toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath(`unchanged-editor-closed-${width}-${Date.now()}.png`),
+    });
+    await page.getByRole("button", { name: "Редактировать задачу: Подготовить поездку" }).click();
+    await title.fill("Временный черновик");
+    await title.fill("Подготовить поездку");
+    await save.click();
+    await expect(title).not.toBeVisible();
+    await page.getByRole("button", { name: "Редактировать задачу: Подготовить поездку" }).click();
+    await title.fill("");
+    await expect(save).toBeDisabled();
+    await title.fill("Изменённый заголовок");
+    await save.click();
+    await expect(
+      page.getByText("Unexpected write from unchanged editor", { exact: true }),
+    ).toBeVisible();
+    await expect(title).toHaveValue("Изменённый заголовок");
+    await title.fill("Подготовить поездку");
+    await save.click();
+    await expect(title).not.toBeVisible();
+  });
+
   test(`properties persist independently of text drafts at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await setup(page);
     const title = page.getByRole("textbox", { name: "Название задачи" });
     const description = page.getByRole("textbox", { name: "Описание · необязательно" });
     const save = page.getByRole("button", { name: "Сохранить", exact: true });
-    await expect(save).toBeDisabled();
+    await expect(save).toBeEnabled();
     await title.fill("Несохранённый заголовок");
     await description.fill("Несохранённое описание");
     await page.getByRole("button", { name: /^Приоритет ·/ }).click();
@@ -83,13 +132,16 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole("button", { name: /^Когда выполнить ·/ })).toHaveText(
       "Завтра · Вечерний",
     );
-    await expect(save).toBeDisabled();
+    await expect(save).toBeEnabled();
     // Complete title shortcuts also persist independently, including P4.
     for (const priority of [2, 3, 4]) {
       await title.fill(`Подготовить поездку !!${priority}`);
       await expect(title).toHaveValue("Подготовить поездку");
       await expect.poll(async () => (await savedTask(page))?.priority).toBe(priority);
     }
+    await save.click();
+    await expect(title).not.toBeVisible();
+    await page.getByRole("button", { name: "Редактировать задачу: Подготовить поездку" }).click();
     await title.fill("Собрать чемодан");
     await description.fill("Проверить билеты");
     await save.click();
@@ -166,7 +218,7 @@ test("properties of a series starting later than tomorrow save to the series", a
   await page.getByRole("button", { name: "Готово", exact: true }).click();
   await page.getByRole("button", { name: /^Приоритет ·/ }).click();
   await page.getByRole("radio", { name: "P2 · Средний", exact: true }).click();
-  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await page.getByRole("button", { name: "Сохранить серию", exact: true }).click();
   await expect(title).not.toBeVisible();
   await page.reload();
   await task.click();
