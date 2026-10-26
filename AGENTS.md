@@ -4,6 +4,8 @@ Read [CONTEXT.md](CONTEXT.md) for domain terms and [docs/product.md](docs/produc
 
 Release Android and macOS together, using the same version and commit. Follow [release instructions](docs/deployment.md#application-releases); publish only when both platform artifacts are verified.
 
+For every stable release (not a release candidate), merge the release branch into `origin/main`. A stable release is complete only after verifying that `origin/main` contains the release commit.
+
 ## UI design
 
 After each user UI correction, update this section with concise, reusable conclusions. Merge related lessons into existing rules.
