@@ -9,6 +9,7 @@ import {
   currentPolyday,
   dateAt,
   expandedTasks,
+  groupPolydaysByDate,
   polydaysBetween,
   polydaysOn,
   sortTasks,
@@ -221,17 +222,18 @@ export function TimelineScreen({ history = false }: { history?: boolean }) {
   const path = history ? "/history" : "/upcoming";
   return (
     <AppShell>
-      <View className="flex-row items-start justify-between gap-3">
-        <View className="min-w-0 flex-1">
-          <Title
-            title={history ? "История полидней" : "Предстоящие"}
-            subtitle={
-              history
-                ? "Выполненные задачи остаются в своих полиднях"
-                : "Планируйте задачи на следующие полидни"
-            }
-          />
-        </View>
+      <Title
+        title={history ? "История полидней" : "Предстоящие"}
+        subtitle={
+          history
+            ? "Выполненные задачи остаются в своих полиднях"
+            : "Планируйте задачи на следующие полидни"
+        }
+      />
+      <View className="mb-5 flex-row items-center justify-between gap-3">
+        <Text className="min-w-0 flex-1 text-sm leading-5 text-muted">
+          {prettyDate(from)} — {prettyDate(until)}
+        </Text>
         <View className="flex-row">
           <Link href={{ pathname: path, params: { from: addDays(from, -7) } }} asChild>
             <Pressable
@@ -251,9 +253,6 @@ export function TimelineScreen({ history = false }: { history?: boolean }) {
           </Link>
         </View>
       </View>
-      <Text className="mb-5 text-sm text-muted">
-        {prettyDate(from)} — {prettyDate(until)}
-      </Text>
       <PageContent key={`${history}:${from}`}>
         <TimelineDays from={from} until={until} history={history} />
       </PageContent>
@@ -270,6 +269,12 @@ function TimelineDays({ from, until, history }: { from: string; until: string; h
     : [];
   const all = calendar ? expandedTasks(tasks, series, calendar, until) : [];
   const views = calendar ? all.map((task) => taskView(task, calendar, now)) : [];
+  const groups = groupPolydaysByDate(
+    days.map((day) => ({
+      ...day,
+      rows: sortTasks(views.filter((view) => view.polyday?.id === day.id)),
+    })),
+  );
   return (
     <>
       {!days.length && (
@@ -277,38 +282,52 @@ function TimelineDays({ from, until, history }: { from: string; until: string; h
           На этой неделе пока нет {history ? "завершённых" : "предстоящих"} полидней.
         </Text>
       )}
-      {days.map((day) => {
-        const rows = sortTasks(
-          views.filter(
-            (view) =>
-              view.polyday?.id === day.id && (history ? view.task.completed : !view.task.completed),
-          ),
-        );
+      {groups.map(({ date, polydays }) => {
+        const rows = polydays.flatMap((day) => day.rows);
+        const completed = rows.filter((row) => row.task.completed).length;
+        const remaining = rows.length - completed;
+        const count = new Intl.PluralRules("ru").select(remaining);
+        const taskWord = count === "one" ? "задача" : count === "few" ? "задачи" : "задач";
         return (
-          <View key={day.id} className="mb-7 border-b border-line pb-5">
-            <Link
-              href={{
-                pathname: "/day/[date]/[slotId]",
-                params: { date: day.date, slotId: day.slotId },
-              }}
-              asChild
-            >
-              <Pressable className="min-h-12 flex-row items-center justify-between">
-                <View className="gap-1">
-                  <Text className="text-base font-semibold text-ink">{day.name}</Text>
-                  <Text className="text-xs text-muted">
-                    {prettyDate(day.date)} · {day.startTime}–{day.endTime}
-                  </Text>
-                </View>
-                <ChevronRight size={18} color={colors.muted} />
-              </Pressable>
-            </Link>
-            <TaskList
-              rows={rows}
-              scheduling={{ kind: "polyday", date: day.date, slotId: day.slotId }}
-              includeCompleted={history}
-              emptyLabel={history ? "Нет выполненных задач" : "Задачи ещё не запланированы"}
-            />
+          <View key={date} testID={`timeline-date-${date}`} className="mb-10">
+            <View className="mb-3 flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <Text accessibilityRole="header" className="text-lg font-bold text-ink">
+                {prettyDate(date)}
+              </Text>
+              <Text className="text-xs text-muted">
+                {history ? `Выполнено ${completed} из ${rows.length}` : `${remaining} ${taskWord}`}
+              </Text>
+            </View>
+            {polydays.map((day) => (
+              <View key={day.id} className="mb-4">
+                <Link
+                  href={{
+                    pathname: "/day/[date]/[slotId]",
+                    params: { date: day.date, slotId: day.slotId },
+                  }}
+                  asChild
+                >
+                  <Pressable className="min-h-12 flex-row items-center justify-between">
+                    <View className="min-w-0 flex-1 flex-row flex-wrap items-baseline gap-x-3 gap-y-1 py-2">
+                      <Text className="text-base font-semibold text-ink">{day.name}</Text>
+                      <Text className="text-xs text-muted">
+                        {day.startTime}–{day.endTime}
+                        {day.endTime < day.startTime ? " · +1 день" : ""}
+                      </Text>
+                    </View>
+                    <ChevronRight size={18} color={colors.muted} />
+                  </Pressable>
+                </Link>
+                <TaskList
+                  rows={day.rows.filter((row) =>
+                    history ? row.task.completed : !row.task.completed,
+                  )}
+                  scheduling={{ kind: "polyday", date: day.date, slotId: day.slotId }}
+                  includeCompleted={history}
+                  emptyLabel={history ? "Нет выполненных задач" : "Задачи ещё не запланированы"}
+                />
+              </View>
+            ))}
           </View>
         );
       })}
@@ -335,7 +354,8 @@ export function SettingsScreen() {
         <View className="mb-8 gap-3 border-b border-line pb-6">
           <Text className="text-lg font-semibold text-ink">Виджет на главном экране</Text>
           <Text className="text-sm leading-5 text-muted">
-            Текущий полидень и просроченные задачи. Завершайте их прямо в виджете, даже без сети.
+            Переключайтесь между текущим и всеми полиднями суток. Завершайте задачи прямо в виджете,
+            даже без сети.
           </Text>
           <Button
             secondary

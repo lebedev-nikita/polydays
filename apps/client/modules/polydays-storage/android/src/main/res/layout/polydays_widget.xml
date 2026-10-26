@@ -4,6 +4,10 @@
     <ImageButton android:id="@+id/polyday_refresh" android:layout_width="48dp" android:layout_height="48dp" android:padding="14dp" android:background="@drawable/polydays_widget_pressed" android:src="@drawable/polydays_widget_refresh" android:contentDescription="Обновить виджет" />
     <ImageButton android:id="@+id/polyday_add" android:layout_width="48dp" android:layout_height="48dp" android:padding="12dp" android:background="@drawable/polydays_widget_pressed" android:src="@drawable/polydays_widget_add" android:contentDescription="Добавить задачу в текущий полидень" />
   </LinearLayout>
+  <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:orientation="horizontal" android:gravity="center_vertical" android:background="#FAF9F6" android:paddingHorizontal="8dp" android:paddingBottom="4dp">
+    <TextView android:id="@+id/polyday_mode_current" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="center" android:text="Текущий" android:textSize="12sp" android:background="@drawable/polydays_widget_mode" />
+    <TextView android:id="@+id/polyday_mode_all" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="center" android:text="Все полидни" android:textSize="12sp" android:background="@drawable/polydays_widget_mode" />
+  </LinearLayout>
   <ListView android:id="@+id/polyday_list" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:divider="#EEEEEE" android:dividerHeight="1dp" android:scrollbars="none" />
   <TextView android:id="@+id/polyday_empty" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center" android:text="Нет незавершённых задач" android:textColor="#66645f" android:textSize="14sp" />
   <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingHorizontal="14dp" android:paddingTop="5dp" android:paddingBottom="9dp">

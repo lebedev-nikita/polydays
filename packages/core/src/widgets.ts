@@ -12,6 +12,8 @@ export const WidgetProjection = Schema.Struct({
       id: Schema.String,
       title: Schema.String,
       subtitle: Schema.String,
+      date: Schema.optionalKey(Schema.String),
+      time: Schema.optionalKey(Schema.String),
       from: Schema.Number,
       until: Schema.Number,
       tasks: Schema.Array(
@@ -24,6 +26,7 @@ export const WidgetProjection = Schema.Struct({
           expiresAt: Schema.NullOr(Schema.Number),
           overdue: Schema.Boolean,
           visibleFrom: Schema.Number,
+          assigned: Schema.optionalKey(Schema.Boolean),
           task: Task,
         }),
       ),
@@ -47,6 +50,7 @@ export function buildWidgetProjection(
     addDays(today, 7),
   );
   const days = polydaysBetween(calendar, addDays(today, -1), addDays(today, 7));
+  const views = sortTasks(tasks.map((task) => taskView(task, calendar, now)));
   return {
     generatedAt: now,
     validUntil: days.at(-1)?.end ?? now,
@@ -54,9 +58,11 @@ export function buildWidgetProjection(
       id: day.id,
       title: day.name,
       subtitle: `${day.date} · ${day.startTime}–${day.endTime}`,
+      date: day.date,
+      time: `${day.startTime}–${day.endTime}${day.endTime < day.startTime ? " · +1 день" : ""}`,
       from: days[index - 1]?.end ?? day.start,
       until: day.end,
-      tasks: sortTasks(tasks.map((task) => taskView(task, calendar, now)))
+      tasks: views
         .filter(
           (view) =>
             !view.task.completed &&
@@ -77,6 +83,7 @@ export function buildWidgetProjection(
               : view.deadline !== null
                 ? view.deadline + 1
                 : (view.polyday?.end ?? Infinity),
+          assigned: view.polyday?.id === day.id,
           task: view.task,
         })),
     })),

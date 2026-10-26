@@ -8,6 +8,7 @@ import {
   currentPolyday,
   defaultSlots,
   expandedTasks,
+  groupPolydaysByDate,
   localInstant,
   moveTask,
   polydayForInstant,
@@ -43,6 +44,58 @@ const task: Task = {
 };
 
 describe("polyday boundaries", () => {
+  it("groups overnight polydays by start date and preserves timeline order", () => {
+    const days = [...polydaysOn(calendar, "2026-10-22"), ...polydaysOn(calendar, "2026-10-23")];
+    const groups = groupPolydaysByDate(days);
+    expect(groups.map((group) => group.date)).toEqual(["2026-10-22", "2026-10-23"]);
+    expect(groups[0]?.polydays.at(-1)).toMatchObject({
+      slotId: "night",
+      end: at("2026-10-23", "02:00"),
+    });
+    const reversed = groupPolydaysByDate([...days].reverse());
+    expect(reversed.map((group) => group.date)).toEqual(["2026-10-23", "2026-10-22"]);
+    expect(reversed[0]?.polydays.map((day) => day.slotId)).toEqual([
+      "night",
+      "afternoon",
+      "morning",
+    ]);
+  });
+
+  it("prepares all polyday assignments once per date, including future and overnight tasks", () => {
+    const now = at("2026-10-23", "01:00");
+    const future = {
+      ...task,
+      id: "future",
+      scheduling: { kind: "polyday" as const, date: "2026-10-23", slotId: "afternoon" },
+    };
+    const overnight = {
+      ...task,
+      id: "overnight",
+      scheduling: { kind: "deadline" as const, date: "2026-10-23", time: "01:30" },
+    };
+    const projection = buildWidgetProjection(
+      [
+        { kind: "calendar", data: calendar },
+        ...[task, future, overnight, { ...task, id: "done", completed: true }].map((data) => ({
+          kind: "task" as const,
+          data,
+        })),
+      ],
+      now,
+    )!;
+    const date = projection.views.filter((view) => view.date === "2026-10-22");
+    expect(
+      date.flatMap((view) => view.tasks.filter((task) => task.assigned).map((task) => task.id)),
+    ).toEqual(["one", "overnight"]);
+    expect(date.at(-1)?.time).toBe("19:00–02:00 · +1 день");
+    expect(date.at(-1)?.tasks.find((task) => task.id === "one")?.assigned).toBe(false);
+    expect(
+      projection.views
+        .find((view) => view.id === "2026-10-23/afternoon")
+        ?.tasks.find((task) => task.id === "future")?.assigned,
+    ).toBe(true);
+  });
+
   it("shows saved future names immediately in polydays and the widget", () => {
     const now = at("2026-10-22", "08:00");
     // A schedule already saved by 0.3.5 must also show its new name after upgrading.

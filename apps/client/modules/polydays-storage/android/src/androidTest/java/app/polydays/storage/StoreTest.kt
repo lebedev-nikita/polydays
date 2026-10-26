@@ -1,5 +1,9 @@
 package app.polydays.storage
 
+import android.appwidget.AppWidgetManager
+import android.content.Context
+import android.content.Intent
+import android.widget.TextView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.json.JSONArray
@@ -53,6 +57,66 @@ class StoreTest {
     } finally {
       store.clear(account)
       store.setProfile(null)
+    }
+  }
+  @Test fun allPolydaysShowsFutureTasksOnceAndCompletesThemOffline() {
+    val (store, account) = seed()
+    val widgetId = 77
+    context.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().putBoolean("all:$widgetId", false).commit()
+    try {
+      val now = System.currentTimeMillis()
+      val date = "2026-10-26"
+      fun task(id: String, title: String, assigned: Boolean, priority: Int): JSONObject {
+        val data = JSONObject(store.load(account)!!.getJSONObject("state").getJSONArray("records").getJSONObject(0).getJSONObject("document").getJSONObject("data").toString()).put("id", id).put("title", title)
+        data.getJSONObject("scheduling").put("date", if (id == "old-task") "2026-10-25" else date).put("slotId", if (id == "old-task") "night" else id.substringBefore("-task"))
+        return JSONObject().put("id", id).put("title", title).put("assigned", assigned).put("priority", priority).put("deadline", JSONObject.NULL).put("expiresAt", JSONObject.NULL).put("overdue", false).put("visibleFrom", 0).put("origin", "25 октября · Вечерний").put("task", data)
+      }
+      val morning = task("morning-task", "Подготовить план новой версии", true, 1)
+      val afternoon = task("afternoon-task", "Обсудить макеты с Сашей", true, 3)
+      val night = task("night-task", "Прочитать главу книги", true, 4)
+      val old = task("old-task", "Разобрать фотографии", false, 2).put("overdue", true)
+      val views = JSONArray()
+      for ((index, slot) in listOf("morning", "afternoon", "night").withIndex()) {
+        val tasks = JSONArray().put(listOf(morning, afternoon, night)[index])
+        if (index == 0) tasks.put(old)
+        else tasks.put(JSONObject(morning.toString()).put("assigned", false).put("visibleFrom", now + 3600000))
+        views.put(JSONObject().put("id", "$date/$slot").put("date", date).put("title", listOf("Утренний", "Дневной", "Вечерний")[index]).put("time", listOf("06:00–12:00", "12:30–18:30", "19:00–02:00 · +1 день")[index]).put("subtitle", "$date · 06:00–12:00").put("from", if (index == 0) 0 else now + index * 3600000).put("until", if (index == 2) Long.MAX_VALUE else now + (index + 1) * 3600000).put("tasks", tasks))
+      }
+      val saved = store.load(account)!!
+      assertTrue(store.compareAndSwap(account, saved.getInt("version"), saved.getJSONObject("state").toString(), JSONObject().put("generatedAt", now).put("validUntil", Long.MAX_VALUE).put("views", views).toString()))
+      val current = PolydayRows.Rows(context, widgetId)
+      current.onCreate()
+      assertEquals(2, current.getCount())
+      PolydayWidget().onReceive(context, Intent().setAction(PolydayWidget.MODE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId).putExtra("all", true))
+      assertTrue(PolydayWidget.showAll(context, widgetId))
+      assertFalse(PolydayWidget.showAll(context, widgetId + 1))
+      val all = PolydayRows.Rows(context, widgetId)
+      all.onCreate()
+      assertEquals(9, all.getCount())
+      InstrumentationRegistry.getInstrumentation().runOnMainSync {
+        for (showAll in listOf(false, true)) {
+          val widget = PolydayWidget.modeViews(context, widgetId, showAll).apply(context, null)
+          val selected = widget.findViewById<TextView>(if (showAll) R.id.polyday_mode_all else R.id.polyday_mode_current)
+          assertTrue(selected.contentDescription.toString().endsWith(", выбран"))
+        }
+        val dateRow = all.getViewAt(2)!!.apply(context, null)
+        assertEquals("26 окт.", dateRow.findViewById<TextView>(R.id.heading_title).text.toString())
+        assertEquals("3 задачи", dateRow.findViewById<TextView>(R.id.heading_detail).text.toString())
+        val futureRow = all.getViewAt(6)!!.apply(context, null)
+        assertEquals("Обсудить макеты с Сашей", futureRow.findViewById<TextView>(R.id.task_title).text.toString())
+      }
+      store.complete(account, "afternoon-task")
+      all.onDataSetChanged()
+      assertEquals(8, all.getCount())
+      assertEquals(1, store.load(account)!!.getJSONObject("state").getJSONArray("pending").length())
+      assertEquals("afternoon", store.load(account)!!.getJSONObject("state").getJSONArray("pending").getJSONObject(0).getJSONObject("entity").getJSONObject("data").getJSONObject("scheduling").getString("slotId"))
+      assertEquals(0, store.projection(account)!!.getJSONArray("views").getJSONObject(1).getJSONArray("tasks").objects().count { it.getString("id") == "afternoon-task" })
+    } finally {
+      if (InstrumentationRegistry.getArguments().getString("keepWidgetFixture") != "true") {
+        store.clear(account)
+        store.setProfile(null)
+        context.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().remove("all:$widgetId").apply()
+      }
     }
   }
   @Test fun acknowledgementPreservesEditsCreatedDuringTheRequest() {
