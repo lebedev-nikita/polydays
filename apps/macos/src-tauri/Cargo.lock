@@ -2458,7 +2458,7 @@ dependencies = [
 
 [[package]]
 name = "polydays-desktop"
-version = "0.3.14"
+version = "0.3.15"
 dependencies = [
  "open",
  "reqwest 0.12.28",
