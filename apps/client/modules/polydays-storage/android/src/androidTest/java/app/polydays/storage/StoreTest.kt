@@ -4,6 +4,12 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.widget.TextView
+import android.view.View
+import android.view.ViewGroup
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Rect
+import java.io.File
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.json.JSONArray
@@ -62,7 +68,7 @@ class StoreTest {
   @Test fun allPolydaysShowsFutureTasksOnceAndCompletesThemOffline() {
     val (store, account) = seed()
     val widgetId = 77
-    context.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().putBoolean("all:$widgetId", false).commit()
+    context.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().putBoolean("all:$widgetId", false).putBoolean("menu:$widgetId", false).commit()
     try {
       val now = System.currentTimeMillis()
       val date = "2026-10-26"
@@ -87,7 +93,38 @@ class StoreTest {
       val current = PolydayRows.Rows(context, widgetId)
       current.onCreate()
       assertEquals(2, current.getCount())
+      PolydayWidget().onReceive(context, Intent().setAction(PolydayWidget.MENU).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
+      assertTrue(PolydayWidget.menuOpen(context, widgetId))
+      assertFalse(PolydayWidget.menuOpen(context, widgetId + 1))
+      InstrumentationRegistry.getInstrumentation().runOnMainSync {
+        val prepared = PolydayWidget.modeViews(context, widgetId, false)
+        prepared.setTextViewText(R.id.polyday_title, "Утренний")
+        prepared.setTextViewText(R.id.polyday_status, "Сохранено на устройстве")
+        prepared.setViewVisibility(R.id.polyday_status, View.VISIBLE)
+        prepared.setTextViewText(R.id.polyday_updated, "Обновлено 22:45")
+        val widget = prepared.apply(context, null) as ViewGroup
+        assertEquals(View.VISIBLE, widget.findViewById<View>(R.id.polyday_mode_menu).visibility)
+        val density = context.resources.displayMetrics.density
+        widget.measure(View.MeasureSpec.makeMeasureSpec((250 * density).toInt(), View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec((180 * density).toInt(), View.MeasureSpec.EXACTLY))
+        widget.layout(0, 0, widget.measuredWidth, widget.measuredHeight)
+        for (id in listOf(R.id.polyday_mode_current, R.id.polyday_mode_all)) {
+          val option = widget.findViewById<View>(id)
+          val visible = Rect()
+          assertTrue(option.getGlobalVisibleRect(visible))
+          assertEquals(option.height, visible.height())
+          val bounds = Rect(0, 0, option.width, option.height)
+          widget.offsetDescendantRectToMyCoords(option, bounds)
+          assertTrue(bounds.top >= (48 * density).toInt() && bounds.bottom <= widget.height)
+        }
+        if (InstrumentationRegistry.getArguments().getString("keepWidgetFixture") == "true") {
+          val bitmap = Bitmap.createBitmap(widget.width, widget.height, Bitmap.Config.ARGB_8888)
+          widget.draw(Canvas(bitmap))
+          File(context.getExternalFilesDir(null), "widget-menu-compact.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+          bitmap.recycle()
+        }
+      }
       PolydayWidget().onReceive(context, Intent().setAction(PolydayWidget.MODE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId).putExtra("all", true))
+      assertFalse(PolydayWidget.menuOpen(context, widgetId))
       assertTrue(PolydayWidget.showAll(context, widgetId))
       assertFalse(PolydayWidget.showAll(context, widgetId + 1))
       val all = PolydayRows.Rows(context, widgetId)
@@ -98,6 +135,7 @@ class StoreTest {
           val widget = PolydayWidget.modeViews(context, widgetId, showAll).apply(context, null)
           val selected = widget.findViewById<TextView>(if (showAll) R.id.polyday_mode_all else R.id.polyday_mode_current)
           assertTrue(selected.contentDescription.toString().endsWith(", выбран"))
+          assertEquals(View.GONE, widget.findViewById<View>(R.id.polyday_mode_menu).visibility)
         }
         val dateRow = all.getViewAt(2)!!.apply(context, null)
         assertEquals("26 окт.", dateRow.findViewById<TextView>(R.id.heading_title).text.toString())
@@ -115,7 +153,7 @@ class StoreTest {
       if (InstrumentationRegistry.getArguments().getString("keepWidgetFixture") != "true") {
         store.clear(account)
         store.setProfile(null)
-        context.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().remove("all:$widgetId").apply()
+        context.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().remove("all:$widgetId").remove("menu:$widgetId").apply()
       }
     }
   }

@@ -23,9 +23,6 @@ for (const width of [1440, 390]) {
         await page.getByRole("link", { name, exact: true }).click();
       });
     }
-    await observeLoading(page, "История полидней", async () => {
-      await page.getByRole("link", { name: "Предыдущая неделя" }).click();
-    });
     await observeLoading(page, "Предстоящие", async () => {
       await page.getByRole("link", { name: "Предстоящие", exact: true }).click();
     });

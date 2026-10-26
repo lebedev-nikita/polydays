@@ -12,6 +12,10 @@ for (const width of [1440, 390, 320]) {
     await page.goto("/upcoming");
     const today = page.getByTestId("timeline-date-2026-10-26");
     await expect(today).toBeVisible();
+    await expect(
+      page.getByText("Планируйте задачи на следующие полидни", { exact: true }),
+    ).not.toBeAttached();
+    await expect(page.getByRole("link", { name: /неделя/ })).toHaveCount(0);
     await expect(today.getByRole("heading")).toHaveText("понедельник, 26 октября");
     await expect(today.getByText("4 задачи", { exact: true })).toBeVisible();
     await expect(today.getByRole("link")).toHaveCount(3);
@@ -30,6 +34,15 @@ for (const width of [1440, 390, 320]) {
     await expect(page.getByRole("heading", { name: "Вечерний", exact: true })).toBeVisible();
     await page.goBack();
     await expect(today.getByText("3 задачи", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("timeline-date-2026-11-02")).not.toBeAttached();
+    await scrollToEnd(page);
+    await expect(page.getByTestId("timeline-date-2026-11-02")).toBeAttached();
+    await expect(today).toHaveCount(1);
+    const later = page.getByTestId("timeline-date-2026-11-03");
+    await later.getByRole("link").first().click();
+    await expect(page.getByRole("heading", { name: "Утренний", exact: true })).toBeVisible();
+    await page.goBack();
+    await expect(later).toBeVisible();
     await page.goto("/history");
     const yesterday = page.getByTestId("timeline-date-2026-10-25");
     await expect(yesterday).toBeVisible();
@@ -45,10 +58,26 @@ for (const width of [1440, 390, 320]) {
     await page.screenshot({
       path: testInfo.outputPath(`history-grouped-${width}-${Date.now()}.png`),
     });
+    for (const date of ["2026-10-19", "2026-10-12", "2026-10-05", "2026-10-01"]) {
+      await scrollToEnd(page);
+      await expect(page.getByTestId(`timeline-date-${date}`)).toBeAttached();
+    }
+    await scrollToEnd(page);
+    await expect(page.getByTestId("timeline-date-2026-09-30")).not.toBeAttached();
+    await expect(page.getByRole("progressbar")).not.toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
   });
+}
+
+async function scrollToEnd(page: Page) {
+  await page
+    .getByTestId("task-scroll")
+    .filter({ visible: true })
+    .evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
 }
 
 async function seedTimeline(page: Page) {

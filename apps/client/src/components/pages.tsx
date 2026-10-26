@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Link, Redirect, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, ChevronRight, LogOut } from "lucide-react-native";
+import { ChevronRight, LogOut } from "lucide-react-native";
 import {
   activeVersion,
   addDays,
@@ -27,11 +27,12 @@ import { ScheduleEditor } from "./schedule";
 import { message } from "../data/store";
 import { pinWidget } from "../data/widget";
 
-function prettyDate(date: string): string {
+function prettyDate(date: string, includeYear = false): string {
   return new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
     month: "long",
     weekday: "long",
+    year: includeYear ? "numeric" : undefined,
     timeZone: "UTC",
   }).format(new Date(`${date}T12:00:00Z`));
 }
@@ -218,50 +219,60 @@ export function TimelineScreen({ history = false }: { history?: boolean }) {
       : history
         ? addDays(today, -6)
         : today;
-  const until = addDays(from, 6);
-  const path = history ? "/history" : "/upcoming";
+  const [weeks, setWeeks] = useState(1);
+  const pending = useRef(false);
+  const onReady = useCallback(() => {
+    pending.current = false;
+  }, []);
+  const earliest = calendar
+    ? [
+        ...calendar.versions.map((version) => version.from),
+        ...calendar.frozen.map((day) => day.date),
+      ].sort()[0]
+    : undefined;
+  const hasMore =
+    !!calendar && (!history || (!!earliest && addDays(from, -7 * (weeks - 1)) > earliest));
   return (
-    <AppShell>
-      <Title
-        title={history ? "История полидней" : "Предстоящие"}
-        subtitle={
-          history
-            ? "Выполненные задачи остаются в своих полиднях"
-            : "Планируйте задачи на следующие полидни"
-        }
-      />
-      <View className="mb-5 flex-row items-center justify-between gap-3">
-        <Text className="min-w-0 flex-1 text-sm leading-5 text-muted">
-          {prettyDate(from)} — {prettyDate(until)}
-        </Text>
-        <View className="flex-row">
-          <Link href={{ pathname: path, params: { from: addDays(from, -7) } }} asChild>
-            <Pressable
-              accessibilityLabel="Предыдущая неделя"
-              className="h-12 w-12 items-center justify-center"
-            >
-              <ChevronLeft size={20} color={colors.muted} />
-            </Pressable>
-          </Link>
-          <Link href={{ pathname: path, params: { from: addDays(from, 7) } }} asChild>
-            <Pressable
-              accessibilityLabel="Следующая неделя"
-              className="h-12 w-12 items-center justify-center"
-            >
-              <ChevronRight size={20} color={colors.muted} />
-            </Pressable>
-          </Link>
-        </View>
-      </View>
-      <PageContent key={`${history}:${from}`}>
-        <TimelineDays from={from} until={until} history={history} />
-      </PageContent>
+    <AppShell
+      onScroll={({ nativeEvent: { contentOffset, contentSize, layoutMeasurement } }) => {
+        if (!hasMore || pending.current || contentOffset.y <= 0) return;
+        if (contentOffset.y + layoutMeasurement.height < contentSize.height - 320) return;
+        pending.current = true;
+        setWeeks((count) => count + 1);
+      }}
+    >
+      <Title title={history ? "История полидней" : "Предстоящие"} />
+      {Array.from({ length: weeks }, (_, index) => {
+        const start = addDays(from, (history ? -7 : 7) * index);
+        return (
+          <PageContent key={`${history}:${start}`} preserveHeight>
+            <TimelineDays
+              from={start}
+              until={addDays(start, 6)}
+              history={history}
+              onReady={onReady}
+            />
+          </PageContent>
+        );
+      })}
     </AppShell>
   );
 }
 
-function TimelineDays({ from, until, history }: { from: string; until: string; history: boolean }) {
+function TimelineDays({
+  from,
+  until,
+  history,
+  onReady,
+}: {
+  from: string;
+  until: string;
+  history: boolean;
+  onReady: () => void;
+}) {
   const { calendar, tasks, series, now } = useApp();
+  useEffect(onReady, [onReady]);
+  const year = calendar ? dateAt(now, activeVersion(calendar, now).timeZone).slice(0, 4) : "";
   const days = calendar
     ? polydaysBetween(calendar, from, until)
         .filter((day) => (history ? day.end <= now : day.end > now))
@@ -279,7 +290,7 @@ function TimelineDays({ from, until, history }: { from: string; until: string; h
     <>
       {!days.length && (
         <Text className="py-10 text-sm text-muted">
-          На этой неделе пока нет {history ? "завершённых" : "предстоящих"} полидней.
+          Пока нет {history ? "завершённых" : "предстоящих"} полидней.
         </Text>
       )}
       {groups.map(({ date, polydays }) => {
@@ -292,7 +303,7 @@ function TimelineDays({ from, until, history }: { from: string; until: string; h
           <View key={date} testID={`timeline-date-${date}`} className="mb-10">
             <View className="mb-3 flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <Text accessibilityRole="header" className="text-lg font-bold text-ink">
-                {prettyDate(date)}
+                {prettyDate(date, date.slice(0, 4) !== year)}
               </Text>
               <Text className="text-xs text-muted">
                 {history ? `Выполнено ${completed} из ${rows.length}` : `${remaining} ${taskWord}`}

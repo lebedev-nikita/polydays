@@ -19,13 +19,17 @@ import java.util.concurrent.Executors
 
 class PolydayWidget : AppWidgetProvider() {
   override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) { refresh(context); SyncWorker.schedule(context) }
+  override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: android.os.Bundle) { refresh(context) }
   override fun onReceive(context: Context, intent: Intent) {
     super.onReceive(context, intent)
     if (intent.action == REFRESH) { refresh(context); SyncWorker.schedule(context); return }
-    if (intent.action == MODE) {
+    if (intent.action == MODE || intent.action == MENU) {
       val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
       if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return
-      context.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().putBoolean("all:$id", intent.getBooleanExtra("all", false)).apply()
+      val preferences = context.getSharedPreferences("widget", Context.MODE_PRIVATE).edit()
+      if (intent.action == MODE) preferences.putBoolean("all:$id", intent.getBooleanExtra("all", false)).putBoolean("menu:$id", false)
+      else preferences.putBoolean("menu:$id", !menuOpen(context, id))
+      preferences.apply()
       refresh(context)
       return
     }
@@ -58,20 +62,30 @@ class PolydayWidget : AppWidgetProvider() {
   }
   override fun onDeleted(context: Context, ids: IntArray) {
     val preferences = context.getSharedPreferences("widget", Context.MODE_PRIVATE).edit()
-    ids.forEach { preferences.remove("all:$it") }
+    ids.forEach { preferences.remove("all:$it").remove("menu:$it") }
     preferences.apply()
   }
   companion object {
     const val ACTION = "app.polydays.storage.WIDGET_TASK"
     const val REFRESH = "app.polydays.storage.WIDGET_REFRESH"
     const val MODE = "app.polydays.storage.WIDGET_MODE"
+    const val MENU = "app.polydays.storage.WIDGET_MENU"
     fun showAll(context: Context, id: Int): Boolean = context.getSharedPreferences("widget", Context.MODE_PRIVATE).getBoolean("all:$id", false)
+    internal fun menuOpen(context: Context, id: Int): Boolean = context.getSharedPreferences("widget", Context.MODE_PRIVATE).getBoolean("menu:$id", false)
     internal fun modeViews(context: Context, id: Int, all: Boolean): RemoteViews {
       val root = RemoteViews(context.packageName, R.layout.polydays_widget)
+      val expanded = menuOpen(context, id)
+      root.setViewVisibility(R.id.polyday_mode_menu, if (expanded) View.VISIBLE else View.GONE)
+      val width = AppWidgetManager.getInstance(context).getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300)
+      root.setInt(R.id.polyday_title, "setMaxWidth", ((maxOf(width, 250) - 154) * context.resources.displayMetrics.density).toInt())
+      val menu = Intent(context, PolydayWidget::class.java).setAction(MENU)
+        .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id).setData(Uri.parse("polydays-widget://menu/$id"))
+      root.setOnClickPendingIntent(R.id.polyday_selector, PendingIntent.getBroadcast(context, id, menu, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+      root.setContentDescription(R.id.polyday_selector, "Выбрать список: " + (if (all) "Все полидни" else "Текущий полидень") + if (expanded) ", меню открыто" else "")
       for ((control, selected) in listOf(R.id.polyday_mode_current to !all, R.id.polyday_mode_all to all)) {
         root.setTextColor(control, Color.parseColor(if (selected) "#B9382E" else "#66645F"))
         root.setInt(control, "setBackgroundResource", if (selected) R.drawable.polydays_widget_mode else R.drawable.polydays_widget_pressed)
-        root.setContentDescription(control, (if (control == R.id.polyday_mode_all) "Все полидни" else "Текущий") + if (selected) ", выбран" else "")
+        root.setContentDescription(control, (if (control == R.id.polyday_mode_all) "Все полидни" else "Текущий полидень") + if (selected) ", выбран" else "")
         val mode = Intent(context, PolydayWidget::class.java).setAction(MODE)
           .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id).putExtra("all", control == R.id.polyday_mode_all)
           .setData(Uri.parse("polydays-widget://mode/$id/$control"))
@@ -119,7 +133,6 @@ class PolydayWidget : AppWidgetProvider() {
         root.setViewVisibility(R.id.polyday_updated, if (freshness.isEmpty()) View.GONE else View.VISIBLE)
         root.setTextViewText(R.id.polyday_status, status)
         root.setViewVisibility(R.id.polyday_status, if (status.isEmpty()) View.GONE else View.VISIBLE)
-        root.setContentDescription(R.id.polyday_title, if (all) "Открыть предстоящие полидни" else "Открыть текущий полидень: " + (view?.getString("title") ?: "Polydays"))
         val open = context.packageManager.getLaunchIntentForPackage(context.packageName)
         if (open != null) {
           fun launch(uri: String) = PendingIntent.getActivity(context, id, Intent(open).apply {
@@ -127,7 +140,6 @@ class PolydayWidget : AppWidgetProvider() {
             data = Uri.parse(uri)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
           }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-          root.setOnClickPendingIntent(R.id.polyday_title, launch(if (all) "polydays://upcoming" else "polydays://current"))
           root.setOnClickPendingIntent(R.id.polyday_empty, launch(if (all) "polydays://upcoming" else "polydays://current"))
           root.setOnClickPendingIntent(R.id.polyday_add, launch("polydays://current?addTask=1"))
         }

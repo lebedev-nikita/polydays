@@ -15,6 +15,7 @@ Display priorities with the familiar P1–P4 convention: high/red, medium/orange
 - The app follows the configured schedule. Actual sleep tracking is outside scope.
 - Each polyday has its own task list. Users can inspect past polydays and plan for future polydays.
 - Upcoming lists and history group consecutive polydays by their start date, with one shared date and task summary above the named intervals. Overnight polydays stay in their start-date group.
+- Timelines load additional dates when scrolling toward the end, without explanatory subtitles or week navigation. History stops at the first configured date; returning from a polyday preserves the loaded dates and position.
 - Completed tasks appear in their assigned or deadline-derived polyday, regardless of actual completion time. An untimed task can be moved to the current polyday before completion. For a deadline task, change the explicit deadline date/time to recalculate its polyday before completion.
 - History has no user ratings or automatic evaluations of usefulness. A written summary is not required in version one.
 - Schedule or series changes must not automatically alter past interval boundaries or task assignments. Manual editing of past interval boundaries is deferred beyond version one. Completing old tasks remains supported.
@@ -56,6 +57,7 @@ Display priorities with the familiar P1–P4 convention: high/red, medium/orange
 - Starting with 0.1.0, every release includes installed Android and macOS applications from the same version and source commit, alongside the web application. The macOS host bundles the shared RN Web client; macOS widgets remain a later phase.
 - Android widgets are required; macOS widgets are required in the future native macOS phase. Show the current polyday, its unfinished tasks and all overdue tasks individually, with priorities and deadlines. A checkbox completes a task, including offline; tapping its title opens it in the app.
 - Each Android widget can switch between the current polyday and all polydays sharing its start date. The all-polydays view shows each assigned unfinished task once under its polyday, including future polydays; overdue tasks from earlier dates remain visible separately. Keep the selection independently for each widget.
+- A chevron beside the widget title opens its list choices over the task list; keep them hidden without reserving space after selection or dismissal through the chevron.
 - Web, Android and future macOS must share an application codebase, except for platform-specific code. Platform shells must not become independent implementations of task, schedule or recurrence rules.
 - Google sign-in is required.
 - One server supports independent Google accounts. Each account has its own tasks, schedule, history and MCP grants; each person can authorize multiple MCP clients. The server may admit all verified accounts or restrict access to an email allowlist. Collaborative tasks are excluded.
