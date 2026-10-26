@@ -127,6 +127,39 @@ const program = Effect.gen(function* () {
     );
     if (!androidMetadata.includes(`versionName='${version}'`))
       return yield* Effect.fail(new Error("The APK version does not match this release."));
+    const apkAnalyzer = join(process.env.ANDROID_HOME, "cmdline-tools/latest/bin/apkanalyzer");
+    const androidManifest = yield* output(apkAnalyzer, [
+      "manifest",
+      "print",
+      join(directory, names[0]!),
+    ]);
+    if (
+      !androidManifest.includes(
+        'android:networkSecurityConfig="@xml/polydays_network_security_config"',
+      )
+    )
+      return yield* Effect.fail(new Error("The APK is missing its private HTTPS trust policy."));
+    const networkPolicy = yield* output(apkAnalyzer, [
+      "resources",
+      "xml",
+      "--file",
+      "res/xml/polydays_network_security_config.xml",
+      join(directory, names[0]!),
+    ]);
+    const sourcePolicy = yield* Effect.tryPromise(() =>
+      readFile(
+        join(
+          root,
+          "apps/client/modules/polydays-storage/android/src/main/res/xml/polydays_network_security_config.xml",
+        ),
+        "utf8",
+      ),
+    );
+    const normalizeXML = (xml: string) => xml.replace(/<\?xml[^?]*\?>|\s+/g, "");
+    if (normalizeXML(networkPolicy) !== normalizeXML(sourcePolicy))
+      return yield* Effect.fail(
+        new Error("The APK HTTPS trust policy differs from the release resource."),
+      );
     yield* Effect.tryPromise(async () => {
       const assets = [];
       for (const name of names) {
