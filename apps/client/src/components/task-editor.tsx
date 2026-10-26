@@ -34,6 +34,7 @@ import {
   MoreVertical,
   ChevronRight,
   AlignLeft,
+  Pencil,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { documents } from "@polydays/sync";
@@ -74,6 +75,9 @@ export type TaskFormProps = {
   readonly onSwitchSeries?: () => void;
   readonly inline?: boolean;
   readonly sheet?: boolean;
+  readonly textEditing?: boolean;
+  readonly onEditText?: () => void;
+  readonly onFinishTextEditing?: () => void;
   readonly onComplete?: () => Promise<void>;
   readonly changeRequest?: RefObject<((action: () => void) => void) | null>;
   readonly onDelete?: () => Promise<void>;
@@ -160,6 +164,9 @@ export function TaskForm({
   onSwitchSeries,
   inline = false,
   sheet = false,
+  textEditing = false,
+  onEditText,
+  onFinishTextEditing,
   onComplete,
   changeRequest,
   onDelete,
@@ -311,7 +318,18 @@ export function TaskForm({
     if (dirty) setConfirmClose(true);
     else action();
   };
-  const requestClose = () => (openProperty ? dismissPanel() : requestLeave(onClose));
+  const requestClose = () => {
+    if (saving.current) return;
+    if (openProperty) return dismissPanel();
+    if (textEditing && onFinishTextEditing) {
+      Keyboard.dismiss();
+      titleRef.current?.blur();
+      descriptionRef.current?.blur();
+      onFinishTextEditing();
+      return;
+    }
+    requestLeave(onClose);
+  };
   useEffect(() => {
     if (!closeRequest) return;
     closeRequest.current = requestClose;
@@ -610,6 +628,47 @@ export function TaskForm({
     if (next.kind === "polyday") setSlotId(next.slotId);
     if (next.kind === "deadline") setTime(next.time);
   };
+  const saveButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={
+        busy
+          ? "Сохраняем…"
+          : editSeries
+            ? "Сохранить серию"
+            : task
+              ? "Сохранить"
+              : "Добавить задачу"
+      }
+      accessibilityState={{ disabled: busy || !title.trim() || confirmClose }}
+      disabled={busy || !title.trim() || confirmClose}
+      onPress={() => {
+        void submit();
+      }}
+      className={
+        task
+          ? "min-h-12 min-w-20 items-center justify-center rounded-lg px-2 active:bg-selected"
+          : `h-11 w-11 items-center justify-center rounded-lg ${busy || !title.trim() ? "bg-selected" : "bg-accent active:opacity-80"}`
+      }
+    >
+      <View>
+        {task ? (
+          <Text
+            className="text-sm font-semibold"
+            style={{ color: busy || !title.trim() || confirmClose ? colors.muted : colors.accent }}
+          >
+            {busy ? "Сохраняем…" : "Сохранить"}
+          </Text>
+        ) : (
+          <ArrowUp
+            size={22}
+            color={busy || !title.trim() ? colors.accent : "white"}
+            strokeWidth={2.2}
+          />
+        )}
+      </View>
+    </Pressable>
+  );
   const completion =
     task && onComplete && !editSeries ? (
       <TaskCompletion
@@ -623,10 +682,12 @@ export function TaskForm({
         }
       />
     ) : null;
+  const descriptionVisible = showDescription || !!description;
   const titleFields = (
     <View className={`min-w-0 flex-1 gap-1.5 ${sheet ? "" : "pr-9"}`}>
       <TextInput
         ref={titleRef}
+        onFocus={onEditText}
         accessibilityLabel="Название задачи"
         aria-invalid={!!fieldError("title")}
         aria-describedby={fieldError("title") ? `${titleId}-error` : undefined}
@@ -673,7 +734,11 @@ export function TaskForm({
             : (event) =>
                 setTitleHeight(Math.min(140, Math.max(40, event.nativeEvent.contentSize.height)))
         }
-        style={{ height: titleHeight }}
+        style={{
+          height: titleHeight,
+          fontSize: textEditing ? 20 : 18,
+          lineHeight: textEditing ? 28 : 24,
+        }}
         className="composer-field min-h-10 py-1 text-lg font-semibold leading-6 text-ink"
       />
       {fieldError("title") && (
@@ -690,6 +755,7 @@ export function TaskForm({
   const descriptionField = (
     <TextInput
       ref={descriptionRef}
+      onFocus={onEditText}
       accessibilityLabel="Описание · необязательно"
       placeholder="Описание"
       placeholderTextColor={colors.muted}
@@ -708,7 +774,11 @@ export function TaskForm({
                 Math.min(112, Math.max(36, event.nativeEvent.contentSize.height)),
               )
       }
-      style={{ height: descriptionHeight }}
+      style={{
+        height: descriptionHeight,
+        fontSize: textEditing ? 16 : 14,
+        lineHeight: textEditing ? 24 : 20,
+      }}
       className="composer-field min-h-9 max-h-28 py-1 text-sm leading-5 text-ink"
     />
   );
@@ -960,6 +1030,17 @@ export function TaskForm({
               label="Действия с задачей"
               dismissLabel="Закрыть действия с задачей"
             >
+              {onEditText && (
+                <PickerRow
+                  icon={Pencil}
+                  label="Изменить задачу"
+                  onPress={() => {
+                    setOpenProperty(null);
+                    onEditText();
+                    requestAnimationFrame(() => titleRef.current?.focus());
+                  }}
+                />
+              )}
               {onReorder &&
                 !editSeries &&
                 ([-1, 1] as const).map((direction) => (
@@ -1025,60 +1106,103 @@ export function TaskForm({
                 className="absolute right-2 top-2 z-10 h-12 w-12 items-center justify-center rounded-full"
                 style={openProperty ? { display: "none" } : undefined}
               >
-                <X size={19} color={colors.muted} />
+                {task ? (
+                  <ArrowLeft size={21} color={colors.muted} />
+                ) : (
+                  <X size={19} color={colors.muted} />
+                )}
               </Pressable>
             )}
             {sheet ? (
               <>
-                <View className="mt-2 h-1 w-6 self-center rounded-full bg-line" />
+                {!textEditing && <View className="mt-2 h-1 w-6 self-center rounded-full bg-line" />}
                 <View className="min-h-14 flex-row items-center justify-between px-3">
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Место задачи · ${scheduleLabel}`}
-                    disabled={busy || editSeries}
-                    onPress={() => openPanel("schedule")}
-                    className="min-h-12 min-w-0 flex-1 flex-row items-center gap-2 px-2"
-                  >
-                    {kind === "backlog" ? (
-                      <Inbox size={18} color={colors.accent} />
-                    ) : (
-                      <CalendarDays size={18} color={colors.accent} />
-                    )}
-                    <Text
-                      numberOfLines={1}
-                      className="min-w-0 shrink text-sm font-semibold text-muted"
-                    >
-                      {editSeries
-                        ? "Серия задач"
-                        : kind === "backlog"
-                          ? "Входящие"
-                          : (slots.find((slot) => slot.id === slotId)?.name ?? "Полидень")}
-                    </Text>
-                    {!editSeries && <ChevronRight size={17} color={colors.muted} />}
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Действия с задачей"
-                    onPress={() => openPanel("actions")}
-                    disabled={busy}
-                    className="h-12 w-12 shrink-0 items-center justify-center rounded-full active:bg-selected"
-                  >
-                    <MoreVertical size={21} color={colors.muted} />
-                  </Pressable>
+                  {textEditing ? (
+                    <>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Назад к задаче"
+                        onPress={requestClose}
+                        disabled={busy || confirmClose}
+                        className="h-12 w-12 shrink-0 items-center justify-center rounded-full active:bg-selected"
+                      >
+                        <ArrowLeft size={23} color={colors.muted} />
+                      </Pressable>
+                      <Text
+                        accessibilityRole="header"
+                        numberOfLines={1}
+                        className="min-w-0 flex-1 text-base font-semibold text-ink"
+                      >
+                        {editSeries ? "Изменить серию" : "Изменить задачу"}
+                      </Text>
+                      {saveButton}
+                    </>
+                  ) : (
+                    <>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Место задачи · ${scheduleLabel}`}
+                        disabled={busy || editSeries}
+                        onPress={() => openPanel("schedule")}
+                        className="min-h-12 min-w-0 flex-1 flex-row items-center gap-2 px-2"
+                      >
+                        {kind === "backlog" ? (
+                          <Inbox size={18} color={colors.accent} />
+                        ) : (
+                          <CalendarDays size={18} color={colors.accent} />
+                        )}
+                        <Text
+                          numberOfLines={1}
+                          className="min-w-0 shrink text-sm font-semibold text-muted"
+                        >
+                          {editSeries
+                            ? "Серия задач"
+                            : kind === "backlog"
+                              ? "Входящие"
+                              : (slots.find((slot) => slot.id === slotId)?.name ?? "Полидень")}
+                        </Text>
+                        {!editSeries && <ChevronRight size={17} color={colors.muted} />}
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Действия с задачей"
+                        onPress={() => openPanel("actions")}
+                        disabled={busy}
+                        className="h-12 w-12 shrink-0 items-center justify-center rounded-full active:bg-selected"
+                      >
+                        <MoreVertical size={21} color={colors.muted} />
+                      </Pressable>
+                    </>
+                  )}
                 </View>
                 <FormContent
                   keyboardShouldPersistTaps="handled"
                   contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 16 }}
                 >
                   <View className="overflow-hidden rounded-xl" style={{ gap: 2 }}>
-                    <View className="flex-row items-start bg-white px-2 py-2">
+                    <View
+                      className="flex-row items-start bg-white px-2"
+                      style={{ paddingVertical: textEditing ? 0 : 8 }}
+                    >
                       {completion}
                       {titleFields}
                     </View>
-                    {showDescription && (
-                      <View className="bg-white py-2 pl-14 pr-4">{descriptionField}</View>
+                    {(descriptionVisible || textEditing) && (
+                      <View
+                        className="flex-row items-start bg-white pl-6 pr-4"
+                        style={{ paddingVertical: textEditing ? 6 : 8 }}
+                      >
+                        {textEditing ? (
+                          <View className="mr-2.5 h-9 justify-center">
+                            <AlignLeft size={22} color={colors.muted} />
+                          </View>
+                        ) : (
+                          <View className="w-8" />
+                        )}
+                        <View className="min-w-0 flex-1">{descriptionField}</View>
+                      </View>
                     )}
-                    {!editSeries && repeat === "none" && (
+                    {!textEditing && !editSeries && repeat === "none" && (
                       <DetailRow
                         icon={CalendarDays}
                         label={kind === "backlog" ? "Когда выполнить" : scheduleLabel}
@@ -1087,48 +1211,54 @@ export function TaskForm({
                         onPress={() => openPanel("schedule")}
                       />
                     )}
-                    <DetailRow
-                      icon={Flag}
-                      label={priority === 4 ? "Без приоритета" : `Приоритет ${priority}`}
-                      accessibilityLabel={`Приоритет · ${priorityName(priority)}`}
-                      color={colors.priorities[priority]}
-                      filled={priority !== 4}
-                      onPress={() => openPanel("priority")}
-                    />
-                    {(!showDescription || repeat !== "none" || editSeries || onSwitchSeries) && (
-                      <View className="flex-row flex-wrap gap-2 bg-white p-3">
-                        {!showDescription && (
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel="Добавить описание"
-                            onPress={() => {
-                              setShowDescription(true);
-                              requestAnimationFrame(() => descriptionRef.current?.focus());
-                            }}
-                            className="min-h-11 flex-row items-center gap-2 rounded-xl bg-sidebar px-3"
-                          >
-                            <AlignLeft size={19} color={colors.muted} />
-                            <Text className="text-sm text-muted">Описание</Text>
-                          </Pressable>
-                        )}
-                        {(repeat !== "none" || editSeries) && (
-                          <Chip
-                            icon={Repeat2}
-                            label={repeatLabel}
-                            accessibilityLabel={`Повторение · ${repeatLabel}`}
-                            onPress={() => openPanel("repeat")}
-                          />
-                        )}
-                        {onSwitchSeries && !editSeries && (
-                          <Chip
-                            icon={Repeat2}
-                            label="Вся серия"
-                            accessibilityLabel="Изменить всю серию"
-                            onPress={() => requestLeave(onSwitchSeries, true)}
-                          />
-                        )}
-                      </View>
+                    {!textEditing && (
+                      <DetailRow
+                        icon={Flag}
+                        label={priority === 4 ? "Без приоритета" : `Приоритет ${priority}`}
+                        accessibilityLabel={`Приоритет · ${priorityName(priority)}`}
+                        color={colors.priorities[priority]}
+                        filled={priority !== 4}
+                        onPress={() => openPanel("priority")}
+                      />
                     )}
+                    {!textEditing &&
+                      (!descriptionVisible ||
+                        repeat !== "none" ||
+                        editSeries ||
+                        onSwitchSeries) && (
+                        <View className="flex-row flex-wrap gap-2 bg-white p-3">
+                          {!descriptionVisible && (
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel="Добавить описание"
+                              onPress={() => {
+                                setShowDescription(true);
+                                requestAnimationFrame(() => descriptionRef.current?.focus());
+                              }}
+                              className="min-h-11 flex-row items-center gap-2 rounded-xl bg-sidebar px-3"
+                            >
+                              <AlignLeft size={19} color={colors.muted} />
+                              <Text className="text-sm text-muted">Описание</Text>
+                            </Pressable>
+                          )}
+                          {(repeat !== "none" || editSeries) && (
+                            <Chip
+                              icon={Repeat2}
+                              label={repeatLabel}
+                              accessibilityLabel={`Повторение · ${repeatLabel}`}
+                              onPress={() => openPanel("repeat")}
+                            />
+                          )}
+                          {onSwitchSeries && !editSeries && (
+                            <Chip
+                              icon={Repeat2}
+                              label="Вся серия"
+                              accessibilityLabel="Изменить всю серию"
+                              onPress={() => requestLeave(onSwitchSeries, true)}
+                            />
+                          )}
+                        </View>
+                      )}
                   </View>
                 </FormContent>
               </>
@@ -1173,7 +1303,7 @@ export function TaskForm({
                   </Button>
                 </View>
               </View>
-            ) : (
+            ) : !textEditing ? (
               <View className="flex-row items-center gap-2 px-5 pb-3">
                 <ScrollView
                   horizontal
@@ -1267,46 +1397,13 @@ export function TaskForm({
                       onPress={requestClose}
                       className="h-11 w-11 items-center justify-center rounded-lg active:bg-selected"
                     >
-                      <X size={21} color={colors.muted} />
+                      <ArrowLeft size={21} color={colors.muted} />
                     </Pressable>
                   )}
                 </ScrollView>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    busy
-                      ? "Сохраняем…"
-                      : editSeries
-                        ? "Сохранить серию"
-                        : task
-                          ? "Сохранить"
-                          : "Добавить задачу"
-                  }
-                  accessibilityState={{ disabled: busy || !title.trim() }}
-                  disabled={busy || !title.trim()}
-                  onPress={() => {
-                    void submit();
-                  }}
-                  className={`h-11 w-11 items-center justify-center rounded-lg ${busy || !title.trim() ? "bg-selected" : "bg-accent active:opacity-80"}`}
-                >
-                  <View>
-                    {task ? (
-                      <Check
-                        size={22}
-                        color={busy || !title.trim() ? colors.accent : "white"}
-                        strokeWidth={2.2}
-                      />
-                    ) : (
-                      <ArrowUp
-                        size={22}
-                        color={busy || !title.trim() ? colors.accent : "white"}
-                        strokeWidth={2.2}
-                      />
-                    )}
-                  </View>
-                </Pressable>
+                {saveButton}
               </View>
-            )}
+            ) : null}
           </View>
         </>
       )}

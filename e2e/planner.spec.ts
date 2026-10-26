@@ -1,3 +1,4 @@
+import { closeTaskEditor, showTaskProperties } from "./task-editor.helpers";
 import { test, expect, type Page } from "@playwright/test";
 
 test("durable offline capture, reconnect, second device and completion history", async ({
@@ -80,6 +81,7 @@ test("a deadline is explicitly removed before selecting an untimed polyday or in
 }) => {
   await openComposer(page);
   await page.getByRole("textbox", { name: "Название задачи" }).fill("Изменить режим планирования");
+  await showTaskProperties(page);
   await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
   await page.getByRole("button", { name: "Завтра", exact: true }).click();
   await page.getByRole("button", { name: "Добавить время", exact: true }).click();
@@ -92,16 +94,18 @@ test("a deadline is explicitly removed before selecting an untimed polyday or in
     exact: true,
   });
   await taskLink.click();
+  await showTaskProperties(page);
   await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
   await expect(page.getByRole("radio", { name: "Входящие", exact: true })).not.toBeVisible();
   await page.getByRole("button", { name: "Убрать дедлайн", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Время дедлайна" })).not.toBeVisible();
   await done(page);
-  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await closeTaskEditor(page);
   await taskLink.click();
+  await showTaskProperties(page);
   await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
   await page.getByRole("button", { name: "Во входящие", exact: true }).click();
-  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await closeTaskEditor(page);
   await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
   await page.getByRole("link", { name: "Входящие", exact: true }).click();
   await expect(taskLink).toBeVisible();
@@ -144,6 +148,7 @@ test("compact capture supports shortcut menus, transactional dates and narrow sc
   await page
     .getByRole("textbox", { name: "Описание · необязательно" })
     .fill("Сверить задачи и время сна.");
+  await showTaskProperties(page);
   await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
   await page.getByRole("button", { name: "Завтра", exact: true }).click();
   await page.getByRole("button", { name: "Добавить время", exact: true }).click();
@@ -153,6 +158,7 @@ test("compact capture supports shortcut menus, transactional dates and narrow sc
   await expect(
     page.getByRole("button", { name: "Когда выполнить · Входящие", exact: true }),
   ).toBeVisible();
+  await showTaskProperties(page);
   await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
   await page.getByRole("button", { name: "Открыть календарь", exact: true }).click();
   await page.getByRole("button", { name: "Предыдущий месяц", exact: true }).click();
@@ -167,7 +173,7 @@ test("compact capture supports shortcut menus, transactional dates and narrow sc
   await expect(time).toHaveValue("01:00");
   await done(page);
   await expect(page.getByRole("button", { name: /^Когда выполнить ·.*01:00/ })).toBeVisible();
-  await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+  await closeTaskEditor(page);
   await expect(page.getByText("Закрыть и удалить черновик?")).toBeVisible();
   await page.getByRole("button", { name: "Продолжить", exact: true }).click();
   await send(page);
@@ -190,7 +196,9 @@ for (const width of [1440, 390]) {
       await title.pressSequentially(String(priority));
       await expect(title).toHaveValue(name);
       await expect(page.getByRole("radio")).toHaveCount(0);
+      await showTaskProperties(page);
       await expect(title).toBeFocused();
+      await showTaskProperties(page);
       await expect(
         page.getByRole("button", { name: `Приоритет · ${labels[priority - 1]}`, exact: true }),
       ).toBeVisible();
@@ -210,10 +218,11 @@ for (const width of [1440, 390]) {
           exact: true,
         })
         .click();
+      await showTaskProperties(page);
       await expect(
         page.getByRole("button", { name: `Приоритет · ${labels[priority - 1]}`, exact: true }),
       ).toBeVisible();
-      await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+      await closeTaskEditor(page);
     }
     const task = page.getByRole("button", {
       name: `Редактировать задачу: План ${width} P1`,
@@ -222,13 +231,16 @@ for (const width of [1440, 390]) {
     await task.click();
     // Pasting a complete command also works while editing an existing task.
     await title.fill(`План ${width} P1 !!4`);
+    await showTaskProperties(page);
     await expect(title).toHaveValue(`План ${width} P1`);
+    await showTaskProperties(page);
     await expect(
       page.getByRole("button", { name: "Приоритет · P4 · Без приоритета", exact: true }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Сохранить", exact: true }).click();
     await expect(title).not.toBeVisible();
     await task.click();
+    await showTaskProperties(page);
     await expect(
       page.getByRole("button", { name: "Приоритет · P4 · Без приоритета", exact: true }),
     ).toBeVisible();
@@ -240,6 +252,7 @@ test("recurrence editing preserves the series deadline independently of an occur
 }) => {
   await openComposer(page);
   await page.getByRole("textbox", { name: "Название задачи" }).fill("Проверить план перед сном");
+  await showTaskProperties(page);
   await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
   await page.getByRole("button", { name: "Завтра", exact: true }).click();
   await page.getByRole("button", { name: "Повтор", exact: true }).click();
@@ -259,11 +272,13 @@ test("recurrence editing preserves the series deadline independently of an occur
     exact: true,
   });
   await task.click();
+  await showTaskProperties(page);
   await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
   await time.fill("22:30");
   await done(page);
-  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await closeTaskEditor(page);
   await task.click();
+  await showTaskProperties(page);
   await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
   await expect(time).toHaveValue("22:30");
   await done(page);
@@ -274,6 +289,7 @@ test("recurrence editing preserves the series deadline independently of an occur
   await time.fill("20:45");
   await done(page);
   await page.getByRole("textbox", { name: "Название задачи" }).fill("Черновик названия серии");
+  await showTaskProperties(page);
   await page.getByRole("button", { name: /^Приоритет ·/ }).click();
   await page.getByRole("radio", { name: "P1 · Высокий", exact: true }).click();
   await page.getByRole("button", { name: "Вернуться к повторению", exact: true }).click();
@@ -283,13 +299,14 @@ test("recurrence editing preserves the series deadline independently of an occur
   await expect(page.getByRole("textbox", { name: "Название задачи" })).toHaveValue(
     "Проверить план перед сном",
   );
+  await showTaskProperties(page);
   await expect(
     page.getByRole("button", { name: "Приоритет · P1 · Высокий", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: /^Повторение ·/ }).click();
   await expect(time).toHaveValue("20:45");
   await done(page);
-  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await closeTaskEditor(page);
   await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
 });
 
@@ -316,6 +333,7 @@ for (const [width, height] of [
       }
     };
 
+    await showTaskProperties(page);
     await page.getByRole("button", { name: /^Приоритет ·/ }).click();
     const choices = page.getByRole("radiogroup", { name: "Приоритет", exact: true });
     await expect(choices).toBeVisible();
@@ -349,6 +367,7 @@ for (const [width, height] of [
     await expectStationary();
     await page.keyboard.press("Escape");
     await title.fill("Подготовить план");
+    await showTaskProperties(page);
     await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
     await expect(page.getByRole("radiogroup", { name: "Полидень", exact: true })).toBeVisible();
     await expectStationary();
@@ -460,7 +479,7 @@ test("task links open the inline editor in inbox and completed polyday lists", a
     await expect(title).not.toBeVisible();
     await page.getByRole("button", { name: "Добавить задачу", exact: true }).first().click();
   }
-  await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+  await closeTaskEditor(page);
   const id = await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open("polydays", 1);

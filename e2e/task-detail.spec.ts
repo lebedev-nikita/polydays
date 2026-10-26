@@ -45,6 +45,8 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByText("Закрыть без сохранения изменений?", { exact: true }),
     ).toBeVisible();
+    if (width < 600)
+      await expect(page.getByRole("button", { name: "Сохранить", exact: true })).toBeDisabled();
     await page.getByRole("button", { name: "Продолжить", exact: true }).click();
     await expect(description).toHaveValue("Проверить номер в личном кабинете.");
     await page.getByRole("button", { name: "Сохранить", exact: true }).click();

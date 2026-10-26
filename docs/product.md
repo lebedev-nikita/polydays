@@ -36,7 +36,7 @@ Display priorities with the familiar P1–P4 convention: high/red, medium/orange
 - Show every missed occurrence individually, without grouping or collapsing the series.
 - Editing a recurring task changes the series and future occurrences; past occurrences keep their parameters and may be corrected separately. Completing a task completes one occurrence only.
 - Task fields are a title, optional description, completion state, scheduling choice and priority. Scheduling is either inbox, a selected polyday or an exact deadline, as defined above. Priorities are none, low, medium and high.
-- When editing an existing task or series, confirmed property choices save immediately without submitting the text draft. Only title and description require explicit saving; discarding their changes preserves saved properties. Rescheduling keeps the editor open until dismissed.
+- When editing an existing task or series, confirmed property choices save immediately without submitting the text draft. Only title and description require explicit saving; discarding their changes preserves saved properties. Rescheduling keeps the editor open until dismissed. On phones, text editing expands to the full screen with Back and Save actions; returning to task details preserves the draft.
 - Priority changes task order automatically; users manually reorder tasks within the same priority.
 - Completing a task directly from the inbox assigns it to the current polyday so it appears in that polyday's history.
 - Notifications are excluded from version one.

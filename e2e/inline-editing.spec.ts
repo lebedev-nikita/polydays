@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { revealDescription } from "./task-editor.helpers";
+import { closeTaskEditor, revealDescription, showTaskProperties } from "./task-editor.helpers";
 
 test.use({ serviceWorkers: "block" });
 
@@ -22,7 +22,7 @@ for (const width of [1440, 390]) {
       await expect(title).not.toBeVisible();
       await page.getByRole("button", { name: "Добавить задачу", exact: true }).first().click();
     }
-    await page.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+    await closeTaskEditor(page);
     const url = page.url();
     await task(page, "Подготовить план следующего полидня").click();
     if (width >= 600) {
@@ -46,6 +46,7 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole("textbox", { name: "Описание · необязательно" })).toHaveValue(
       "Выбрать главное и оставить время для отдыха.",
     );
+    await showTaskProperties(page);
     await expect(
       page.getByRole("button", { name: "Приоритет · P2 · Средний", exact: true }),
     ).toBeVisible();
@@ -57,7 +58,7 @@ for (const width of [1440, 390]) {
       await expect(task(page, "Собрать идеи для выходных")).not.toBeVisible();
       await expect(title).toHaveValue("Несохранённый черновик");
       await task(page, "Заказать продукты").click();
-    } else await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+    } else await closeTaskEditor(page);
     await expect(page.getByText("Закрыть без сохранения изменений?")).toBeVisible();
     await page.getByRole("button", { name: "Продолжить", exact: true }).click();
     await expect(title).toHaveValue("Несохранённый черновик");

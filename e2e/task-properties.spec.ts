@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { Document, Task } from "@polydays/core";
-import { revealDescription } from "./task-editor.helpers";
+import { closeTaskEditor, revealDescription, showTaskProperties } from "./task-editor.helpers";
 
 test.use({ serviceWorkers: "block" });
 
@@ -42,7 +42,7 @@ async function savedTask(page: Page): Promise<Task | undefined> {
 }
 
 for (const width of [1440, 390]) {
-  test(`unchanged task text closes with the checkmark without a write at ${width}px`, async ({
+  test(`unchanged task text closes with Save without a write at ${width}px`, async ({
     page,
   }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
@@ -101,11 +101,13 @@ for (const width of [1440, 390]) {
     await title.fill("Несохранённый заголовок");
     await revealDescription(page);
     await description.fill("Несохранённое описание");
+    await showTaskProperties(page);
     await page.getByRole("button", { name: /^Приоритет ·/ }).click();
     await page.getByRole("radio", { name: "P1 · Высокий", exact: true }).click();
     await expect.poll(async () => (await savedTask(page))?.priority).toBe(1);
     await expect.poll(async () => (await savedTask(page))?.title).toBe("Подготовить поездку");
     await expect.poll(async () => (await savedTask(page))?.description).toBe("");
+    await showTaskProperties(page);
     await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
     await page.getByRole("button", { name: "Завтра", exact: true }).click();
     await page.getByRole("radio", { name: "Вечерний", exact: true }).click();
@@ -117,7 +119,7 @@ for (const width of [1440, 390]) {
       "Завтра · Вечерний",
     );
     await page.screenshot({ path: `.data/ui-qa/immediate-properties-${width}-${Date.now()}.png` });
-    await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+    await closeTaskEditor(page);
     await expect(
       page.getByText("Закрыть без сохранения изменений?", { exact: true }),
     ).toBeVisible();
@@ -128,7 +130,9 @@ for (const width of [1440, 390]) {
     await page.getByRole("button", { name: "Редактировать задачу: Подготовить поездку" }).click();
     await expect(title).toHaveValue("Подготовить поездку");
     await revealDescription(page);
+    await showTaskProperties(page);
     await expect(description).toHaveValue("");
+    await showTaskProperties(page);
     await expect(
       page.getByRole("button", { name: "Приоритет · P1 · Высокий", exact: true }),
     ).toBeVisible();
@@ -152,14 +156,16 @@ for (const width of [1440, 390]) {
     await expect(title).not.toBeVisible();
     await page.reload();
     await page.getByRole("button", { name: "Редактировать задачу: Собрать чемодан" }).click();
+    await showTaskProperties(page);
     await expect(description).toHaveValue("Проверить билеты");
+    await showTaskProperties(page);
     await expect(
       page.getByRole("button", { name: "Приоритет · P4 · Без приоритета", exact: true }),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: /^Когда выполнить ·/ })).toHaveText(
       "Завтра · Вечерний",
     );
-    await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+    await closeTaskEditor(page);
     await expect(
       page.getByText("Закрыть без сохранения изменений?", { exact: true }),
     ).not.toBeVisible();
@@ -182,6 +188,7 @@ test("a failed property save keeps the saved value and offers a retry", async ({
       return put.apply(this, args);
     };
   });
+  await showTaskProperties(page);
   await page.getByRole("button", { name: /^Приоритет ·/ }).click();
   await page.getByRole("radio", { name: "P2 · Средний", exact: true }).click();
   await expect(page.getByText("Не удалось сохранить свойство", { exact: true })).toBeVisible();
@@ -190,17 +197,18 @@ test("a failed property save keeps the saved value and offers a retry", async ({
   await page.getByRole("radio", { name: "P2 · Средний", exact: true }).click();
   await expect.poll(async () => (await savedTask(page))?.priority).toBe(2);
   await expect(page.getByText("Не удалось сохранить свойство", { exact: true })).not.toBeVisible();
-  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await closeTaskEditor(page);
   await expect(page.getByRole("textbox", { name: "Название задачи" })).not.toBeVisible();
 });
 
 test("properties of a series starting later than tomorrow save to the series", async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-10-25T08:00:00Z"));
   await setup(page);
-  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await closeTaskEditor(page);
   await page.getByRole("button", { name: "Добавить задачу", exact: true }).first().click();
   const title = page.getByRole("textbox", { name: "Название задачи" });
   await title.fill("Будущая серия");
+  await showTaskProperties(page);
   await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
   await page.getByRole("button", { name: "Следующая неделя", exact: true }).click();
   await page.getByRole("button", { name: "27 октября", exact: true }).click();
@@ -220,6 +228,7 @@ test("properties of a series starting later than tomorrow save to the series", a
   await expect(time).toHaveValue("21:15");
   await time.fill("20:45");
   await page.getByRole("button", { name: "Готово", exact: true }).click();
+  await showTaskProperties(page);
   await page.getByRole("button", { name: /^Приоритет ·/ }).click();
   await page.getByRole("radio", { name: "P2 · Средний", exact: true }).click();
   await page.getByRole("button", { name: "Сохранить серию", exact: true }).click();
@@ -227,6 +236,7 @@ test("properties of a series starting later than tomorrow save to the series", a
   await page.reload();
   await task.click();
   await page.getByRole("button", { name: "Изменить всю серию", exact: true }).click();
+  await showTaskProperties(page);
   await expect(
     page.getByRole("button", { name: "Приоритет · P2 · Средний", exact: true }),
   ).toBeVisible();
