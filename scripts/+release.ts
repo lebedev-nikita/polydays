@@ -133,17 +133,37 @@ const program = Effect.gen(function* () {
       "print",
       join(directory, names[0]!),
     ]);
+    const policyReference = androidManifest.match(
+      /android:networkSecurityConfig="@ref\/(0x[0-9a-f]+)"/,
+    )?.[1];
+    const androidResources = yield* output(
+      join(process.env.ANDROID_HOME, "build-tools/37.0.0/aapt"),
+      ["dump", "resources", join(directory, names[0]!)],
+    );
     if (
-      !androidManifest.includes(
-        'android:networkSecurityConfig="@xml/polydays_network_security_config"',
+      !policyReference ||
+      !androidResources.includes(
+        `spec resource ${policyReference} app.polydays.mobile:xml/polydays_network_security_config:`,
       )
     )
       return yield* Effect.fail(new Error("The APK is missing its private HTTPS trust policy."));
+    // Release resource shrinking renames XML files; resolve the packaged path.
+    const policyPath = yield* output(apkAnalyzer, [
+      "resources",
+      "value",
+      "--config",
+      "default",
+      "--name",
+      "polydays_network_security_config",
+      "--type",
+      "xml",
+      join(directory, names[0]!),
+    ]);
     const networkPolicy = yield* output(apkAnalyzer, [
       "resources",
       "xml",
       "--file",
-      "res/xml/polydays_network_security_config.xml",
+      policyPath,
       join(directory, names[0]!),
     ]);
     const sourcePolicy = yield* Effect.tryPromise(() =>
