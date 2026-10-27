@@ -11,7 +11,7 @@
     <ImageButton android:id="@+id/polyday_add" android:layout_width="48dp" android:layout_height="48dp" android:padding="12dp" android:background="@drawable/polydays_widget_pressed" android:src="@drawable/polydays_widget_add" android:contentDescription="Добавить задачу в текущий полидень" />
   </LinearLayout>
   <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
-  <ListView android:id="@+id/polyday_list" android:layout_width="match_parent" android:layout_height="match_parent" android:divider="#EEEEEE" android:dividerHeight="1dp" android:scrollbars="none" />
+  <ListView android:id="@+id/polyday_list" android:layout_width="match_parent" android:layout_height="match_parent" android:divider="@null" android:dividerHeight="0dp" android:scrollbars="none" />
   <TextView android:id="@+id/polyday_empty" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="Нет незавершённых задач" android:textColor="#66645f" android:textSize="14sp" />
 
   </FrameLayout>
