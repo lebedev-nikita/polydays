@@ -21,7 +21,7 @@
     },
     "apps/client": {
       "name": "@polydays/client",
-      "version": "0.4.3",
+      "version": "0.4.4",
       "dependencies": {
         "@better-auth/expo": "1.7.12",
         "@expo/metro-runtime": "~58.0.15",
@@ -67,7 +67,7 @@
     },
     "apps/macos": {
       "name": "@polydays/macos",
-      "version": "0.4.3",
+      "version": "0.4.4",
     },
     "apps/server": {
       "name": "@polydays/server",
