@@ -334,14 +334,14 @@ function TimelineDays({
     <>
       {groups.map(({ date, polydays }) => {
         return (
-          <View key={date} testID={`timeline-date-${date}`} className="mb-10">
+          <View key={date} testID={`timeline-date-${date}`} className="mb-4">
             <View className="mb-3 flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <Text accessibilityRole="header" className="text-lg font-bold text-ink">
                 {prettyDate(date, date.slice(0, 4) !== year)}
               </Text>
             </View>
             {polydays.map((day) => (
-              <View key={day.id} className="mb-4">
+              <View key={day.id}>
                 <TaskList
                   listId={day.id}
                   onActiveChange={onActiveChange}
