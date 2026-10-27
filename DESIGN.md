@@ -262,7 +262,7 @@ On web, unmodified **Q** opens quick entry only for the focused screen when it i
 
 Search and shortcut help open in overlays. Search matches all query words against title and description, searches saved tasks plus recurring occurrences through the next 30 days, and optionally includes completed tasks. Results open the current task editor in its appropriate list.
 
-The desktop sidebar can collapse and reopen from the top toolbar. Upcoming and history views include a seven-day navigation strip. Contextual capture opens inline on desktop and in the keyboard-aware composer on phones, including empty upcoming polydays.
+The desktop sidebar can collapse and reopen from the top toolbar. Upcoming and history retain their grouped, continuously scrolling timelines. Contextual capture opens inline on desktop and in the keyboard-aware composer on phones, including empty upcoming polydays.
 
 Task rows expose edit, scheduling and overflow actions. Overflow offers priority and deletion. On web, **/** or **⌘/Ctrl K** opens search and **?** opens shortcut help; focused task buttons accept **E** for completion and **1–4** for priority. Shortcuts ignore typing and inactive screens. Completion/reopening and deletion show an eight-second notice with Undo and Close; undo preserves unrelated later edits.
 

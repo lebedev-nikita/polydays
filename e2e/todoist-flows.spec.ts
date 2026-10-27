@@ -125,10 +125,9 @@ test("sidebar, shortcut help and contextual upcoming capture", async ({ page }) 
   await expect(page.getByText("Завершить выбранную задачу", { exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByText("Завершить выбранную задачу", { exact: true })).not.toBeVisible();
-  const days = page.getByRole("link", { name: /^Показать неделю с/ });
-  await expect(days).toHaveCount(7);
-  await days.nth(1).click();
-  await expect(page).toHaveURL(/\/upcoming\?from=/);
+  await expect(page.getByRole("heading", { name: "Предстоящие", exact: true })).toBeVisible();
+  await expect(page.getByRole("progressbar")).not.toBeVisible();
+  await expect(page.getByRole("link", { name: /неделя/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Добавить задачу", exact: true }).nth(1).click();
   await page.getByRole("textbox", { name: "Название задачи" }).fill("План на будущий полидень");
   await page.getByRole("textbox", { name: "Название задачи" }).press("Enter");
