@@ -4,6 +4,8 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.widget.TextView
+import android.widget.BaseAdapter
+import android.widget.ListView
 import android.view.View
 import android.view.ViewGroup
 import android.graphics.Bitmap
@@ -88,6 +90,7 @@ class StoreTest {
         else tasks.put(JSONObject(morning.toString()).put("assigned", false).put("visibleFrom", now + 3600000))
         views.put(JSONObject().put("id", "$date/$slot").put("date", date).put("title", listOf("Утренний", "Дневной", "Вечерний")[index]).put("time", listOf("06:00–12:00", "12:30–18:30", "19:00–02:00 · +1 день")[index]).put("subtitle", "$date · 06:00–12:00").put("from", if (index == 0) 0 else now + index * 3600000).put("until", if (index == 2) Long.MAX_VALUE else now + (index + 1) * 3600000).put("tasks", tasks))
       }
+      views.put(JSONObject(views.getJSONObject(2).toString()).put("id", "$date/empty").put("title", "Пустой полидень").put("tasks", JSONArray()))
       val saved = store.load(account)!!
       assertTrue(store.compareAndSwap(account, saved.getInt("version"), saved.getJSONObject("state").toString(), JSONObject().put("generatedAt", now).put("validUntil", Long.MAX_VALUE).put("views", views).toString()))
       val current = PolydayRows.Rows(context, widgetId)
@@ -129,7 +132,7 @@ class StoreTest {
       assertFalse(PolydayWidget.showAll(context, widgetId + 1))
       val all = PolydayRows.Rows(context, widgetId)
       all.onCreate()
-      assertEquals(9, all.getCount())
+      assertEquals(8, all.getCount())
       InstrumentationRegistry.getInstrumentation().runOnMainSync {
         for (showAll in listOf(false, true)) {
           val widget = PolydayWidget.modeViews(context, widgetId, showAll).apply(context, null)
@@ -137,18 +140,65 @@ class StoreTest {
           assertTrue(selected.contentDescription.toString().endsWith(", выбран"))
           assertEquals(View.GONE, widget.findViewById<View>(R.id.polyday_mode_menu).visibility)
         }
-        val dateRow = all.getViewAt(2)!!.apply(context, null)
-        assertEquals("26 окт.", dateRow.findViewById<TextView>(R.id.heading_title).text.toString())
-        assertEquals("3 задачи", dateRow.findViewById<TextView>(R.id.heading_detail).text.toString())
-        val futureRow = all.getViewAt(6)!!.apply(context, null)
+        val heading = all.getViewAt(2)!!.apply(context, null)
+        assertEquals("Утренний", heading.findViewById<TextView>(R.id.heading_title).text.toString())
+        assertEquals("06:00–12:00", heading.findViewById<TextView>(R.id.heading_detail).text.toString())
+        assertEquals("Утренний, 06:00–12:00", heading.contentDescription.toString())
+        val futureRow = all.getViewAt(5)!!.apply(context, null)
         assertEquals("Обсудить макеты с Сашей", futureRow.findViewById<TextView>(R.id.task_title).text.toString())
+        val density = context.resources.displayMetrics.density
+        for (width in listOf(250, 350)) {
+          val prepared = PolydayWidget.modeViews(context, widgetId, true)
+          prepared.setTextViewText(R.id.polyday_title, "Все полидни")
+          prepared.setViewVisibility(R.id.polyday_subtitle, View.GONE)
+          prepared.setTextViewText(R.id.polyday_updated, "Обновлено 10:11")
+          val widget = prepared.apply(context, null) as ViewGroup
+          val list = widget.findViewById<ListView>(R.id.polyday_list)
+          assertNull(list.divider)
+          list.emptyView = widget.findViewById<View>(R.id.polyday_empty)
+          list.adapter = object : BaseAdapter() {
+            override fun getCount() = all.getCount()
+            override fun getItem(position: Int): Any = position
+            override fun getItemId(position: Int) = all.getItemId(position)
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View = all.getViewAt(position)!!.apply(context, parent)
+          }
+          widget.measure(View.MeasureSpec.makeMeasureSpec((width * density).toInt(), View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec((560 * density).toInt(), View.MeasureSpec.EXACTLY))
+          widget.layout(0, 0, widget.measuredWidth, widget.measuredHeight)
+          assertEquals(View.GONE, widget.findViewById<View>(R.id.polyday_empty).visibility)
+          for (position in listOf(2, 4, 6)) {
+            val row = list.getChildAt(position)
+            val title = row.findViewById<TextView>(R.id.heading_title)
+            val time = row.findViewById<TextView>(R.id.heading_detail)
+            assertEquals(1, title.lineCount)
+            assertEquals(1, time.lineCount)
+            assertTrue(title.right <= time.left)
+            assertTrue(kotlin.math.abs((title.top + title.height / 2) - (time.top + time.height / 2)) <= 1)
+          }
+          if (InstrumentationRegistry.getArguments().getString("keepWidgetFixture") == "true") {
+            val bitmap = Bitmap.createBitmap(widget.width, widget.height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            // Software Canvas does not apply View.clipToOutline as the launcher does.
+            val outline = android.graphics.Outline()
+            widget.background.setBounds(0, 0, widget.width, widget.height)
+            widget.background.getOutline(outline)
+            val bounds = Rect()
+            assertTrue(outline.getRect(bounds))
+            canvas.clipPath(android.graphics.Path().apply { addRoundRect(android.graphics.RectF(bounds), outline.radius, outline.radius, android.graphics.Path.Direction.CW) })
+            widget.draw(canvas)
+            File(context.getExternalFilesDir(null), "widget-all-compact-$width.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            bitmap.recycle()
+          }
+        }
       }
       store.complete(account, "afternoon-task")
       all.onDataSetChanged()
-      assertEquals(8, all.getCount())
+      assertEquals(6, all.getCount())
       assertEquals(1, store.load(account)!!.getJSONObject("state").getJSONArray("pending").length())
       assertEquals("afternoon", store.load(account)!!.getJSONObject("state").getJSONArray("pending").getJSONObject(0).getJSONObject("entity").getJSONObject("data").getJSONObject("scheduling").getString("slotId"))
       assertEquals(0, store.projection(account)!!.getJSONArray("views").getJSONObject(1).getJSONArray("tasks").objects().count { it.getString("id") == "afternoon-task" })
+      for (id in listOf("morning-task", "night-task", "old-task")) store.complete(account, id)
+      all.onDataSetChanged()
+      assertEquals(0, all.getCount())
     } finally {
       if (InstrumentationRegistry.getArguments().getString("keepWidgetFixture") != "true") {
         store.clear(account)

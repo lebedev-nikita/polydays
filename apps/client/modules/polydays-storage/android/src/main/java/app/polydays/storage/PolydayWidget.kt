@@ -159,7 +159,7 @@ class PolydayWidget : AppWidgetProvider() {
 
 class PolydayRows : RemoteViewsService() {
   override fun onGetViewFactory(intent: Intent): RemoteViewsFactory = Rows(applicationContext, intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, 0))
-  internal data class Row(val id: String, val title: String = "", val detail: String = "", val destination: String? = null, val task: JSONObject? = null, val dateHeading: Boolean = false)
+  internal data class Row(val id: String, val title: String = "", val detail: String = "", val destination: String? = null, val task: JSONObject? = null)
   internal class Rows(private val context: Context, private val widgetId: Int = 0) : RemoteViewsFactory {
     private var rows = emptyList<Row>()
     override fun onCreate() { onDataSetChanged() }
@@ -187,10 +187,10 @@ class PolydayRows : RemoteViewsService() {
           add(Row("overdue", "Просрочено", "${overdue.size} · из прошлых суток"))
           addAll(overdue.map { Row(it.getString("id"), task = it) })
         }
-        add(Row("date:$date", PolydayWidget.subtitle("$date · ").substringBefore(" · "), "${assignedIds.size} ${taskWord(assignedIds.size)}", dateHeading = true))
         for (day in days) {
           val tasks = day.getJSONArray("tasks").objects().filter { it.optBoolean("assigned") }
-          val detail = day.getString("time") + if (tasks.isEmpty()) " · Нет задач" else ""
+          if (tasks.isEmpty()) continue
+          val detail = day.getString("time")
           val path = day.getString("id").split("/")
           val destination = "polydays://day/${Uri.encode(path[0])}/${Uri.encode(path[1])}"
           add(Row("heading:${day.getString("id")}", day.getString("title"), detail, destination))
@@ -198,7 +198,6 @@ class PolydayRows : RemoteViewsService() {
         }
       }
     }
-    private fun taskWord(count: Int): String = when { count % 100 in 11..14 -> "задач"; count % 10 == 1 -> "задача"; count % 10 in 2..4 -> "задачи"; else -> "задач" }
     override fun getCount() = rows.size
     override fun getViewAt(position: Int): RemoteViews? {
       val item = rows.getOrNull(position) ?: return null
@@ -207,11 +206,12 @@ class PolydayRows : RemoteViewsService() {
         val heading = RemoteViews(context.packageName, R.layout.polydays_widget_heading)
         heading.setTextViewText(R.id.heading_title, item.title)
         heading.setTextViewText(R.id.heading_detail, item.detail)
-        heading.setTextViewTextSize(R.id.heading_title, android.util.TypedValue.COMPLEX_UNIT_SP, if (item.dateHeading) 15f else 13f)
+        heading.setContentDescription(R.id.heading_row, listOf(item.title, item.detail).filter { it.isNotEmpty() }.joinToString(", "))
         heading.setOnClickFillInIntent(R.id.heading_row, Intent().apply { if (item.destination != null) putExtra("destination", item.destination) })
         return heading
       }
       val row = RemoteViews(context.packageName, R.layout.polydays_widget_row)
+      row.setViewVisibility(R.id.task_separator, if (rows.getOrNull(position + 1)?.task != null) View.VISIBLE else View.INVISIBLE)
       val deadline = if (task.isNull("deadline")) "" else task.getString("deadline")
       val overdue = task.optBoolean("overdue") || (!task.isNull("expiresAt") && task.getLong("expiresAt") < System.currentTimeMillis())
       row.setTextViewText(R.id.task_title, task.getString("title"))
