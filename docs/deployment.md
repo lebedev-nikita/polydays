@@ -52,6 +52,8 @@ just release
 
 Publish the Android APK, macOS DMG and `SHA256SUMS`. The DMG contains the macOS application, so no separate application ZIP is built. Keep `release.json` locally for publishing checks; it is not uploaded to GitHub.
 
+Before publishing, install the staged signed APK on an Android test device with a saved account and schedule. Run `bun scripts/+test-android-timeline.ts SERIAL` to check plans, scrolling and history in Hermes; browser tests do not establish native API support. The check does not edit account data.
+
 Release packaging disables Finder automation for macOS, so building the DMG does not open an installer window. The image retains the application and Applications link, without custom Finder icon positions.
 
 Set the version in the root, client and macOS package manifests, Expo `app.json`, and desktop Cargo/Tauri manifests. Increase Android's `versionCode` for each release. Add the release notes at `docs/releases/<version>.md`.
