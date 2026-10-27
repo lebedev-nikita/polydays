@@ -66,6 +66,7 @@ import { TaskCompletion } from "./task-completion";
 
 const days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 export type TaskFormProps = {
+  readonly initialPanel?: "schedule";
   readonly scheduling: Scheduling;
   readonly task?: Task;
   readonly onClose: () => void;
@@ -155,6 +156,7 @@ function InlineFormContent({ children, contentContainerStyle }: ScrollViewProps)
 }
 
 export function TaskForm({
+  initialPanel,
   scheduling,
   task,
   onClose,
@@ -226,7 +228,7 @@ export function TaskForm({
   const [showDescription, setShowDescription] = useState(!!task?.description);
   const [openProperty, setOpenProperty] = useState<
     "schedule" | "priority" | "repeat" | "actions" | null
-  >(null);
+  >(initialPanel ?? null);
   const propertySnapshot = useRef({
     kind,
     date,

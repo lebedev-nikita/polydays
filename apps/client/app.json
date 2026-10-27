@@ -3,7 +3,7 @@
     "name": "Polydays",
     "slug": "polydays",
     "scheme": "polydays",
-    "version": "0.3.15",
+    "version": "0.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -20,7 +20,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "versionCode": 26
+      "versionCode": 27
     },
     "web": {
       "bundler": "metro",

@@ -6,6 +6,8 @@ Release Android and macOS together, using the same version and commit. Follow [r
 
 For every stable release (not a release candidate), merge the release branch into `origin/main`. A stable release is complete only after verifying that `origin/main` contains the release commit.
 
+Keep every release candidate in GitHub Release draft status, including after uploading and verifying all platform artifacts.
+
 ## UI design
 
 After each user UI correction, update this section with concise, reusable conclusions. Merge related lessons into existing rules.

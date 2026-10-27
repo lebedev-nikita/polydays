@@ -15,7 +15,7 @@ for (const width of [1440, 390]) {
     await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
     const title = page.getByRole("textbox", { name: "Название задачи" });
     await title.fill("Проверить углы панелей");
-    await expectSingleContour(title);
+    await expectSingleContour(title, width >= 600);
     await page.getByRole("button", { name: /^Приоритет ·/ }).click();
     await expectClippedCorner(page.getByRole("radio", { name: "P1 · Высокий", exact: true }));
     await page.getByRole("radio", { name: "P3 · Низкий", exact: true }).click();
@@ -24,7 +24,10 @@ for (const width of [1440, 390]) {
     await expectClippedCorner(page.getByRole("button", { name: "Сегодня", exact: true }));
     await expectClippedCorner(page.getByRole("button", { name: "Добавить время", exact: true }));
     await page.getByRole("button", { name: "Повтор", exact: true }).click();
-    await expectSingleContour(page.getByRole("heading", { name: "Повторение", exact: true }));
+    await expectSingleContour(
+      page.getByRole("heading", { name: "Повторение", exact: true }),
+      width >= 600,
+    );
     await page.getByRole("button", { name: "Отменить настройки", exact: true }).click();
     await page.getByRole("button", { name: "Добавить задачу", exact: true }).last().click();
     await expect(title).not.toBeVisible();

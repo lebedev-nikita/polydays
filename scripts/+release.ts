@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { Effect, Schema } from "effect";
+import { releasePolicy } from "./release-policy";
 
 const root = resolve(import.meta.dirname, "..");
 const run = Effect.fn("release.run")(
@@ -43,9 +44,8 @@ const program = Effect.gen(function* () {
       yield* Effect.tryPromise(() => readFile(join(root, "apps/client/app.json"), "utf8")),
     ),
   );
-  const version = app.expo.version;
-  if (!/^\d+\.\d+\.\d+$/.test(version))
-    return yield* Effect.fail(new Error("Use a stable semver version."));
+  const policy = releasePolicy(app.expo.version);
+  const { version, tag } = policy;
   const directory = join(root, ".data/releases", version);
   const commit = yield* output("git", ["rev-parse", "HEAD"]);
   const sourceClean = !(yield* output("git", ["status", "--porcelain"]));
@@ -234,8 +234,7 @@ const program = Effect.gen(function* () {
     if (createHash("sha256").update(data).digest("hex") !== asset.sha256)
       return yield* Effect.fail(new Error(`Artifact checksum mismatch: ${asset.name}`));
   }
-  yield* run("git", ["push", "origin", "HEAD:main"]);
-  const tag = `v${version}`;
+  yield* run("git", ["push", "origin", policy.pushToMain ? "HEAD:main" : "HEAD"]);
   const existingTag = yield* output("git", ["tag", "--list", tag]);
   if (!existingTag) yield* run("git", ["tag", "-a", tag, "-m", `Polydays ${version}`]);
   if ((yield* output("git", ["rev-list", "-n", "1", tag])) !== commit)
@@ -244,11 +243,7 @@ const program = Effect.gen(function* () {
   const publishedNames = [...names, "SHA256SUMS"];
   const assets = publishedNames.map((name) => join(directory, name));
   yield* run("gh", [
-    "release",
-    "create",
-    tag,
-    "--verify-tag",
-    "--draft",
+    ...policy.createArgs,
     "--title",
     `Polydays ${version}`,
     "--notes-file",
@@ -256,14 +251,28 @@ const program = Effect.gen(function* () {
     ...assets,
   ]);
   const uploaded = Schema.decodeUnknownSync(
-    Schema.Struct({ assets: Schema.Array(Schema.Struct({ name: Schema.String })) }),
-  )(JSON.parse(yield* output("gh", ["release", "view", tag, "--json", "assets"])));
+    Schema.Struct({
+      assets: Schema.Array(Schema.Struct({ name: Schema.String })),
+      isDraft: Schema.Boolean,
+      isPrerelease: Schema.Boolean,
+    }),
+  )(
+    JSON.parse(
+      yield* output("gh", ["release", "view", tag, "--json", "assets,isDraft,isPrerelease"]),
+    ),
+  );
   if (publishedNames.some((name) => !uploaded.assets.some((asset) => asset.name === name)))
     return yield* Effect.fail(
       new Error("Release assets are incomplete; the release stays a draft."),
     );
-  yield* run("gh", ["release", "edit", tag, "--draft=false", "--latest"]);
-  yield* Effect.log(`Published Android and macOS together: ${tag}`);
+  if (!uploaded.isDraft || uploaded.isPrerelease !== policy.releaseCandidate)
+    return yield* Effect.fail(new Error("The release draft or prerelease status is incorrect."));
+  if (policy.publishArgs.length) yield* run("gh", policy.publishArgs);
+  yield* Effect.log(
+    policy.releaseCandidate
+      ? `Android and macOS release candidates uploaded; draft retained: ${tag}`
+      : `Published Android and macOS together: ${tag}`,
+  );
 });
 
 await Effect.runPromise(program);

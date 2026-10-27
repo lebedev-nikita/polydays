@@ -13,19 +13,20 @@
     overflow: hidden;
   }
   :focus-visible {
-    outline: 2px solid #b9382e;
+    outline: 2px solid #dc3424;
     outline-offset: 3px;
   }
-  .composer-field:focus-visible {
+  .composer-field:focus-visible,
+  input[aria-label="Поиск задач"]:focus-visible {
     outline: none;
   }
   ::selection {
-    background: #f9e9e4;
-    color: #252421;
+    background: #ffefe5;
+    color: #202020;
   }
   input,
   textarea {
-    caret-color: #b9382e;
+    caret-color: #dc3424;
   }
   * {
     scrollbar-width: thin;

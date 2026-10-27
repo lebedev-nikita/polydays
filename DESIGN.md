@@ -3,18 +3,20 @@ name: Polydays
 description: Familiar Todoist task lists organised around personal wake intervals.
 colors:
   canvas: "#ffffff"
-  sidebar: "#faf9f6"
-  ink: "#252421"
-  muted: "#66645f"
-  line: "#e9e7e2"
+  sidebar: "#faf9f7"
+  ink: "#202020"
+  muted: "#666666"
+  line: "#e8e8e8"
   sheet: "#f6f4ef"
   overlay: "rgba(0, 0, 0, 0.3)"
-  accent: "#b9382e"
-  selected: "#f9e9e4"
-  priority-1: "#c73529"
-  priority-2: "#b85f00"
-  priority-3: "#286db4"
-  priority-4: "#66645f"
+  accent: "#dc3424"
+  accent-hover: "#b82b21"
+  neutral-hover: "#eeeeee"
+  selected: "#ffefe5"
+  priority-1: "#d1453b"
+  priority-2: "#c77700"
+  priority-3: "#246fe0"
+  priority-4: "#808080"
   widget-priority-4: "#949494"
   error-surface: "#fff0ed"
   warning-surface: "#fff5df"
@@ -78,13 +80,13 @@ components:
     textColor: "{colors.canvas}"
     typography: "{typography.button}"
     rounded: "{rounded.md}"
-    padding: "0.625rem 1rem"
+    padding: "0.5rem 0.75rem"
   button-secondary:
-    backgroundColor: "{colors.canvas}"
+    backgroundColor: "{colors.sidebar}"
     textColor: "{colors.ink}"
     typography: "{typography.button}"
     rounded: "{rounded.md}"
-    padding: "0.625rem 1rem"
+    padding: "0.5rem 0.75rem"
   button-secondary-active:
     backgroundColor: "{colors.sidebar}"
   field:
@@ -154,7 +156,7 @@ The palette is warm and quiet; color identifies action, selection, priority and 
 
 ### Priority and status
 
-- **P1 red, P2 orange, P3 blue:** shared-client and native widget completion circles use the same priority tokens. Widget P1–P3 have faint tinted fills; widget P4 uses the unfilled `widget-priority-4` outline.
+- **P1 red, P2 orange, P3 blue:** shared-client completion circles use the priority tokens above. Native widgets retain their existing palette in Android drawable resources. Widget P1–P3 have faint tinted fills; widget P4 uses the unfilled `widget-priority-4` outline.
 - **Error surface:** pale red with tomato text. **Warning surface / ink:** pale amber conflict banner and brown sleep-gap text. **Success:** green saved feedback.
 
 **The Restrained Accent Rule.** Use tomato for action, selection and overdue cues; keep ordinary content surfaces white or warm neutral.
@@ -178,7 +180,7 @@ Server-rendered OAuth and connection pages use the same system sans stack, with 
 
 ## Layout
 
-At window width **850 or greater**, the shell uses a left sidebar (244 source units) and a centred content container (maximum 850 source units). Desktop content insets are 3.5rem horizontally and 3rem above; smaller windows use 1.25rem horizontally and 1.75rem above. The wide layout has a sidebar add action; the narrow layout has a top app bar, bottom destination bar and a floating add button above it.
+At window width **850 or greater**, the shell uses a collapsible left sidebar (280 source units), a top toolbar (3rem) and a centred content container (maximum 1000 source units). Desktop content insets are 3.5rem horizontally and 1.75rem above; smaller windows use 1.25rem horizontally and 1.75rem above. The wide layout has a sidebar add action; the narrow layout has a top app bar, bottom destination bar and a floating add button above it.
 
 Interval choices form a wrapping row with 0.5rem gaps; they are not constrained to a single horizontal strip. Priority and recurrence choices also wrap. Main content scrolls with bottom padding (70 source units wide, 100 narrow) to leave room around fixed navigation and the add action. Native content is inside top and bottom safe areas.
 
@@ -202,7 +204,7 @@ Controls have small rounded corners (`rounded.md`), panels and task-detail conta
 
 ### Buttons
 
-Compact, semibold actions. Primary buttons use tomato with white text; secondary buttons use white, dark ink and a fine border. Both use the frontmatter padding and a source minimum height of 3rem. Primary press opacity is 80%; secondary press fill becomes warm sidebar. Disabled buttons are noninteractive at 40% opacity. Source supplies no distinct hover recolor or animated press transition.
+Compact, semibold actions. Primary buttons use tomato with white text; secondary buttons use warm sidebar, dark ink and a fine border. Both use the frontmatter padding and a source minimum height of 44px, reduced to 36px at the `md` breakpoint. Primary press opacity is 80%; secondary press fill becomes warm sidebar. Disabled buttons are noninteractive at 40% opacity. Primary hover deepens to `accent-hover`; secondary hover uses `neutral-hover`.
 
 Web interactive controls use the global tomato focus-visible outline (2px, offset 3px). Native controls retain their platform interaction behavior; the web outline is not a native focus-ring specification.
 
@@ -250,11 +252,19 @@ Upcoming and history keep the destination title full-width, without explanatory 
 
 ### Task rows and quick entry
 
-Rows use a bottom separator, 0.5rem vertical padding and a source minimum height of 70. A 19-unit priority circle with a 1.7-unit stroke sits within a separate 3rem-square completion target. Unfinished P1–P3 circles have a faint priority-colored fill; P4 remains unfilled. Completion fills the circle, adds a white check and mutes/strikes the title. On desktop, the adjacent title target opens a compact inline editor in the same row, keeping surrounding tasks and navigation visible. Its completion circle sits beside the title inside the editor border, with the description aligned below the title. On phones, the title opens a bottom sheet over the dimmed list without focusing an input. The warm sheet has 28-unit top corners, a handle, destination header and overflow actions; white title, scheduling and priority rows sit beneath it. The title row owns a 23-unit completion circle. An empty description appears on request; reorder, delete and series actions live in the overflow menu. Mobile details use back navigation and a text Save action. Focusing the title or description, or choosing Edit in the overflow menu, expands the same form to the full window. Text editing shows only the title and description under a fixed Back / Edit task / Save header. Back returns to task details with the draft intact; dismissing details still confirms unsaved changes. Save remains reachable above the keyboard and closes the editor, including when unchanged. Desktop editing keeps the same in-place layout with a text Save action and back navigation. Descriptions truncate to one line; deadline, overdue/original-polyday, sleep-gap and recurrence metadata can wrap below the title.
+Rows use a bottom separator and a source minimum height of 54. A 19-unit priority circle with a 1.7-unit stroke sits within a separate 3rem-square completion target. Unfinished P1–P3 circles have a faint priority-colored fill; P4 remains unfilled. Completion fills the circle, adds a white check and mutes/strikes the title. On desktop, the adjacent title target opens a compact inline editor in the same row, keeping surrounding tasks and navigation visible. Its completion circle sits beside the title inside the editor border, with the description aligned below the title. On phones, the title opens a bottom sheet over the dimmed list without focusing an input. The warm sheet has 28-unit top corners, a handle, destination header and overflow actions; white title, scheduling and priority rows sit beneath it. The title row owns a 23-unit completion circle. An empty description appears on request; reorder, delete and series actions live in the overflow menu. Mobile details use back navigation and a text Save action. Focusing the title or description, or choosing Edit in the overflow menu, expands the same form to the full window. Text editing shows only the title and description under a fixed Back / Edit task / Save header. Back returns to task details with the draft intact; dismissing details still confirms unsaved changes. Save remains reachable above the keyboard and closes the editor, including when unchanged. Desktop editing keeps the same in-place layout with a text Save action and back navigation. Descriptions truncate to one line; deadline, overdue/original-polyday, sleep-gap and recurrence metadata can wrap below the title.
 
 Preserve priority-first order and individual rows for recurring occurrences. Overdue metadata includes the original polyday date and name. Quick entry closes after a successful save. Pressing its backdrop requests dismissal with the same unsaved-draft confirmation as the close button; failed saves leave the form open. Editing an existing task collapses its editor on save. Desktop inline editors use a flat border and 12-unit corners and expose reorder and delete as compact toolbar actions. Switching tasks or closing with unsaved edits asks before discarding the draft. Existing task links reveal the editor from the corresponding list using the same platform layout.
 
 On web, unmodified **Q** opens quick entry only for the focused screen when it is ready and its composer is closed. The handler ignores handled/repeated keys, Ctrl/Meta/Alt combinations, inputs, textareas, selects, editable content and dialog descendants. Typing `!!` or `#` at the end of a title opens priority or scheduling choices; selecting a choice removes the trigger. An existing deadline task initially exposes only date/time scheduling; **“Убрать дедлайн”** explicitly clears it before inbox or an untimed polyday can be selected.
+
+### Search, row actions and undo
+
+Search and shortcut help open in overlays. Search matches all query words against title and description, searches saved tasks plus recurring occurrences through the next 30 days, and optionally includes completed tasks. Results open the current task editor in its appropriate list.
+
+The desktop sidebar can collapse and reopen from the top toolbar. Upcoming and history retain their grouped, continuously scrolling timelines. Contextual capture opens inline on desktop and in the keyboard-aware composer on phones, including empty upcoming polydays.
+
+Task rows expose edit, scheduling and overflow actions. Overflow offers priority and deletion. On web, **/** or **⌘/Ctrl K** opens search and **?** opens shortcut help; focused task buttons accept **E** for completion and **1–4** for priority. Shortcuts ignore typing and inactive screens. Completion/reopening and deletion show an eight-second notice with Undo and Close; undo preserves unrelated later edits.
 
 ### Sync feedback and Android widget
 
