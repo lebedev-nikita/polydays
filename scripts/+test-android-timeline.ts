@@ -31,7 +31,7 @@ const open = async (path: string, heading: string) => {
   for (let attempt = 0; attempt < 5; attempt++) {
     await setTimeout(500);
     xml = dump();
-    if (/timeline-date-\d{4}-\d{2}-\d{2}|Пока нет завершённых полидней/.test(xml)) break;
+    if (/timeline-date-\d{4}-\d{2}-\d{2}|Пока нет выполненных задач/.test(xml)) break;
   }
   assert(
     xml.includes(`text="${heading}"`),
@@ -39,7 +39,7 @@ const open = async (path: string, heading: string) => {
   );
   assert(
     /timeline-date-\d{4}-\d{2}-\d{2}/.test(xml) ||
-      (path === "history" && xml.includes("Пока нет завершённых полидней")),
+      (path === "history" && xml.includes("Пока нет выполненных задач")),
     "The timeline or its empty history must render.",
   );
   return xml;

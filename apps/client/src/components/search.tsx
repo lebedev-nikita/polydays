@@ -138,15 +138,10 @@ export function SearchDialog({ onClose }: { onClose: () => void }) {
           <View className="items-center gap-3 px-5 py-12">
             <Search size={30} color={colors.muted} />
             <Text className="text-base font-semibold text-ink">Ничего не найдено</Text>
-            <Text className="text-center text-sm text-muted">
-              Попробуйте другое название или включите выполненные задачи.
-            </Text>
           </View>
         )}
       </ScrollView>
-      <Text className="border-t border-line px-4 py-3 text-[11px] text-muted">
-        Все сохранённые задачи и повторения на ближайшие 30 дней · Esc — закрыть
-      </Text>
+      <Text className="px-4 py-3 text-[11px] text-muted">Повторения на ближайшие 30 дней</Text>
     </Overlay>
   );
 }

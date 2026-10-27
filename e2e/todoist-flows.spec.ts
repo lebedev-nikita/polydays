@@ -128,8 +128,12 @@ test("sidebar, shortcut help and contextual upcoming capture", async ({ page }) 
   await expect(page.getByRole("heading", { name: "Предстоящие", exact: true })).toBeVisible();
   await expect(page.getByRole("progressbar")).not.toBeVisible();
   await expect(page.getByRole("link", { name: /неделя/ })).toHaveCount(0);
-  await page.getByRole("button", { name: "Добавить задачу", exact: true }).nth(1).click();
+  await page.getByRole("button", { name: "Добавить задачу", exact: true }).first().click();
   await page.getByRole("textbox", { name: "Название задачи" }).fill("План на будущий полидень");
+  await page.getByRole("button", { name: /^Когда выполнить ·/ }).click();
+  await page.getByRole("button", { name: "Завтра", exact: true }).click();
+  await page.getByRole("radio", { name: "Утренний", exact: true }).click();
+  await page.getByRole("button", { name: "Готово", exact: true }).click();
   await page.getByRole("textbox", { name: "Название задачи" }).press("Enter");
   await expect(
     page.getByRole("button", {

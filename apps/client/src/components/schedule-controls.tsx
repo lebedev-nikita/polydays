@@ -99,16 +99,11 @@ export function TimeZoneControl({
               >
                 <View className="flex-1 gap-1">
                   <Text className="text-sm text-ink">{timeZoneLabel(item, now)}</Text>
-                  <Text className="text-xs text-muted">{item.replaceAll("_", " ")}</Text>
                 </View>
                 {item === zone && <Check size={16} color={colors.accent} />}
               </Pressable>
             ))}
-            {!filtered.length && (
-              <Text className="py-3 text-sm text-muted">
-                Ничего не найдено. Попробуйте другое название города.
-              </Text>
-            )}
+            {!filtered.length && <Text className="py-3 text-sm text-muted">Город не найден</Text>}
           </ScrollView>
         </View>
       )}
@@ -127,7 +122,6 @@ export function EffectiveDateControl(props: {
       label="Когда изменить интервалы"
       accessibilityLabel="Дата начала действия расписания"
       minDate={props.today}
-      hint="Названия обновляются сразу. Границы прошлых полидней сохранятся."
     />
   );
 }
@@ -139,7 +133,6 @@ export function DateControl({
   label,
   accessibilityLabel = label,
   minDate,
-  hint,
   clearable = false,
   error,
   trailing,
@@ -152,7 +145,6 @@ export function DateControl({
   label: string;
   accessibilityLabel?: string;
   minDate?: string;
-  hint?: string;
   clearable?: boolean;
   error?: string;
   trailing?: ReactNode;
@@ -214,7 +206,6 @@ export function DateControl({
           {trailing}
         </View>
       )}
-      {hint && <Text className="text-xs leading-5 text-muted">{hint}</Text>}
       <ErrorMessage>{error}</ErrorMessage>
       {(open || inline) && (
         <View

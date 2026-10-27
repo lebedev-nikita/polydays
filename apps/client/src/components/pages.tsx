@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Link, Redirect, useLocalSearchParams } from "expo-router";
-import { ChevronRight, LogOut } from "lucide-react-native";
+import { ChevronDown, LogOut } from "lucide-react-native";
 import {
   activeVersion,
   addDays,
@@ -36,12 +36,15 @@ function prettyDate(date: string, includeYear = false): string {
     timeZone: "UTC",
   }).format(new Date(`${date}T12:00:00Z`));
 }
-function Title({ title, subtitle }: { title: string; subtitle?: string }) {
+function Title({ title, subtitle, time }: { title: string; subtitle?: string; time?: string }) {
   return (
-    <View className="mb-7 gap-2">
-      <Text accessibilityRole="header" className="text-[26px] font-bold leading-8 text-ink">
-        {title}
-      </Text>
+    <View className="mb-5 gap-1">
+      <View className="flex-row flex-wrap items-baseline gap-x-3 gap-y-1">
+        <Text accessibilityRole="header" className="text-[26px] font-bold leading-8 text-ink">
+          {title}
+        </Text>
+        {time && <Text className="text-sm text-muted">{time}</Text>}
+      </View>
       {subtitle && <Text className="text-sm leading-5 text-muted">{subtitle}</Text>}
     </View>
   );
@@ -93,17 +96,13 @@ export function PolydayScreen({ explicit = false }: { explicit?: boolean }) {
       )}
       <Title
         title={day?.name ?? "Текущий полидень"}
-        subtitle={
+        time={
           day
-            ? `${prettyDate(day.date)} · ${day.startTime}–${day.endTime}${day.endTime < day.startTime ? " следующего дня" : ""}`
-            : "Сначала настройте своё расписание"
+            ? `${day.startTime}–${day.endTime}${day.endTime < day.startTime ? " · +1 день" : ""}`
+            : undefined
         }
+        subtitle={day ? prettyDate(day.date) : undefined}
       />
-      {!explicit && day && app.now < day.start && (
-        <Text className="mb-5 text-sm leading-5 text-muted">
-          Сейчас время сна по расписанию. Уже открыт следующий полидень.
-        </Text>
-      )}
       {calendar && (
         <View className="mb-7 flex-row flex-wrap gap-2">
           {polydaysOn(calendar, date).map((item) => (
@@ -116,12 +115,13 @@ export function PolydayScreen({ explicit = false }: { explicit?: boolean }) {
               asChild
             >
               <Pressable
+                accessibilityLabel={`${item.name} · ${item.startTime}–${item.endTime}`}
                 className={`min-h-12 justify-center rounded-md border px-3 ${day?.id === item.id ? "border-accent bg-selected" : "border-line"}`}
               >
                 <Text
                   className={`text-xs ${day?.id === item.id ? "font-semibold text-accent" : "text-muted"}`}
                 >
-                  {item.name} · {item.startTime}
+                  {item.name}
                 </Text>
               </Pressable>
             </Link>
@@ -167,11 +167,16 @@ function PolydayTasks({
           <Pressable
             onPress={() => setShowCompleted(!showCompleted)}
             accessibilityRole="button"
-            className="min-h-12 justify-center"
+            accessibilityLabel={`${showCompleted ? "Скрыть" : "Показать"} выполненные`}
+            accessibilityState={{ expanded: showCompleted }}
+            className="min-h-12 flex-row items-center gap-2"
           >
-            <Text className="text-sm text-muted">
-              {showCompleted ? "Скрыть" : "Показать"} выполненные
-            </Text>
+            <Text className="text-sm text-muted">Выполненные</Text>
+            <ChevronDown
+              size={14}
+              color={colors.muted}
+              style={{ transform: [{ rotate: showCompleted ? "180deg" : "0deg" }] }}
+            />
           </Pressable>
           {showCompleted && (
             <TaskList
@@ -189,7 +194,7 @@ function PolydayTasks({
 export function BacklogScreen() {
   return (
     <AppShell>
-      <Title title="Входящие" subtitle="Задачи, которым вы ещё не выбрали полидень" />
+      <Title title="Входящие" />
       <PageContent>
         <BacklogTasks />
       </PageContent>
@@ -221,8 +226,13 @@ export function TimelineScreen({ history = false }: { history?: boolean }) {
         : today;
   const [weeks, setWeeks] = useState(1);
   const pending = useRef(false);
-  const onReady = useCallback(() => {
-    pending.current = false;
+  const [loadedRanges, setLoadedRanges] = useState<ReadonlyMap<string, boolean>>(new Map());
+  const onReady = useCallback((range: string, populated: boolean) => {
+    pending.current = !populated;
+    setLoadedRanges((previous) => {
+      if (previous.get(range) === populated) return previous;
+      return new Map(previous).set(range, populated);
+    });
   }, []);
   const earliest = calendar
     ? [
@@ -255,6 +265,22 @@ export function TimelineScreen({ history = false }: { history?: boolean }) {
           </PageContent>
         );
       })}
+      {loadedRanges.size === weeks && ![...loadedRanges.values()].some(Boolean) && (
+        <Text className="py-6 text-sm text-muted">
+          {history ? "Пока нет выполненных задач" : "Нет запланированных задач"}
+        </Text>
+      )}
+      {hasMore && (
+        <Button
+          secondary
+          onPress={() => {
+            pending.current = true;
+            setWeeks((count) => count + 1);
+          }}
+        >
+          Показать ещё
+        </Button>
+      )}
     </AppShell>
   );
 }
@@ -268,10 +294,20 @@ function TimelineDays({
   from: string;
   until: string;
   history: boolean;
-  onReady: () => void;
+  onReady: (range: string, populated: boolean) => void;
 }) {
   const { calendar, tasks, series, now } = useApp();
-  useEffect(onReady, [onReady]);
+  // Keep an edited section mounted when its last task is moved elsewhere.
+  const [activeDays, setActiveDays] = useState<ReadonlySet<string>>(new Set());
+  const onActiveChange = useCallback((id: string, active: boolean) => {
+    setActiveDays((previous) => {
+      if (previous.has(id) === active) return previous;
+      const next = new Set(previous);
+      if (active) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
   const year = calendar ? dateAt(now, activeVersion(calendar, now).timeZone).slice(0, 4) : "";
   const days = calendar
     ? polydaysBetween(calendar, from, until)
@@ -281,70 +317,61 @@ function TimelineDays({
   const all = calendar ? expandedTasks(tasks, series, calendar, until) : [];
   const views = calendar ? all.map((task) => taskView(task, calendar, now)) : [];
   const groups = groupPolydaysByDate(
-    days.map((day) => ({
-      ...day,
-      rows: sortTasks(views.filter((view) => view.polyday?.id === day.id)),
-    })),
+    days
+      .map((day) => ({
+        ...day,
+        rows: sortTasks(
+          views.filter(
+            (view) =>
+              view.polyday?.id === day.id && (history ? view.task.completed : !view.task.completed),
+          ),
+        ),
+      }))
+      .filter((day) => day.rows.length > 0 || activeDays.has(day.id)),
   );
+  useEffect(() => onReady(from, groups.length > 0), [onReady, from, groups.length]);
   return (
     <>
-      {!days.length && (
-        <Text className="py-10 text-sm text-muted">
-          Пока нет {history ? "завершённых" : "предстоящих"} полидней.
-        </Text>
-      )}
       {groups.map(({ date, polydays }) => {
-        const rows = polydays.flatMap((day) => day.rows);
-        const completed = rows.filter((row) => row.task.completed).length;
-        const remaining = rows.length - completed;
-        // Android Hermes does not provide Intl.PluralRules.
-        const lastDigits = remaining % 100;
-        const lastDigit = remaining % 10;
-        const taskWord =
-          lastDigits >= 11 && lastDigits <= 14
-            ? "задач"
-            : lastDigit === 1
-              ? "задача"
-              : lastDigit >= 2 && lastDigit <= 4
-                ? "задачи"
-                : "задач";
         return (
           <View key={date} testID={`timeline-date-${date}`} className="mb-10">
             <View className="mb-3 flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <Text accessibilityRole="header" className="text-lg font-bold text-ink">
                 {prettyDate(date, date.slice(0, 4) !== year)}
               </Text>
-              <Text className="text-xs text-muted">
-                {history ? `Выполнено ${completed} из ${rows.length}` : `${remaining} ${taskWord}`}
-              </Text>
             </View>
             {polydays.map((day) => (
               <View key={day.id} className="mb-4">
-                <Link
-                  href={{
-                    pathname: "/day/[date]/[slotId]",
-                    params: { date: day.date, slotId: day.slotId },
-                  }}
-                  asChild
-                >
-                  <Pressable className="min-h-12 flex-row items-center justify-between">
-                    <View className="min-w-0 flex-1 flex-row flex-wrap items-baseline gap-x-3 gap-y-1 py-2">
-                      <Text className="text-base font-semibold text-ink">{day.name}</Text>
-                      <Text className="text-xs text-muted">
-                        {day.startTime}–{day.endTime}
-                        {day.endTime < day.startTime ? " · +1 день" : ""}
-                      </Text>
-                    </View>
-                    <ChevronRight size={18} color={colors.muted} />
-                  </Pressable>
-                </Link>
                 <TaskList
-                  rows={day.rows.filter((row) =>
-                    history ? row.task.completed : !row.task.completed,
-                  )}
+                  listId={day.id}
+                  onActiveChange={onActiveChange}
+                  header={
+                    <Link
+                      href={{
+                        pathname: "/day/[date]/[slotId]",
+                        params: { date: day.date, slotId: day.slotId },
+                      }}
+                      asChild
+                    >
+                      <Pressable className="min-h-11 flex-row items-center justify-between">
+                        <View className="min-w-0 flex-1 flex-row items-baseline gap-3 py-2">
+                          <Text
+                            numberOfLines={1}
+                            className="min-w-0 shrink text-sm font-semibold text-ink"
+                          >
+                            {day.name}
+                          </Text>
+                          <Text className="text-xs text-muted">
+                            {day.startTime}–{day.endTime}
+                            {day.endTime < day.startTime ? " · +1 день" : ""}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    </Link>
+                  }
+                  rows={day.rows}
                   scheduling={{ kind: "polyday", date: day.date, slotId: day.slotId }}
                   includeCompleted={history}
-                  emptyLabel={history ? "Нет выполненных задач" : "Задачи ещё не запланированы"}
                 />
               </View>
             ))}
@@ -371,12 +398,7 @@ export function SettingsScreen() {
   return (
     <AppShell>
       {Platform.OS === "android" && (
-        <View className="mb-8 gap-3 border-b border-line pb-6">
-          <Text className="text-lg font-semibold text-ink">Виджет на главном экране</Text>
-          <Text className="text-sm leading-5 text-muted">
-            Переключайтесь между текущим и всеми полиднями суток. Завершайте задачи прямо в виджете,
-            даже без сети.
-          </Text>
+        <View className="mb-6 gap-3">
           <Button
             secondary
             onPress={() => {
@@ -397,7 +419,7 @@ export function SettingsScreen() {
         </View>
       )}
       <ScheduleEditor />
-      <View className="mt-10 gap-4 border-t border-line pt-7">
+      <View className="mt-10 gap-4">
         <Text className="text-base font-semibold text-ink">Аккаунт</Text>
         <Text className="text-sm text-muted">{app.account?.email}</Text>
         <View className="gap-1.5">
@@ -481,13 +503,10 @@ export function ConflictsScreen() {
   const [error, setError] = useState<string | null>(null);
   return (
     <AppShell>
-      <Title
-        title="Конфликты изменений"
-        subtitle="Выберите, какие изменения сохранить. Другие задачи продолжают синхронизироваться."
-      />
+      <Title title="Конфликты изменений" subtitle="Выберите, какие изменения сохранить." />
       <ErrorMessage>{error}</ErrorMessage>
       {app.local?.conflicts.map((conflict) => (
-        <View key={conflict.id} className="mb-6 gap-4 border-b border-line pb-6">
+        <View key={conflict.id} className="mb-6 gap-4">
           <Text className="text-base font-semibold text-ink">
             {conflict.local.kind === "task"
               ? conflict.local.data.title

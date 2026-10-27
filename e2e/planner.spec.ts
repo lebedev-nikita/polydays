@@ -285,7 +285,7 @@ test("recurrence editing preserves the series deadline independently of an occur
   await page.getByRole("button", { name: "Изменить всю серию", exact: true }).click();
   await page.getByRole("button", { name: /^Повторение ·/ }).click();
   await expect(time).toHaveValue("21:15");
-  await expect(page.getByText(/Изменения применятся к будущим повторениям/)).toBeVisible();
+  await expect(page.getByText(/Изменения применятся с завтрашнего дня/)).toBeVisible();
   await time.fill("20:45");
   await done(page);
   await page.getByRole("textbox", { name: "Название задачи" }).fill("Черновик названия серии");
