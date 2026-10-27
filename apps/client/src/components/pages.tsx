@@ -297,8 +297,17 @@ function TimelineDays({
         const rows = polydays.flatMap((day) => day.rows);
         const completed = rows.filter((row) => row.task.completed).length;
         const remaining = rows.length - completed;
-        const count = new Intl.PluralRules("ru").select(remaining);
-        const taskWord = count === "one" ? "задача" : count === "few" ? "задачи" : "задач";
+        // Android Hermes does not provide Intl.PluralRules.
+        const lastDigits = remaining % 100;
+        const lastDigit = remaining % 10;
+        const taskWord =
+          lastDigits >= 11 && lastDigits <= 14
+            ? "задач"
+            : lastDigit === 1
+              ? "задача"
+              : lastDigit >= 2 && lastDigit <= 4
+                ? "задачи"
+                : "задач";
         return (
           <View key={date} testID={`timeline-date-${date}`} className="mb-10">
             <View className="mb-3 flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-1">

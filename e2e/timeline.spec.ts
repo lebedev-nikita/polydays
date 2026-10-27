@@ -3,6 +3,22 @@ import { defaultSlots, type Document, type Task } from "@polydays/core";
 
 test.use({ serviceWorkers: "block", timezoneId: "Asia/Tbilisi" });
 
+test("opens plans and history without Intl.PluralRules, as on Android Hermes", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(Intl, "PluralRules", { value: undefined, configurable: true });
+  });
+  await seedTimeline(page);
+  await page.goto("/upcoming");
+  const today = page.getByTestId("timeline-date-2026-10-26");
+  await expect(today.getByText("4 задачи", { exact: true })).toBeVisible();
+  await scrollToEnd(page);
+  await expect(page.getByTestId("timeline-date-2026-11-02")).toBeAttached();
+  await page.goto("/history");
+  await expect(
+    page.getByTestId("timeline-date-2026-10-25").getByText("Выполнено 3 из 4", { exact: true }),
+  ).toBeVisible();
+});
+
 for (const width of [1440, 390, 320]) {
   test(`groups timeline dates and updates their shared summary at ${width}px`, async ({
     page,
