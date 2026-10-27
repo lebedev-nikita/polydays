@@ -27,13 +27,21 @@ const open = async (path: string, heading: string) => {
     "-d",
     `polydays://${path}`,
   );
-  await setTimeout(1500);
-  const xml = dump();
+  let xml = "";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await setTimeout(500);
+    xml = dump();
+    if (/timeline-date-\d{4}-\d{2}-\d{2}|Пока нет завершённых полидней/.test(xml)) break;
+  }
   assert(
     xml.includes(`text="${heading}"`),
     `Missing ${heading}; sign in and configure a schedule first.`,
   );
-  assert(/timeline-date-\d{4}-\d{2}-\d{2}/.test(xml), "Timeline dates must render.");
+  assert(
+    /timeline-date-\d{4}-\d{2}-\d{2}/.test(xml) ||
+      (path === "history" && xml.includes("Пока нет завершённых полидней")),
+    "The timeline or its empty history must render.",
+  );
   return xml;
 };
 const dates = (xml: string) =>
