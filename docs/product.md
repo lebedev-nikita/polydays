@@ -14,8 +14,8 @@ Display priorities with the familiar P1–P4 convention: high/red, medium/orange
 - Polydays may cross midnight, for example 19:00–02:00, and use their start date for identification. Intervals cannot overlap; starts are inclusive and ends exclusive. Gaps are scheduled sleep.
 - The app follows the configured schedule. Actual sleep tracking is outside scope.
 - Each polyday has its own task list. Users can inspect past polydays and plan for future polydays.
-- Upcoming lists and history group consecutive polydays by their start date, with one shared date and task summary above the named intervals. Overnight polydays stay in their start-date group.
-- Timelines load additional dates when scrolling toward the end, without explanatory subtitles or week navigation. History stops at the first configured date; returning from a polyday preserves the loaded dates and position.
+- Upcoming lists and history group polydays with unfinished or completed tasks respectively by their start date, with one date heading and no task count. Empty polydays stay available in scheduling choices. Names and boundaries share a compact row; overnight polydays stay in their start-date group.
+- Timelines load additional dates when scrolling toward the end, without explanatory subtitles or week navigation. A compact load-more action also permits browsing when the loaded dates contain too few tasks to scroll. History stops at the first configured date; returning from a polyday preserves the loaded dates and position.
 - Completed tasks appear in their assigned or deadline-derived polyday, regardless of actual completion time. An untimed task can be moved to the current polyday before completion. For a deadline task, change the explicit deadline date/time to recalculate its polyday before completion.
 - History has no user ratings or automatic evaluations of usefulness. A written summary is not required in version one.
 - Schedule or series changes must not automatically alter past interval boundaries or task assignments. Manual editing of past interval boundaries is deferred beyond version one. Completing old tasks remains supported.

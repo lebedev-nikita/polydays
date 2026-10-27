@@ -166,15 +166,11 @@ export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
         <Text className="text-2xl font-bold text-ink">
           {initial ? "Настройте свои полидни" : "Расписание полидней"}
         </Text>
-        <Text className="text-sm leading-6 text-muted">
-          Задайте интервалы бодрствования между снами. Расписание будет повторяться ежедневно;
-          полидень может пересекать полночь.
-        </Text>
+        {initial && (
+          <Text className="text-sm text-muted">Интервалы бодрствования между снами.</Text>
+        )}
       </View>
       <View className="gap-4">
-        <Text className="text-xs leading-5 text-muted">
-          Время в 24-часовом формате: можно ввести 730 или 7:30 — получится 07:30.
-        </Text>
         {slots.map((slot, index) => {
           const start = normalizeTimeInput(slot.start);
           const end = normalizeTimeInput(slot.end);
@@ -225,7 +221,7 @@ export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
                         className="text-xs text-muted"
                         style={{ fontVariant: ["tabular-nums"] }}
                       >
-                        Длительность: {durationText}
+                        {durationText}
                       </Text>
                     )}
                   </View>
@@ -256,7 +252,7 @@ export function ScheduleEditor({ initial = false }: { initial?: boolean }) {
           <Text className="text-sm font-semibold text-accent">Добавить полидень</Text>
         </Pressable>
       </View>
-      <View className="flex-row flex-wrap items-start gap-6 border-t border-line pt-6">
+      <View className="flex-row flex-wrap items-start gap-6">
         <View className="min-w-60 flex-1">
           <TimeZoneControl
             zone={zone}

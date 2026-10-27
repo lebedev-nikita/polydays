@@ -14,6 +14,11 @@ for (const width of [1440, 390]) {
     await page.getByRole("button", { name: "Начать планирование" }).click();
     await expect(page.getByRole("link", { name: "Входящие", exact: true })).toBeVisible();
 
+    await page.getByRole("button", { name: "Добавить задачу", exact: true }).first().click();
+    await page
+      .getByRole("textbox", { name: "Название задачи", exact: true })
+      .fill("Проверить переходы");
+    await page.getByRole("textbox", { name: "Название задачи", exact: true }).press("Enter");
     for (const [name, heading] of [
       ["Входящие", "Входящие"],
       ["Предстоящие", "Предстоящие"],
@@ -31,7 +36,7 @@ for (const width of [1440, 390]) {
     await observeLoading(page, heading, () => day.click());
     const otherDay = page
       .locator('a[href^="/day/"]:visible')
-      .filter({ hasNotText: `${heading} ·` })
+      .filter({ hasNotText: heading })
       .last();
     const otherHeading = (await otherDay.innerText()).split(" · ")[0]!;
     await observeLoading(page, otherHeading, () => otherDay.click());

@@ -75,9 +75,7 @@ test("schedule accepts quick time entry, explains errors and keeps each wide row
   await zoneChoice.click();
   const zoneSearch = page.getByRole("textbox", { name: "Поиск часового пояса", exact: true });
   await zoneSearch.fill("несуществующий город");
-  await expect(
-    page.getByText("Ничего не найдено. Попробуйте другое название города."),
-  ).toBeVisible();
+  await expect(page.getByText("Город не найден")).toBeVisible();
   await zoneSearch.fill("берлин");
   await page.getByRole("button", { name: /^Часовой пояс: Берлин ·/ }).click();
   await expect(zoneChoice).toContainText("Берлин");

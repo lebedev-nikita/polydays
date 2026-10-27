@@ -39,13 +39,6 @@ export function LoginScreen() {
           <CheckCheck size={30} color={colors.accent} />
           <Text className="text-2xl font-bold text-ink">Polydays</Text>
         </View>
-        <View className="gap-2">
-          <Text className="text-xl font-semibold text-ink">Задачи в ритме ваших дней</Text>
-          <Text className="text-[15px] leading-6 text-muted">
-            Планируйте каждый полидень, возвращайтесь к сделанному и продолжайте с любого
-            устройства.
-          </Text>
-        </View>
         <ErrorMessage>{error || serverError}</ErrorMessage>
         <Button
           disabled={busy || !google || serverDirty}

@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState, type ComponentRef } from "react";
+import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
 import { enqueue } from "@polydays/sync";
 import {
   CalendarDays,
-  CircleCheck,
   Flag,
   MoreHorizontal,
   Pencil,
@@ -27,13 +26,17 @@ export function TaskList({
   scheduling,
   includeCompleted = false,
   showOrigin = false,
-  emptyLabel,
+  header,
+  listId,
+  onActiveChange,
 }: {
   rows: ReadonlyArray<TaskView>;
   scheduling: Scheduling;
   includeCompleted?: boolean;
   showOrigin?: boolean;
-  emptyLabel?: string;
+  header?: ReactNode;
+  listId?: string;
+  onActiveChange?: (id: string, active: boolean) => void;
 }) {
   const { store, now, tasks, calendar } = useApp();
   const notify = useNotice();
@@ -82,6 +85,9 @@ export function TaskList({
     void store.sync();
   };
   const [composer, setComposer] = useState<"inline" | "modal" | null>(null);
+  useEffect(() => {
+    if (listId) onActiveChange?.(listId, !!editing || !!composer);
+  }, [listId, onActiveChange, editing, composer]);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (Platform.OS !== "web") return;
@@ -163,9 +169,28 @@ export function TaskList({
   );
   return (
     <View ref={listRef}>
+      {header && (
+        <View className="flex-row items-center gap-2">
+          <View className="min-w-0 flex-1">{header}</View>
+          {!includeCompleted && !composer && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Добавить задачу"
+              onPress={() => setComposer(sheet ? "modal" : "inline")}
+              className="h-11 w-11 items-center justify-center rounded-md hover:bg-sidebar"
+            >
+              <Plus size={18} color={colors.accent} />
+            </Pressable>
+          )}
+        </View>
+      )}
       <ErrorMessage>{error}</ErrorMessage>
-      {shown.map((view) => (
-        <View key={view.task.id} className="group min-h-[54px] border-b border-line">
+      {shown.map((view, index) => (
+        <View
+          key={view.task.id}
+          testID={`task-row-${view.task.id}`}
+          className={`group min-h-[54px] ${index < shown.length - 1 ? "border-b border-line" : ""}`}
+        >
           {editing === view.task.id && !sheet ? (
             <View className="min-w-0 flex-1">{renderEditor(view)}</View>
           ) : (
@@ -201,26 +226,34 @@ export function TaskList({
                     {view.task.description}
                   </Text>
                 ) : null}
-                <View className="mt-1 flex-row flex-wrap items-center gap-x-3 gap-y-1">
-                  {view.task.scheduling.kind === "deadline" && (
-                    <Text className={`text-xs ${view.overdue ? "text-accent" : "text-muted"}`}>
-                      {view.task.scheduling.time}
-                    </Text>
-                  )}
-                  {view.overdue && (
-                    <Text className="text-xs text-accent">
-                      Просрочено
-                      {view.polyday ? ` · ${view.polyday.date}, ${view.polyday.name}` : ""}
-                    </Text>
-                  )}
-                  {showOrigin && !view.overdue && view.polyday && (
-                    <Text className="text-xs text-muted">
-                      {view.polyday.name} · {view.polyday.date}
-                    </Text>
-                  )}
-                  {view.inSleepGap && <Text className="text-xs text-[#76501b]">Во время сна</Text>}
-                  {view.task.seriesId && <Repeat2 size={12} color={colors.muted} />}
-                </View>
+                {(view.task.scheduling.kind === "deadline" ||
+                  view.overdue ||
+                  (showOrigin && view.polyday) ||
+                  view.inSleepGap ||
+                  view.task.seriesId) && (
+                  <View className="mt-1 flex-row flex-wrap items-center gap-x-3 gap-y-1">
+                    {view.task.scheduling.kind === "deadline" && (
+                      <Text className={`text-xs ${view.overdue ? "text-accent" : "text-muted"}`}>
+                        {view.task.scheduling.time}
+                      </Text>
+                    )}
+                    {view.overdue && (
+                      <Text className="text-xs text-accent">
+                        Просрочено
+                        {view.polyday ? ` · ${view.polyday.date}, ${view.polyday.name}` : ""}
+                      </Text>
+                    )}
+                    {showOrigin && !view.overdue && view.polyday && (
+                      <Text className="text-xs text-muted">
+                        {view.polyday.name} · {view.polyday.date}
+                      </Text>
+                    )}
+                    {view.inSleepGap && (
+                      <Text className="text-xs text-[#76501b]">Во время сна</Text>
+                    )}
+                    {view.task.seriesId && <Repeat2 size={12} color={colors.muted} />}
+                  </View>
+                )}
               </Pressable>
               <View className="flex-row pt-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
                 <Pressable
@@ -305,24 +338,12 @@ export function TaskList({
         </View>
       ))}
       {sheet && selected && renderEditor(selected)}
-      {!shown.length &&
-        !composer &&
-        (emptyLabel ? (
-          <Text className="py-3 text-sm text-muted">{emptyLabel}</Text>
-        ) : (
-          <View className="items-center gap-3 py-12">
-            <CircleCheck size={34} color="#a69b89" strokeWidth={1.2} />
-            <Text className="text-base font-semibold text-ink">
-              {includeCompleted ? "Пока нет выполненных задач" : "Здесь пока нет задач"}
-            </Text>
-            <Text className="max-w-[300px] text-center text-sm leading-5 text-muted">
-              {includeCompleted
-                ? "Сделанное останется в истории этого полидня."
-                : "Добавьте задачу или запланируйте её из входящих."}
-            </Text>
-          </View>
-        ))}
-      {!includeCompleted && !composer && (
+      {!shown.length && !composer && (
+        <Text className="py-6 text-sm text-muted">
+          {includeCompleted ? "Нет выполненных задач" : "Нет задач"}
+        </Text>
+      )}
+      {!includeCompleted && !composer && !header && (
         <Pressable
           accessibilityRole="button"
           onPress={() => setComposer(sheet ? "modal" : "inline")}

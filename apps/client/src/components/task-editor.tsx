@@ -889,9 +889,7 @@ export function TaskForm({
               {(repeat === "polyday" || repeat === "time") && (
                 <View className="gap-2">
                   <Text className="text-sm text-muted">
-                    {weekdays.length
-                      ? "В выбранные дни недели"
-                      : "Ежедневно · или выберите дни недели"}
+                    {weekdays.length ? "Дни недели" : "Каждый день"}
                   </Text>
                   {weekdays.length > 0 && (
                     <Button secondary onPress={() => setWeekdays([])}>
@@ -933,7 +931,8 @@ export function TaskForm({
                     error={fieldError("startDate")}
                   />
                   <DateControl
-                    label="Окончание серии · необязательно"
+                    label="Окончание серии"
+                    accessibilityLabel="Окончание серии · необязательно"
                     value={endDate}
                     onChange={(value) => {
                       setEndDate(value);
@@ -947,8 +946,7 @@ export function TaskForm({
               )}
               {editSeries && (
                 <Text className="text-xs leading-5 text-muted">
-                  Изменения применятся к будущим повторениям с завтрашнего дня. Прошлые и
-                  выполненные задачи сохранятся.
+                  Изменения применятся с завтрашнего дня.
                 </Text>
               )}
             </View>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useApp } from "./provider";
 import { Button, Field } from "./primitives";
 import { message } from "../data/store";
@@ -28,7 +28,7 @@ export function ServerSettings({
     }
   };
   return (
-    <View className="gap-3 border-t border-line pt-5">
+    <View className="gap-3 pt-2">
       <Field
         label="Сервер"
         value={url}
@@ -56,7 +56,6 @@ export function ServerSettings({
       >
         {busy ? "Подключение…" : url.trim() === serverURL ? "Проверить соединение" : "Подключиться"}
       </Button>
-      <Text className="text-xs leading-5 text-muted">Адрес сохраняется на этом устройстве.</Text>
     </View>
   );
 }
